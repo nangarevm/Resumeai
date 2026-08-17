@@ -498,20 +498,28 @@ export default function CandidateApp() {
                 <p>
                   {job.title} · {job.companyName} · {job.seniority || "seniority n/a"} · {job.location || "location n/a"}
                 </p>
-                <p className="muted">Required</p>
-                {job.mandatoryRequirements.map((r) => (
+                <p className="muted">Core skills scored ({job.mandatoryRequirements.length} required · {job.preferredRequirements.length} preferred)</p>
+                {job.mandatoryRequirements.slice(0, 20).map((r) => (
                   <span className="tag" key={r.name}>
                     {r.name}
                   </span>
                 ))}
+                {job.mandatoryRequirements.length > 20 && (
+                  <p className="muted">+ {job.mandatoryRequirements.length - 20} more skills mined from the JD</p>
+                )}
                 <p className="muted" style={{ marginTop: 8 }}>
                   Preferred
                 </p>
-                {job.preferredRequirements.map((r) => (
+                {job.preferredRequirements.slice(0, 12).map((r) => (
                   <span className="tag pref" key={r.name}>
                     {r.name}
                   </span>
                 ))}
+                {job.responsibilities && job.responsibilities.length > 0 && (
+                  <p className="muted" style={{ marginTop: 8 }}>
+                    {job.responsibilities.length} responsibility lines stored for context (not counted as 68 separate requirements).
+                  </p>
+                )}
               </div>
             )}
           </section>
@@ -520,23 +528,50 @@ export default function CandidateApp() {
         {step === "fit" && fit && (
           <section className="card">
             <h3>3. ResumeProof Fit Score</h3>
+            {fit.applyReadiness && (
+              <div className={`banner ${fit.applyReadiness.level === "apply_now" ? "" : ""}`}>
+                <div>
+                  <strong>
+                    Apply readiness:{" "}
+                    {fit.applyReadiness.level === "apply_now"
+                      ? "Ready to tailor & apply"
+                      : fit.applyReadiness.level === "tailor_first"
+                        ? "Tailor first"
+                        : fit.applyReadiness.level === "stretch_role"
+                          ? "Possible stretch role"
+                          : "Fix basics first"}
+                  </strong>
+                  <p className="muted" style={{ marginTop: 6 }}>
+                    {fit.applyReadiness.headline}
+                  </p>
+                  <ul className="muted" style={{ margin: "8px 0 0 18px" }}>
+                    {fit.applyReadiness.checklist.map((c) => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
             <div className="metrics">
               <div className="metric">
                 <span>FIT ESTIMATE</span>
                 <strong>{fit.score}</strong>
               </div>
               <div className="metric">
-                <span>BAND</span>
-                <strong>{fit.label}</strong>
+                <span>CORE SKILLS</span>
+                <strong>
+                  {fit.coreMatches?.length || 0}/{fit.jdInsight?.coreSkillCount || fit.explicitRequirements?.length || "—"}
+                </strong>
               </div>
               <div className="metric">
-                <span>SINCE LAST RUN</span>
-                <strong>{typeof fit.delta === "number" ? `${fit.delta > 0 ? "+" : ""}${fit.delta}` : "—"}</strong>
+                <span>BAND</span>
+                <strong>{fit.label}</strong>
               </div>
             </div>
             {job && (
               <p className="muted">
-                Parsed as {job.title} · {job.seniority || "seniority n/a"} · {job.location || "location n/a"}
+                {job.title} · {job.seniority || "seniority n/a"} · {job.location || "location n/a"}
+                {fit.jdInsight ? ` · ${fit.jdInsight.parseNote}` : ""}
               </p>
             )}
             <p className="muted">{fit.disclaimer}</p>
@@ -567,29 +602,41 @@ export default function CandidateApp() {
               ))}
             </div>
             <p style={{ marginTop: 12 }}>{fit.explanation}</p>
-            <h3>Matches</h3>
-            {(fit.matches || []).map((m) => (
+            <h3>Core skills you prove</h3>
+            {(fit.coreMatches || fit.matches || []).slice(0, 16).map((m) => (
               <span className="tag" key={m}>
                 {m}
               </span>
             ))}
-            <h3>Gaps (not in resume)</h3>
-            {(fit.gaps || []).map((m) => (
+            <h3>Honest gaps (core skills only)</h3>
+            {(fit.coreGaps || fit.gaps || []).slice(0, 12).map((m) => (
               <span className="tag pref" key={m}>
                 {m}
               </span>
             ))}
-            <h3>Not possessed (negated)</h3>
-            {(fit.notPossessed || []).map((m) => (
-              <span className="tag pref" key={m}>
-                {m}
-              </span>
-            ))}
+            {(fit.coreGaps || fit.gaps || []).length > 12 && (
+              <p className="muted">+ {(fit.coreGaps || fit.gaps).length - 12} more — do not keyword-stuff these.</p>
+            )}
+            {job?.responsibilities && job.responsibilities.length > 0 && (
+              <details style={{ marginTop: 12 }}>
+                <summary className="muted" style={{ cursor: "pointer" }}>
+                  {job.responsibilities.length} duty lines parsed (not scored individually)
+                </summary>
+                <pre className="pre">{job.responsibilities.slice(0, 8).join("\n")}</pre>
+              </details>
+            )}
             <h3>Parser preview</h3>
             <pre className="pre">{fit.parserPreview}</pre>
-            <button className="btn-primary" onClick={runTailor}>
-              Create tailoring suggestions
-            </button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+              <button className="btn-primary" onClick={runTailor}>
+                {fit.applyReadiness?.level === "apply_now" ? "Tailor resume & apply" : "Create tailoring suggestions"}
+              </button>
+              {fit.applyReadiness?.level === "fix_basics" && (
+                <button className="btn-ghost" type="button" onClick={() => setStep("vault")}>
+                  Fix Career Vault
+                </button>
+              )}
+            </div>
           </section>
         )}
         {step === "fit" && !fit && <section className="card">Analyze a job in step 2 first.</section>}

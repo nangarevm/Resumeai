@@ -95,6 +95,57 @@ describe("SRS v2 candidate engines", () => {
     expect(jd.seniority).toBe("Intern");
   });
 
+  it("long unstructured JD extracts core skills instead of every bullet", () => {
+    const longJd = `Senior QA Engineer
+
+Responsibilities
+- Perform functional, regression, integration, system, smoke, sanity, and exploratory testing across multiple modules
+- Validate UI, business workflows, data validation, error handling, and edge cases in production-like environments
+- Design and maintain automated test frameworks with reusable page objects and fixtures
+
+Requirements
+- Strong experience with Playwright and Selenium
+- CI/CD with Jenkins or Azure DevOps
+- REST API testing with Postman
+- SQL for data validation
+- 5+ years QA experience`;
+
+    const jd = parseJD("qa", longJd);
+    expect(jd.mandatoryRequirements.length).toBeLessThan(20);
+    expect(jd.mandatoryRequirements.some((r) => /playwright/i.test(r.name))).toBe(true);
+    expect(jd.responsibilities?.length).toBeGreaterThan(0);
+    expect(jd.mandatoryRequirements.some((r) => /Perform functional/i.test(r.name))).toBe(false);
+  });
+
+  it("fit score includes apply readiness for skill-heavy QA resume", () => {
+    const qaResume = `NAME: Vivek
+EMAIL: vivek@example.com
+PHONE: +91 9876543210
+TECHNICAL SKILLS:
+- Playwright, Selenium, Cypress, Postman, Jenkins, Azure DevOps, Java, TypeScript, SQL, Jira, Agile
+WORK EXPERIENCE:
+- QA Engineer at Acme — built Playwright UI and API automation in CI/CD pipelines
+EDUCATION:
+- B.Tech Computer Science`;
+
+    const jd = parseJD(
+      "qa",
+      `Senior QA Engineer
+Requirements
+- Playwright
+- Selenium
+- API testing
+- Jenkins
+- SQL
+- 5+ years experience`
+    );
+    const fit = computeFitReport(parseResume("v", qaResume), jd, buildCareerVault(parseResume("v", qaResume)));
+    expect(fit.jdInsight.coreSkillCount).toBeLessThan(15);
+    expect(fit.coreMatches.length).toBeGreaterThan(2);
+    expect(fit.applyReadiness).toBeDefined();
+    expect(fit.applyReadiness.checklist.length).toBeGreaterThan(0);
+  });
+
   it("LinkedIn paste import never adds facts beyond the paste", () => {
     const paste = `Anuja P
 AI/ML student

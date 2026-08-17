@@ -67,6 +67,18 @@ export interface FitReport {
   scoreMovers: Array<{ title: string; detail: string }>;
   previousScore?: number;
   delta?: number;
+  applyReadiness: {
+    level: "apply_now" | "tailor_first" | "stretch_role" | "fix_basics";
+    headline: string;
+    checklist: string[];
+  };
+  jdInsight: {
+    coreSkillCount: number;
+    responsibilityCount: number;
+    parseNote: string;
+  };
+  coreMatches: string[];
+  coreGaps: string[];
 }
 
 export interface TailorSuggestion {

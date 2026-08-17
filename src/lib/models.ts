@@ -89,6 +89,8 @@ export interface JobDescription {
   rawText: string;
   mandatoryRequirements: Requirement[];
   preferredRequirements: Requirement[];
+  /** Long JD duty lines — shown for context, not used as individual fit keywords. */
+  responsibilities?: string[];
   seniority?: string;
   location?: string;
 }
@@ -218,6 +220,11 @@ export interface GithubProofResult {
 
 export function allRequirements(jd: JobDescription): Requirement[] {
   return [...jd.mandatoryRequirements, ...jd.preferredRequirements];
+}
+
+/** Requirements used for Fit Score / evidence matching (excludes responsibility prose). */
+export function scorableRequirements(jd: JobDescription): Requirement[] {
+  return allRequirements(jd).filter((r) => r.category !== "PROJECT" || r.name.length < 64);
 }
 
 export function emptyPreferences(): CareerPreferences {
