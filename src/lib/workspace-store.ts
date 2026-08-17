@@ -8,6 +8,7 @@ import type {
   FitReport,
   JobInputSnapshot,
   ResumeVersion,
+  SavedJob,
   SeekerWorkspace,
   TailorSuggestion,
   VerificationFinding
@@ -59,8 +60,22 @@ function defaultAgency(): AgencyWorkspace {
     logoText: "RP",
     brandColor: "#58a6ff",
     tier: "Small Agency",
-    seats: clients
+    seats: clients,
+    usageMeters: currentUsageMeters()
   };
+}
+
+function currentUsageMeters(): AgencyWorkspace["usageMeters"] {
+  const monthKey = new Date().toISOString().slice(0, 7);
+  return { monthKey, analyzesRun: 0, candidatesAdded: 0, shortlistsExported: 0 };
+}
+
+function ensureUsageMeters(agency: AgencyWorkspace): AgencyWorkspace["usageMeters"] {
+  const monthKey = new Date().toISOString().slice(0, 7);
+  if (!agency.usageMeters || agency.usageMeters.monthKey !== monthKey) {
+    agency.usageMeters = currentUsageMeters();
+  }
+  return agency.usageMeters;
 }
 
 function load(): WorkspaceFile {
@@ -124,6 +139,42 @@ export function setLastJobInput(input: JobInputSnapshot): void {
   const ws = load();
   ws.seeker.lastJobInput = input;
   save();
+}
+
+export function saveJobToLibrary(entry: Omit<SavedJob, "id" | "savedAt"> & { id?: string }): SavedJob {
+  const ws = load();
+  if (!ws.seeker.savedJobs) ws.seeker.savedJobs = [];
+  const saved: SavedJob = {
+    id: entry.id || `job-${Date.now()}`,
+    title: entry.title,
+    companyName: entry.companyName,
+    jdText: entry.jdText,
+    jobUrl: entry.jobUrl,
+    fitScore: entry.fitScore,
+    savedAt: new Date().toISOString()
+  };
+  const idx = ws.seeker.savedJobs.findIndex((j) => j.id === saved.id);
+  if (idx >= 0) ws.seeker.savedJobs[idx] = saved;
+  else ws.seeker.savedJobs.unshift(saved);
+  ws.seeker.savedJobs = ws.seeker.savedJobs.slice(0, 24);
+  save();
+  return saved;
+}
+
+export function deleteSavedJob(id: string): void {
+  const ws = load();
+  if (ws.seeker.savedJobs) {
+    ws.seeker.savedJobs = ws.seeker.savedJobs.filter((j) => j.id !== id);
+    save();
+  }
+}
+
+export function incrementAgencyUsage(kind: "analyzesRun" | "candidatesAdded" | "shortlistsExported", n = 1): AgencyWorkspace {
+  const ws = load();
+  const meters = ensureUsageMeters(ws.agency)!;
+  meters[kind] += n;
+  save();
+  return ws.agency;
 }
 
 export function setFit(fit: FitReport): void {

@@ -157,12 +157,30 @@ export interface CareerChangePlan {
   thisMonthLearn: string[];
 }
 
+export interface SavedJob {
+  id: string;
+  title: string;
+  companyName: string;
+  jdText: string;
+  jobUrl: string;
+  fitScore?: number;
+  savedAt: string;
+}
+
+export interface AgencyUsageMeters {
+  monthKey: string;
+  analyzesRun: number;
+  candidatesAdded: number;
+  shortlistsExported: number;
+}
+
 export interface AgencyWorkspace {
   name: string;
   logoText: string;
   brandColor: string;
   tier: "Coach" | "Small Agency" | "Professional";
   seats: Array<{ clientId: string; clientName: string; status: string; progress: string; notes?: string }>;
+  usageMeters?: AgencyUsageMeters;
 }
 
 export interface JobInputSnapshot {
@@ -178,6 +196,7 @@ export interface SeekerWorkspace {
   activeJob: JobDescription | null;
   fit: FitReport | null;
   lastJobInput?: JobInputSnapshot;
+  savedJobs?: SavedJob[];
   suggestions: TailorSuggestion[];
   findings: VerificationFinding[];
   tailoredDraft?: string;

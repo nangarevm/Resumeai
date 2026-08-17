@@ -281,6 +281,8 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .job-intel-panel {
   padding-top: 12px; border-top: 1px solid var(--border-color);
 }
+.agency-modal { max-height: 90vh; overflow: auto; }
+.job-library .chain-item { align-items: center; }
 
 @media print {
   .sidebar, .banner, .btn-primary, .btn-ghost, .chip, .nav-btn, .mode-pills { display: none !important; }

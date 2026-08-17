@@ -7,13 +7,17 @@ import type {
   ApplicationRecord,
   CareerChangePlan,
   FitReport,
+  OutcomeStats,
+  SavedJob,
   SeekerWorkspace,
   TailorSuggestion,
   VerificationFinding
 } from "@/lib/srs-models";
 import type { JobDescription } from "@/lib/models";
 import { vaultCompleteness } from "@/lib/engines/career-vault";
+import { bandFromScore } from "@/lib/engines/outcome-tracker";
 import { applyAcceptedSuggestions } from "@/lib/engines/tailoring";
+import { buildWhatsAppBundle } from "@/lib/export/whatsapp-bundle";
 import CopyButton from "@/components/CopyButton";
 
 const STEPS = [
@@ -79,7 +83,8 @@ export default function CandidateApp() {
   const [linkedinPaste, setLinkedinPaste] = useState("");
   const [linkedinWarnings, setLinkedinWarnings] = useState<string[]>([]);
   const [rewrites, setRewrites] = useState<Array<{ id: string; original: string; rewritten: string; reason: string }>>([]);
-  const [outcomes, setOutcomes] = useState<{ totals: { interviewRate: number; offerRate: number; applications: number }; byBand: Record<string, unknown> } | null>(null);
+  const [outcomes, setOutcomes] = useState<OutcomeStats | null>(null);
+  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [referredBy, setReferredBy] = useState("");
   const [referralUrl, setReferralUrl] = useState("");
   const [jobFetchSource, setJobFetchSource] = useState("");
@@ -114,6 +119,7 @@ export default function CandidateApp() {
     setFindings(data.seeker.findings || []);
     setApps(data.seeker.applications || []);
     setDraft(data.seeker.tailoredDraft || "");
+    setSavedJobs(data.seeker.savedJobs || []);
     if (data.seeker.lastJobInput) {
       setJobUrl(data.seeker.lastJobInput.jobUrl || "");
       setJdText(data.seeker.lastJobInput.jdText || "");
@@ -135,7 +141,7 @@ export default function CandidateApp() {
   }, []);
 
   useEffect(() => {
-    if (step === "tracker") {
+    if (step === "tracker" || step === "fit") {
       void fetch("/api/outcomes").then((r) => r.json()).then(setOutcomes);
     }
   }, [step, apps.length]);
@@ -309,6 +315,17 @@ export default function CandidateApp() {
     setFit(data.fit);
     setJobFetchSource(data.fetchSource || "");
     setAnalyzedInputKey(jobInputKey(jobUrl, jdText));
+    void fetch("/api/job-library", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: data.job.title,
+        companyName: data.job.companyName,
+        jdText,
+        jobUrl: jobUrl,
+        fitScore: data.fit.score
+      })
+    }).then((r) => r.json()).then((saved) => setSavedJobs((prev) => [saved, ...prev.filter((j) => j.title !== saved.title || j.companyName !== saved.companyName)].slice(0, 24)));
     setNotice(
       data.fetchSource
         ? `Job loaded via ${data.fetchSource} parser. ${data.fit.jdInsight?.parseNote || ""}`
@@ -483,10 +500,36 @@ export default function CandidateApp() {
     a.click();
   }
 
-  const current = STEPS.find((s) => s.id === step)!;
+  function loadSavedJob(entry: SavedJob) {
+    setJdText(entry.jdText);
+    setJobUrl(entry.jobUrl);
+    setNotice(`Loaded saved job: ${entry.title}. Click Analyze to refresh the Fit Score.`);
+  }
+
+  async function removeSavedJob(id: string) {
+    await fetch(`/api/job-library?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    setSavedJobs((prev) => prev.filter((j) => j.id !== id));
+    setNotice("Removed from job library.");
+  }
+
+  function copyWhatsAppBundle() {
+    if (!kit || !job) return;
+    const text = buildWhatsAppBundle(kit, job.title, job.companyName, referredBy || undefined);
+    void navigator.clipboard.writeText(text);
+    setNotice("WhatsApp apply bundle copied — paste into WhatsApp with your resume file.");
+  }
+
+  const fitBand = fit ? bandFromScore(fit.score) : "";
+  const bandOutcome = fitBand && outcomes?.byBand?.[fitBand];
+  const followUpDue = apps.filter((a) => {
+    if (a.status !== "Applied") return false;
+    const days = Math.round((Date.now() - new Date(a.appliedAt || a.savedAt).getTime()) / 86400000);
+    return days >= 3;
+  });
   const vaultHealth = ws ? vaultCompleteness(ws.vault) : null;
   const showOnboardingBanner =
     !onboardingDismissed && (step === "vault" || step === "job" || step === "fit") && progress < 55;
+  const current = STEPS.find((s) => s.id === step)!;
 
   return (
     <div className="app-shell">
@@ -776,6 +819,31 @@ export default function CandidateApp() {
                 )}
               </div>
             )}
+            {savedJobs.length > 0 && (
+              <div className="job-library" style={{ marginTop: 16 }}>
+                <h3>Saved jobs ({savedJobs.length})</h3>
+                <p className="muted">Re-open a past JD without re-pasting. Analyze again after loading if your vault changed.</p>
+                {savedJobs.slice(0, 8).map((entry) => (
+                  <div key={entry.id} className="chain-item" style={{ marginBottom: 8, display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                    <div>
+                      <strong>{entry.title}</strong>
+                      <div className="muted">
+                        {entry.companyName}
+                        {entry.fitScore != null ? ` · last fit ${entry.fitScore}%` : ""}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button className="chip" type="button" onClick={() => loadSavedJob(entry)}>
+                        Load
+                      </button>
+                      <button className="chip" type="button" onClick={() => removeSavedJob(entry.id)}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
 
@@ -793,6 +861,15 @@ export default function CandidateApp() {
               </div>
             )}
             <h3>3. ResumeProof Fit Score</h3>
+            {outcomes && outcomes.totals.applications >= 2 && bandOutcome && (
+              <div className="banner onboarding" style={{ marginBottom: 16 }}>
+                <strong>Your history at this fit band ({fitBand})</strong>
+                <p className="muted" style={{ marginTop: 6 }}>
+                  You logged {bandOutcome.applied + bandOutcome.saved} apps in this band · {bandOutcome.interview} reached interview · overall interview rate{" "}
+                  {outcomes.totals.interviewRate}% across {outcomes.totals.applications} applications.
+                </p>
+              </div>
+            )}
             {fit.applyReadiness && (
               <div className={`banner ${fit.applyReadiness.level === "apply_now" ? "" : ""}`}>
                 <div>
@@ -1043,7 +1120,10 @@ export default function CandidateApp() {
             {kit && (
               <>
                 <p className="muted">Copy beats download in India/WhatsApp-first hiring. Every block is evidence-bound.</p>
-                <button className="btn-primary" onClick={downloadApplyPack}>
+                <button className="btn-primary" onClick={copyWhatsAppBundle}>
+                  Copy WhatsApp apply bundle
+                </button>
+                <button className="btn-primary" onClick={downloadApplyPack} style={{ marginLeft: 8 }}>
                   Download Apply pack (ZIP)
                 </button>
                 <button className="btn-ghost" onClick={downloadKit} style={{ marginLeft: 8 }}>
@@ -1120,6 +1200,14 @@ export default function CandidateApp() {
           <section className="card">
             <h3>7. Application tracker</h3>
             <p className="muted">Pipeline + follow-up. Log outcomes so ResumeProof can show interview rate by fit band.</p>
+            {followUpDue.length > 0 && (
+              <div className="stale-banner" style={{ marginBottom: 16 }}>
+                <strong>{followUpDue.length} application{followUpDue.length > 1 ? "s" : ""} need follow-up (3+ days)</strong>
+                <p className="muted" style={{ marginTop: 6 }}>
+                  {followUpDue.map((a) => a.jobTitle).join(", ")} — use the copy follow-up button on each card.
+                </p>
+              </div>
+            )}
             {outcomes && outcomes.totals.applications > 0 && (
               <div className="metrics">
                 <div className="metric">

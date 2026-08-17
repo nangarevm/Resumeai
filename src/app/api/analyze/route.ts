@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getActiveJob, getStore } from "@/lib/store";
 import { analyzePool } from "@/lib/pipeline";
+import { incrementAgencyUsage } from "@/lib/workspace-store";
 import type { EvaluationModeName } from "@/lib/models";
 
 export const dynamic = "force-dynamic";
@@ -12,5 +13,6 @@ export async function GET(request: Request) {
   const jd = getActiveJob();
   if (!jd) return NextResponse.json({ error: "No active job" }, { status: 400 });
   const results = analyzePool(getStore().candidates, jd, safeMode);
+  incrementAgencyUsage("analyzesRun");
   return NextResponse.json(results);
 }

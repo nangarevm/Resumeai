@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseJD } from "@/lib/parsers/jd-extractor";
+import { normalizeBoardPaste } from "@/lib/parsers/board-paste-normalizer";
 import { fetchJobFromUrl } from "@/lib/parsers/job-board-fetch";
 import { computeFitReport } from "@/lib/engines/fit-score";
 import { getSeeker, setActiveJob, setFit, setLastJobInput } from "@/lib/workspace-store";
@@ -25,12 +26,13 @@ export async function POST(request: Request) {
   }
 
   if (!text) return NextResponse.json({ error: "Paste a job description or a public URL." }, { status: 400 });
-  const jd = parseJD(`job-${Date.now()}`, text);
+  const normalized = normalizeBoardPaste(text);
+  const jd = parseJD(`job-${Date.now()}`, normalized.text);
   if (body.jobUrl) jd.rawText = `${body.jobUrl}\n${jd.rawText}`;
   const seeker = getSeeker();
   const fit = computeFitReport(seeker.profile, jd, seeker.vault);
   setActiveJob(jd);
   setFit(fit);
   setLastJobInput({ jobUrl: body.jobUrl || "", jdText: body.jdText || "" });
-  return NextResponse.json({ job: jd, fit, fetchSource });
+  return NextResponse.json({ job: jd, fit, fetchSource: fetchSource || normalized.source });
 }
