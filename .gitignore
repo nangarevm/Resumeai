@@ -8,3 +8,4 @@ data/runtime/*.json
 .env
 .env.local
 next-env.d.ts
+*.tsbuildinfo
