@@ -33,6 +33,13 @@ Then open the app (on this cloud VM the public preview is a tunnel; on your own 
 | Agency white-label + client seats + notes + compare | Done (MVP) | `/agency` brand, clients, hiring |
 | Free Markdown + print-to-PDF export | Done | Kit + Print |
 | Privacy export / delete | Done | `/api/privacy` |
+| Years-of-experience matcher | Done | Fit Score step 3 |
+| One-click Apply pack (ZIP) | Done | Kit step 6, `/api/apply-pack` |
+| DOCX export | Done | `/api/export-docx` |
+| Greenhouse / Lever / JSON-LD URL fetch | Done | `/api/job-intel` |
+| Outcome tracking by fit band | Done | Tracker, `/api/outcomes` |
+| Referral flow + checklist | Done | Kit step 6 |
+| Evidence-bound bullet rewrite (no LLM) | Done | Tailor step 4, `/api/rewrite` |
 | Evidence engines, claim checks, GitHub proof, ATS | Done | Existing `/api/*` used by agency |
 
 ## Market suggestions (2026) — implemented in this pass
