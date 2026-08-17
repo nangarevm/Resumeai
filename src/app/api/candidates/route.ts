@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { addCandidate, getStore, nextCandidateId } from "@/lib/store";
 import { parseResume } from "@/lib/parsers/resume-parser";
+import { incrementAgencyUsage } from "@/lib/workspace-store";
 
 export const dynamic = "force-dynamic";
 
