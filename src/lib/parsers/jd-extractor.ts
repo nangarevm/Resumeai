@@ -15,7 +15,9 @@ export function parseJD(id: string, rawText: string): JobDescription {
     domain,
     rawText: text,
     mandatoryRequirements: [],
-    preferredRequirements: []
+    preferredRequirements: [],
+    seniority: inferSeniority(text, title),
+    location: extractField(text, "LOCATION:", inferLocation(text))
   };
 
   const { mandatory, preferred } = extractRequirementLists(text);
@@ -147,4 +149,18 @@ function inferDomain(text: string, title: string): string {
   if (/(mechanical|cad|solidworks)/.test(blob)) return "Mechanical Engineering";
   if (/(java|software|developer|engineer)/.test(blob)) return "Software Development";
   return "General Industry";
+}
+
+function inferSeniority(text: string, title: string): string {
+  const blob = `${title} ${text}`.toLowerCase();
+  if (/(intern|internship|campus)/.test(blob)) return "Intern";
+  if (/(junior|associate|0 to 2|0-2)/.test(blob)) return "Junior";
+  if (/(senior|staff|principal)/.test(blob)) return "Senior";
+  if (/(lead|manager|head)/.test(blob)) return "Lead";
+  return "Mid";
+}
+
+function inferLocation(text: string): string {
+  const m = text.match(/\b(remote|hybrid|bengaluru|bangalore|pune|hyderabad|mumbai|delhi|noida|gurgaon|london|new york)\b/i);
+  return m ? m[1] : "Not specified";
 }

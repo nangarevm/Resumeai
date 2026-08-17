@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseResume } from "@/lib/parsers/resume-parser";
-import { setSeekerProfile, updateVault } from "@/lib/workspace-store";
-import type { CareerVault } from "@/lib/srs-models";
+import { setEvidenceStatus, setSeekerProfile, updateVault } from "@/lib/workspace-store";
+import type { CareerVault, VerificationStatus } from "@/lib/srs-models";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +25,10 @@ export async function POST(request: Request) {
   }
   if (body.vault) {
     return NextResponse.json({ vault: updateVault(body.vault) });
+  }
+  const evidenceBody = body as { evidenceId?: string; verificationStatus?: VerificationStatus };
+  if (evidenceBody.evidenceId && evidenceBody.verificationStatus) {
+    return NextResponse.json({ vault: setEvidenceStatus(evidenceBody.evidenceId, evidenceBody.verificationStatus) });
   }
   return NextResponse.json({ error: "resumeText or vault required" }, { status: 400 });
 }

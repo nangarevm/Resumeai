@@ -60,6 +60,60 @@ export function computeFitReport(
     `Career Vault completeness ${vaultCoverage}% reflects how much confirmed evidence is available to tailor from.`
   ].join(" ");
 
+  const nextActions: FitReport["nextActions"] = [];
+  if (ats.score < 70) {
+    nextActions.push({
+      title: "Fix ATS shape first",
+      detail: ats.recommendations[0] || "Add contact, Skills/Experience/Education headings, and bullets.",
+      step: "vault"
+    });
+  }
+  if (gaps.length) {
+    nextActions.push({
+      title: "Do not stuff missing keywords",
+      detail: `Gaps: ${gaps.slice(0, 4).join(", ")}. Add a real project to the vault, or leave them off.`,
+      step: "change"
+    });
+  }
+  if (matches.length) {
+    nextActions.push({
+      title: "Move proven skills higher",
+      detail: `Lead with ${matches.slice(0, 3).join(", ")} — those already have snippets.`,
+      step: "tailor"
+    });
+  }
+  nextActions.push({
+    title: "Generate tailoring, then verify",
+    detail: "Accept only green/yellow suggestions you can defend. Blocked items stay out of the export.",
+    step: "tailor"
+  });
+
+  const scoreMovers: FitReport["scoreMovers"] = [];
+  if (gaps.length) {
+    scoreMovers.push({
+      title: "One real artifact beats keyword stuffing",
+      detail: `A public project that actually uses ${gaps[0]} can raise keyword coverage. Adding the word with no vault proof will fail verification.`
+    });
+  }
+  if (vaultCoverage < 80) {
+    scoreMovers.push({
+      title: "Confirm more Career Vault families",
+      detail: "Completeness is 15% of Fit Score. Add work, projects, education, or a metric you already earned — then approve it."
+    });
+  }
+  if (ats.score < 80) {
+    scoreMovers.push({
+      title: "Fix resume shape, not buzzwords",
+      detail: "ATS readiness wants contact + Skills/Experience/Education headings and a sane length — not a hidden keyword dump."
+    });
+  }
+  if (!scoreMovers.length) {
+    scoreMovers.push({
+      title: "Lead with proven matches",
+      detail: "Score is already evidence-backed. Reorder bullets around matches; do not invent seniority or metrics."
+    });
+  }
+
   return {
     score,
     label,
@@ -73,7 +127,9 @@ export function computeFitReport(
     inferredRequirements: inferred,
     explicitRequirements: explicit,
     parserPreview: buildParserPreview(profile),
-    explanation
+    explanation,
+    nextActions,
+    scoreMovers
   };
 }
 

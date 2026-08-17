@@ -89,6 +89,8 @@ export interface JobDescription {
   rawText: string;
   mandatoryRequirements: Requirement[];
   preferredRequirements: Requirement[];
+  seniority?: string;
+  location?: string;
 }
 
 export interface CandidateProfile {

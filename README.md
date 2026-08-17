@@ -25,14 +25,34 @@ Then open the app (on this cloud VM the public preview is a tunnel; on your own 
 | FR-5 Tailoring with accept/reject + blocked fabrication | Done | Candidate step 4 |
 | FR-1.6 / FR-5.6 Version snapshot before tailor | Done | `/api/tailor` |
 | FR-6 Verification Remove/Confirm/Edit + export gate | Done | Candidate step 5, `/api/kit` |
-| Application kit (resume, cover, recruiter email, LinkedIn, checklist) | Done | Step 6 |
-| Application tracker statuses | Done | Step 7 |
-| Interview copilot + STAR from vault | Done | Step 8 |
-| Career Change Mode | Done | Step 9 |
+| Application kit (resume, cover, recruiter email, LinkedIn, WhatsApp, thank-you, referral, checklist) | Done | Step 6 |
+| Application tracker statuses + kanban + 3-day follow-up | Done | Step 7 |
+| Interview copilot + STAR from vault + practice box | Done | Step 8 |
+| Career Change Mode + 30–60–90 + learn-this-month | Done | Step 9 |
 | Agency ranking STRICT/BALANCED/BEST MATCH | Done | `/agency` hiring desk |
-| Agency white-label + client seats | Done (MVP) | `/agency` brand & clients |
+| Agency white-label + client seats + notes + compare | Done (MVP) | `/agency` brand, clients, hiring |
 | Free Markdown + print-to-PDF export | Done | Kit + Print |
+| Privacy export / delete | Done | `/api/privacy` |
 | Evidence engines, claim checks, GitHub proof, ATS | Done | Existing `/api/*` used by agency |
+
+## Market suggestions (2026) — implemented in this pass
+
+Hiring tools (Teal, Huntr, Jobscan, Ashby-style desks) now win on **time-to-first-score**, **copy-to-WhatsApp/LinkedIn**, **honest scores**, and **pipeline follow-up** — not on inventing a “perfect ATS resume.” Each module below was reviewed against that market, then shipped.
+
+| Module | Market pressure | What we shipped |
+| --- | --- | --- |
+| Onboarding | Users bounce if first value > 5 minutes | Sample resume/JD, journey %, landing “how to start” |
+| Career Vault | Completeness meters (Teal) without fake profile scores | Family completeness bar, archive/restore, approved-only gen |
+| Job intel | Boards block scrapers; paste-first is the real path | Paste-first copy, seniority/location, required vs preferred chips |
+| Fit Score | ATS % skepticism; “what do I do next?” | Disclaimer, sub-scores, delta, next actions, honest score movers |
+| Tailor | Inline edit > accept/reject only | Edit the proposed line before accept; blocked items stay red |
+| Verify | AI-resume detection / export liability | Remove/confirm/edit gate; override is explicit |
+| Application kit | India/WhatsApp + referrals + 24h thank-you | Copy buttons, WhatsApp, referral, thank-you, Markdown/PDF |
+| Tracker | Huntr/Teal kanban + ghost-job follow-up | Kanban incl. Rejected, 3-day follow-up copy |
+| Interview | Practice in the same tool you applied from | STAR from vault, practice box, post-interview thank-you |
+| Career change | Career-switch spam resumes | Role chips, 30–60–90, “learn this month then vault it” |
+| Privacy | DPDP / GDPR expectation even in MVP | Export JSON / delete vault |
+| Agency | Compare two, notes, copy shortlist | Search, side-by-side, seat notes, copy shortlist |
 
 ## What is left (Phase 2–3 / deferred)
 

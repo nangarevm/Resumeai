@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { parseResume } from "@/lib/parsers/resume-parser";
 import { parseJD } from "@/lib/parsers/jd-extractor";
-import { buildCareerVault, approvedEvidence } from "@/lib/engines/career-vault";
+import { buildCareerVault, approvedEvidence, vaultCompleteness } from "@/lib/engines/career-vault";
 import { computeFitReport } from "@/lib/engines/fit-score";
 import { generateTailoringSuggestions } from "@/lib/engines/tailoring";
 import { scanVerification, hasBlockingFindings } from "@/lib/engines/verification";
 import { planCareerChange } from "@/lib/engines/career-change";
+import { buildApplicationKit } from "@/lib/engines/application-kit";
 
 const RESUME = `NAME: Anuja P
 EMAIL: anuja@example.com
@@ -31,6 +32,9 @@ describe("SRS v2 candidate engines", () => {
     expect(approvedEvidence(vault).length).toBeGreaterThan(2);
     expect(vault.evidence.some((e) => e.type === "skill")).toBe(true);
     expect(vault.evidence.some((e) => e.type === "project")).toBe(true);
+    const health = vaultCompleteness(vault);
+    expect(health.percent).toBeGreaterThan(0);
+    expect(health.present).toContain("skill");
   });
 
   it("Fit Score is labeled as an estimate and has sub-scores", () => {
@@ -40,6 +44,8 @@ describe("SRS v2 candidate engines", () => {
     expect(fit.disclaimer).toMatch(/not a universal ATS score/i);
     expect(fit.subScores.keywordCoverage).toBeGreaterThan(0);
     expect(fit.parserPreview).toMatch(/Anuja/);
+    expect(fit.nextActions.length).toBeGreaterThan(0);
+    expect(fit.scoreMovers.length).toBeGreaterThan(0);
   });
 
   it("tailoring blocks requirements with no evidence", () => {
@@ -69,5 +75,21 @@ describe("SRS v2 candidate engines", () => {
     const plan = planCareerChange(vault, "product manager");
     expect(plan.missing.length).toBeGreaterThan(0);
     expect(plan.truthfulFraming.join(" ")).toMatch(/Do not write/i);
+    expect(plan.plan90).toHaveLength(3);
+    expect(plan.thisMonthLearn.join(" ")).toMatch(/Career Vault/i);
+  });
+
+  it("application kit includes WhatsApp, thank-you, and referral notes bound to evidence", () => {
+    const profile = parseResume("1", RESUME);
+    const jd = parseJD("j", JD);
+    const kit = buildApplicationKit(profile, jd, buildCareerVault(profile), []);
+    expect(kit.whatsappNote).toMatch(/AI\/ML Intern/);
+    expect(kit.thankYouNote).toMatch(/thank you/i);
+    expect(kit.referralNote).toMatch(/will not claim/i);
+  });
+
+  it("job parser infers intern seniority from the title", () => {
+    const jd = parseJD("j", JD);
+    expect(jd.seniority).toBe("Intern");
   });
 });

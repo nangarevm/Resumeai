@@ -17,6 +17,11 @@ export default function AgencyApp() {
   const [selected, setSelected] = useState<EvaluationResult | null>(null);
   const [jobForm, setJobForm] = useState({ title: "", companyName: "", domain: "", mandatoryText: "", preferredText: "" });
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [compareA, setCompareA] = useState("");
+  const [compareB, setCompareB] = useState("");
+  const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
+  const [notice, setNotice] = useState("");
 
   const loadAgency = useCallback(async () => {
     setAgency(await fetch("/api/agency").then((r) => r.json()));
@@ -58,6 +63,43 @@ export default function AgencyApp() {
 
   const shortlisted = results.filter((r) => r.isShortlisted).length;
   const color = agency?.brandColor || "#58a6ff";
+  const visible = results.filter((r) => {
+    const q = search.toLowerCase();
+    return (
+      !q ||
+      r.candidateName.toLowerCase().includes(q) ||
+      r.strongAreas.join(" ").toLowerCase().includes(q) ||
+      r.missingRequirements.join(" ").toLowerCase().includes(q)
+    );
+  });
+  const aRow = results.find((r) => r.candidateId === compareA);
+  const bRow = results.find((r) => r.candidateId === compareB);
+  const visibleSeats = (agency?.seats || []).filter((s) => {
+    const q = search.toLowerCase();
+    return !q || s.clientName.toLowerCase().includes(q) || (s.notes || "").toLowerCase().includes(q);
+  });
+
+  function copyShortlist() {
+    const text = results
+      .filter((r) => r.isShortlisted)
+      .map(
+        (r) =>
+          `${r.candidateName} · ${Math.round(r.qualificationScore)}% · ${r.preferenceAlignment} · strong: ${r.strongAreas.slice(0, 4).join(", ") || "n/a"}`
+      )
+      .join("\n");
+    void navigator.clipboard.writeText(text || "No shortlisted candidates in this mode.");
+    setNotice("Shortlist copied — snippets stay in the product; this is names and scores only.");
+  }
+
+  async function saveSeatNotes(clientId: string) {
+    const next = await fetch("/api/agency", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId, notes: notesDraft[clientId] || "" })
+    }).then((r) => r.json());
+    setAgency(next);
+    setNotice("Seat notes saved.");
+  }
 
   return (
     <div className="app-shell">
@@ -110,6 +152,8 @@ export default function AgencyApp() {
             ))}
           </div>
         </header>
+
+        {notice && <div className="banner">{notice}</div>}
 
         {tab === "overview" && (
           <>
@@ -180,23 +224,43 @@ export default function AgencyApp() {
         {tab === "clients" && (
           <section className="card">
             <h3>Client roster & seats</h3>
-            <p className="muted">Phase 3 B2B: seats are metered in the product model ($/active client). This desk shows roster status.</p>
+            <p className="muted">
+              Phase 3 B2B meters $/active client. Recruiter notes stay on the seat — Ashby/Greenhouse pattern, no invented candidate claims.
+            </p>
+            <input
+              className="search"
+              placeholder="Search clients or notes…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
             <table>
               <thead>
                 <tr>
                   <th>Client</th>
                   <th>Status</th>
                   <th>Progress</th>
+                  <th>Recruiter notes</th>
                 </tr>
               </thead>
               <tbody>
-                {(agency?.seats || []).map((s) => (
+                {visibleSeats.map((s) => (
                   <tr key={s.clientId}>
                     <td>{s.clientName}</td>
                     <td>
                       <span className="badge ok">{s.status}</span>
                     </td>
                     <td>{s.progress}</td>
+                    <td>
+                      <textarea
+                        className="form-control"
+                        rows={2}
+                        value={notesDraft[s.clientId] ?? s.notes ?? ""}
+                        onChange={(e) => setNotesDraft((prev) => ({ ...prev, [s.clientId]: e.target.value }))}
+                      />
+                      <button className="chip" type="button" onClick={() => saveSeatNotes(s.clientId)}>
+                        Save notes
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -238,7 +302,43 @@ export default function AgencyApp() {
             </section>
             <section className="card">
               <h3>Ranked candidates {busy ? "…" : ""}</h3>
-              <p className="muted">Click a row for snippets, claim checks, gaps, and interview questions.</p>
+              <p className="muted">Search, compare two people, copy the shortlist. Click a row for snippets — scores are not a hiring decision.</p>
+              <input className="search" placeholder="Search name, strengths, or gaps…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                <button className="btn-ghost" type="button" onClick={copyShortlist}>
+                  Copy shortlist
+                </button>
+                <select className="form-select" style={{ maxWidth: 220 }} value={compareA} onChange={(e) => setCompareA(e.target.value)}>
+                  <option value="">Compare A</option>
+                  {results.map((r) => (
+                    <option key={r.candidateId} value={r.candidateId}>
+                      {r.candidateName}
+                    </option>
+                  ))}
+                </select>
+                <select className="form-select" style={{ maxWidth: 220 }} value={compareB} onChange={(e) => setCompareB(e.target.value)}>
+                  <option value="">Compare B</option>
+                  {results.map((r) => (
+                    <option key={r.candidateId} value={r.candidateId}>
+                      {r.candidateName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {aRow && bRow && (
+                <div className="compare">
+                  {[aRow, bRow].map((r) => (
+                    <article key={r.candidateId} className="card">
+                      <h4>{r.candidateName}</h4>
+                      <p>
+                        {Math.round(r.qualificationScore)}% · {r.isShortlisted ? "Shortlisted" : "Rejected"} · {r.preferenceAlignment}
+                      </p>
+                      <p className="muted">Strong: {r.strongAreas.slice(0, 5).join(", ") || "—"}</p>
+                      <p className="muted">Missing: {r.missingRequirements.slice(0, 5).join(", ") || "—"}</p>
+                    </article>
+                  ))}
+                </div>
+              )}
               <table>
                 <thead>
                   <tr>
@@ -250,7 +350,7 @@ export default function AgencyApp() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r, i) => (
+                  {visible.map((r, i) => (
                     <tr key={r.candidateId} className="clickable" onClick={() => setSelected(r)}>
                       <td>{i + 1}</td>
                       <td>{r.candidateName}</td>

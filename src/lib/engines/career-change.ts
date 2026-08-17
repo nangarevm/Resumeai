@@ -43,6 +43,30 @@ export function planCareerChange(vault: CareerVault, targetRole: string): Career
         ? `Close gaps with a small public project covering: ${missing.slice(0, 3).join(", ")}.`
         : "No critical skill gap detected against this role family.",
       "Use Career Change Mode bullets only after you accept them — never auto-rewrite the vault."
-    ]
+    ],
+    plan90: [
+      {
+        window: "Days 1–30",
+        action: transferable.length
+          ? `Rewrite your summary around proven skills: ${transferable
+              .slice(0, 3)
+              .map((t) => t.skill)
+              .join(", ")}.`
+          : "Import a fuller resume so we can find transferable proof."
+      },
+      {
+        window: "Days 31–60",
+        action: missing.length
+          ? `Build one public artifact for: ${missing.slice(0, 2).join(" and ")}. Add it to the vault only after it exists.`
+          : "Apply to 8 roles in this family and log outcomes in Tracker."
+      },
+      {
+        window: "Days 61–90",
+        action: "Interview using STAR stories from vault projects. Do not claim the missing skills as job experience."
+      }
+    ],
+    thisMonthLearn: missing.slice(0, 3).map(
+      (m) => `Ship a 1-week public artifact that uses ${m}, then paste the repo/README into Career Vault — do not add ${m} as job experience first.`
+    )
   };
 }

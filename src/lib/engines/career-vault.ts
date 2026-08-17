@@ -61,6 +61,29 @@ export function approvedEvidence(vault: CareerVault): CareerEvidence[] {
   return vault.evidence.filter((e) => e.verificationStatus === "approved");
 }
 
+const COMPLETENESS_TYPES: CareerEvidence["type"][] = [
+  "skill",
+  "work",
+  "project",
+  "education",
+  "achievement",
+  "certification"
+];
+
+/** Teal/Jobscan-style vault health: which evidence families exist, not a fake “profile strength” score. */
+export function vaultCompleteness(vault: CareerVault) {
+  const approved = approvedEvidence(vault);
+  const present = COMPLETENESS_TYPES.filter((t) => approved.some((e) => e.type === t));
+  const missing = COMPLETENESS_TYPES.filter((t) => !present.includes(t));
+  return {
+    percent: Math.round((present.length / COMPLETENESS_TYPES.length) * 100),
+    present,
+    missing,
+    approvedCount: approved.length,
+    total: vault.evidence.length
+  };
+}
+
 function splitLines(text: string): string[] {
   return text
     .split("\n")

@@ -26,9 +26,9 @@ export default function HomePage() {
             Import your resume into a Career Vault, paste a job, see a transparent Fit Score, accept or reject evidence-backed edits, then export an application kit.
           </p>
           <ol>
-            <li>Import resume</li>
-            <li>Analyze a job</li>
-            <li>Tailor → verify → apply</li>
+            <li>Load the sample resume (optional)</li>
+            <li>Analyze a pasted JD</li>
+            <li>Tailor → verify → copy WhatsApp / apply</li>
           </ol>
           <strong>Open candidate workspace →</strong>
         </Link>
@@ -37,12 +37,12 @@ export default function HomePage() {
           <span className="door-kicker">Recruiter / agency / coach</span>
           <h2>I hire or I manage clients</h2>
           <p>
-            Post a role, rank a candidate pool with snippet-level evidence, generate interview questions, and run a simple client desk with branding.
+            Post a role, rank a candidate pool with snippet-level evidence, compare two people, copy a shortlist, and keep recruiter notes on seats.
           </p>
           <ol>
             <li>Brand your desk</li>
             <li>Set job requirements</li>
-            <li>Rank & interview</li>
+            <li>Rank, compare, interview</li>
           </ol>
           <strong>Open agency command center →</strong>
         </Link>
@@ -51,8 +51,24 @@ export default function HomePage() {
       <section className="card landing-note">
         <h3>How a new user should start</h3>
         <p className="muted">
-          Candidates: you only need a resume (paste or upload) and a job description. Agencies: pick a job template and click a candidate row to see proof — not a black-box percentage.
+          Candidates: click Load sample resume, save the vault, then Analyze job — a Fit Score in a few minutes. Agencies: pick a job template and click a candidate row for proof, not a black-box percentage.
         </p>
+      </section>
+
+      <section className="card landing-note">
+        <h3>Market upgrades in this build</h3>
+        <p className="muted">
+          2026 hiring is paste-first, WhatsApp/LinkedIn-first, and skeptical of ATS scores. ResumeProof now matches that workflow without fabricating experience.
+        </p>
+        <ul className="muted" style={{ margin: "12px 0 0 18px", lineHeight: 1.7 }}>
+          <li>Career Vault completeness + archive</li>
+          <li>JD seniority/location + required vs preferred chips</li>
+          <li>Fit Score next actions, delta, and honest score movers</li>
+          <li>Copy-ready WhatsApp, referral, and 24h thank-you notes</li>
+          <li>Kanban tracker with 3-day follow-up copy</li>
+          <li>Agency search, side-by-side compare, seat notes, copy shortlist</li>
+          <li>Export / delete workspace (privacy)</li>
+        </ul>
       </section>
     </div>
   );

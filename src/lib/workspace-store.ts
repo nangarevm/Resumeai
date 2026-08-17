@@ -119,8 +119,40 @@ export function setActiveJob(job: JobDescription): void {
 }
 
 export function setFit(fit: FitReport): void {
-  load().seeker.fit = fit;
+  const ws = load();
+  const previous = ws.seeker.fit?.score;
+  if (typeof previous === "number") {
+    fit.previousScore = previous;
+    fit.delta = fit.score - previous;
+  }
+  ws.seeker.fit = fit;
   save();
+}
+
+export function setEvidenceStatus(id: string, verificationStatus: CareerVault["evidence"][0]["verificationStatus"]): CareerVault {
+  const ws = load();
+  ws.seeker.vault.evidence = ws.seeker.vault.evidence.map((e) => (e.id === id ? { ...e, verificationStatus } : e));
+  ws.seeker.vault.updatedAt = new Date().toISOString();
+  save();
+  return ws.seeker.vault;
+}
+
+export function exportWorkspace() {
+  return load();
+}
+
+export function resetSeekerWorkspace(): SeekerWorkspace {
+  const ws = load();
+  ws.seeker = defaultSeeker();
+  save();
+  return ws.seeker;
+}
+
+export function updateSeatNotes(clientId: string, notes: string): AgencyWorkspace {
+  const ws = load();
+  ws.agency.seats = ws.agency.seats.map((s) => (s.clientId === clientId ? { ...s, notes } : s));
+  save();
+  return ws.agency;
 }
 
 export function setSuggestions(list: TailorSuggestion[]): void {

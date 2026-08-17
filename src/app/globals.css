@@ -180,9 +180,54 @@ tr.clickable:hover { background: var(--bg-card-hover); }
 .step-dot.ok { background: rgba(63,185,80,0.3); color: var(--accent-green); }
 a.sidebar-foot:hover { color: var(--text-primary); }
 
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.kanban-col {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 10px;
+  min-height: 80px;
+}
+.kanban-col h4 { margin: 0 0 8px; font-size: 12px; letter-spacing: 0.06em; color: var(--text-secondary); }
+.followup { font-weight: 700; }
+.search {
+  width: 100%;
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: rgba(0,0,0,0.28);
+}
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+.practice {
+  margin-top: 10px;
+  padding: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+@media print {
+  .sidebar, .banner, .btn-primary, .btn-ghost, .chip, .nav-btn, .mode-pills { display: none !important; }
+  .app-shell { display: block; background: #fff; color: #111; }
+  .main { padding: 0; }
+  .card { box-shadow: none; border-color: #ddd; }
+}
+
 @media (max-width: 980px) {
   .app-shell { flex-direction: column; }
   .sidebar { width: 100%; }
-  .form-grid, .grid-2, .grid-3, .metrics, .door-grid { grid-template-columns: 1fr; }
+  .form-grid, .grid-2, .grid-3, .metrics, .door-grid, .compare { grid-template-columns: 1fr; }
   .span-3 { grid-column: auto; }
 }

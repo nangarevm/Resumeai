@@ -63,6 +63,10 @@ export interface FitReport {
   explicitRequirements: string[];
   parserPreview: string;
   explanation: string;
+  nextActions: Array<{ title: string; detail: string; step: string }>;
+  scoreMovers: Array<{ title: string; detail: string }>;
+  previousScore?: number;
+  delta?: number;
 }
 
 export interface TailorSuggestion {
@@ -102,6 +106,9 @@ export interface ApplicationKit {
   coverLetter: string;
   recruiterEmail: string;
   linkedinNote: string;
+  whatsappNote: string;
+  thankYouNote: string;
+  referralNote: string;
   highlights: string[];
   checklist: string[];
 }
@@ -112,6 +119,8 @@ export interface CareerChangePlan {
   missing: string[];
   truthfulFraming: string[];
   strategy: string[];
+  plan90: Array<{ window: string; action: string }>;
+  thisMonthLearn: string[];
 }
 
 export interface AgencyWorkspace {
@@ -119,7 +128,7 @@ export interface AgencyWorkspace {
   logoText: string;
   brandColor: string;
   tier: "Coach" | "Small Agency" | "Professional";
-  seats: Array<{ clientId: string; clientName: string; status: string; progress: string }>;
+  seats: Array<{ clientId: string; clientName: string; status: string; progress: string; notes?: string }>;
 }
 
 export interface SeekerWorkspace {

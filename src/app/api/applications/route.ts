@@ -11,6 +11,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const body = (await request.json()) as Partial<ApplicationRecord> & { id?: string };
   if (body.id) {
+    if (body.status === "Applied" && !body.appliedAt) body.appliedAt = new Date().toISOString();
     const updated = updateApplication(body.id, body);
     return NextResponse.json(updated);
   }

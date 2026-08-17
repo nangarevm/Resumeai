@@ -12,6 +12,8 @@ import type {
   VerificationFinding
 } from "@/lib/srs-models";
 import type { JobDescription } from "@/lib/models";
+import { vaultCompleteness } from "@/lib/engines/career-vault";
+import CopyButton from "@/components/CopyButton";
 
 const STEPS = [
   { id: "vault", n: 1, title: "Career Vault", help: "Your source of truth. Import a resume. We only store what you provided." },
@@ -46,11 +48,18 @@ export default function CandidateApp() {
     questions: Array<{ category: string; question: string }>;
     stories: Array<{ evidenceId: string; situation: string; task: string; action: string; result: string }>;
     missingPrep: string[];
+    thankYouNote?: string;
   } | null>(null);
   const [change, setChange] = useState<CareerChangePlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("New here? Finish steps 1–3 to get a Fit Score in a few minutes.");
   const [override, setOverride] = useState(false);
+  const [answerDraft, setAnswerDraft] = useState("");
+
+  const progress = useMemo(() => {
+    const flags = [ws?.vault.evidence.length, job, fit, suggestions.some((s) => s.status !== "pending"), findings.length, kit, apps.length, prep, change];
+    return Math.round((flags.filter(Boolean).length / flags.length) * 100);
+  }, [ws, job, fit, suggestions, findings, kit, apps, prep, change]);
 
   async function refresh() {
     const data = await fetch("/api/workspace").then((r) => r.json());
@@ -94,6 +103,43 @@ export default function CandidateApp() {
     setBusy(false);
     setNotice("Career Vault saved. Nothing was invented — only parsed from your text.");
     setStep("job");
+  }
+
+  async function loadDemo() {
+    const demo = await fetch("/api/demo").then((r) => r.json());
+    setResumeText(demo.resume);
+    setJdText(demo.jd);
+    setTargetRole(demo.targetRole);
+    setGoals(demo.goals);
+    setNotice("Sample intern resume + AI/ML JD loaded. Save the vault, then analyze the job — 3 minutes to a Fit Score.");
+  }
+
+  async function setEvidence(id: string, verificationStatus: "approved" | "archived" | "unconfirmed") {
+    const data = await fetch("/api/vault", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ evidenceId: id, verificationStatus })
+    }).then((r) => r.json());
+    if (data.vault && ws) setWs({ ...ws, vault: data.vault });
+  }
+
+  async function exportMyData() {
+    const data = await fetch("/api/privacy").then((r) => r.json());
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "resumeproof-export.json";
+    a.click();
+  }
+
+  async function deleteMyData() {
+    await fetch("/api/privacy", { method: "DELETE" });
+    setKit(null);
+    setChange(null);
+    setPrep(null);
+    await refresh();
+    setNotice("Workspace reset. Your previous vault was deleted on this device.");
   }
 
   async function onUpload(file: File) {
@@ -220,7 +266,16 @@ export default function CandidateApp() {
       kit.recruiterEmail,
       "",
       "## LinkedIn note",
-      kit.linkedinNote
+      kit.linkedinNote,
+      "",
+      "## WhatsApp note",
+      kit.whatsappNote,
+      "",
+      "## Thank-you note",
+      kit.thankYouNote,
+      "",
+      "## Referral note",
+      kit.referralNote
     ].join("\n");
     const blob = new Blob([md], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
@@ -231,6 +286,7 @@ export default function CandidateApp() {
   }
 
   const current = STEPS.find((s) => s.id === step)!;
+  const vaultHealth = ws ? vaultCompleteness(ws.vault) : null;
 
   return (
     <div className="app-shell">
@@ -258,10 +314,22 @@ export default function CandidateApp() {
             <div className="label">Step {current.n} of {STEPS.length}</div>
             <h2>{current.title}</h2>
             <p className="muted">{current.help}</p>
+            <div className="progress" style={{ marginTop: 10, maxWidth: 280 }}>
+              <span style={{ width: `${progress}%` }} />
+            </div>
+            <p className="muted">Journey {progress}% complete</p>
           </div>
-          <button className="btn-ghost" onClick={() => window.print()}>
-            Print / PDF
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="btn-ghost" onClick={loadDemo}>
+              Load sample resume
+            </button>
+            <button className="btn-ghost" onClick={exportMyData}>
+              Export my data
+            </button>
+            <button className="btn-ghost" onClick={() => window.print()}>
+              Print / PDF
+            </button>
+          </div>
         </header>
 
         {notice && <div className="banner">{notice}</div>}
@@ -269,7 +337,10 @@ export default function CandidateApp() {
         {step === "vault" && (
           <section className="card">
             <h3>1. Import your resume</h3>
-            <p className="muted">Paste text or upload PDF/DOCX. We parse it into Career Vault evidence you can confirm.</p>
+            <p className="muted">Paste text or upload PDF/DOCX. Or load a sample to see the full path in under 5 minutes — the market-standard first-run.</p>
+            <button className="chip" onClick={loadDemo} type="button">
+              Try with sample intern resume
+            </button>
             <input className="form-control" type="file" accept=".txt,.md,.pdf,.docx" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
             <div className="form-grid" style={{ marginTop: 12 }}>
               <div>
@@ -288,16 +359,32 @@ export default function CandidateApp() {
             <button className="btn-primary" disabled={busy} onClick={importVault} style={{ marginTop: 12 }}>
               Save Career Vault
             </button>
-            {ws && (
+            {ws && vaultHealth && (
               <div style={{ marginTop: 16 }}>
-                <h3>Approved evidence ({ws.vault.evidence.length})</h3>
-                <p className="muted">Each item is tagged and sourced. Generation uses approved items only.</p>
-                {ws.vault.evidence.slice(0, 12).map((e) => (
-                  <p key={e.id}>
-                    <span className="badge ok">{e.type}</span> {e.content.slice(0, 140)}
-                    <span className="muted"> · {e.source}</span>
-                  </p>
+                <h3>
+                  Vault completeness {vaultHealth.percent}% ({vaultHealth.approvedCount} approved / {vaultHealth.total} items)
+                </h3>
+                <div className="progress" style={{ maxWidth: 360, margin: "8px 0 12px" }}>
+                  <span style={{ width: `${vaultHealth.percent}%` }} />
+                </div>
+                <p className="muted">
+                  Families present: {vaultHealth.present.join(", ") || "none"}. Missing: {vaultHealth.missing.join(", ") || "none"}.
+                  Archive outdated items. Generation uses approved evidence only — we never invent replacements.
+                </p>
+                {ws.vault.evidence.slice(0, 16).map((e) => (
+                  <div key={e.id} className="chain-item" style={{ marginBottom: 8 }}>
+                    <span className={`badge ${e.verificationStatus === "approved" ? "ok" : "mid"}`}>{e.type}</span> {e.content.slice(0, 140)}
+                    <div className="muted">
+                      {e.source} · {e.verificationStatus}
+                    </div>
+                    <button className="chip" onClick={() => setEvidence(e.id, e.verificationStatus === "archived" ? "approved" : "archived")}>
+                      {e.verificationStatus === "archived" ? "Restore" : "Archive"}
+                    </button>
+                  </div>
                 ))}
+                <button className="btn-ghost" onClick={deleteMyData} style={{ marginTop: 8 }}>
+                  Delete my vault
+                </button>
               </div>
             )}
           </section>
@@ -306,6 +393,12 @@ export default function CandidateApp() {
         {step === "job" && (
           <section className="card">
             <h3>2. Add the job you want</h3>
+            <p className="muted">
+              Paste beats URLs in 2026 — most boards block scrapers. If a URL fails, paste the description. We still split required vs preferred and guess seniority/location.
+            </p>
+            <button className="chip" type="button" onClick={loadDemo}>
+              Load sample AI/ML intern JD
+            </button>
             <label className="form-label">Public job URL (optional)</label>
             <input className="form-control" value={jobUrl} onChange={(e) => setJobUrl(e.target.value)} placeholder="https://..." />
             <label className="form-label" style={{ marginTop: 12 }}>
@@ -315,6 +408,28 @@ export default function CandidateApp() {
             <button className="btn-primary" disabled={busy} onClick={analyzeJob} style={{ marginTop: 12 }}>
               Analyze job & score fit
             </button>
+            {job && (
+              <div style={{ marginTop: 16 }}>
+                <h3>Parsed job intel</h3>
+                <p>
+                  {job.title} · {job.companyName} · {job.seniority || "seniority n/a"} · {job.location || "location n/a"}
+                </p>
+                <p className="muted">Required</p>
+                {job.mandatoryRequirements.map((r) => (
+                  <span className="tag" key={r.name}>
+                    {r.name}
+                  </span>
+                ))}
+                <p className="muted" style={{ marginTop: 8 }}>
+                  Preferred
+                </p>
+                {job.preferredRequirements.map((r) => (
+                  <span className="tag pref" key={r.name}>
+                    {r.name}
+                  </span>
+                ))}
+              </div>
+            )}
           </section>
         )}
 
@@ -330,8 +445,32 @@ export default function CandidateApp() {
                 <span>BAND</span>
                 <strong>{fit.label}</strong>
               </div>
+              <div className="metric">
+                <span>SINCE LAST RUN</span>
+                <strong>{typeof fit.delta === "number" ? `${fit.delta > 0 ? "+" : ""}${fit.delta}` : "—"}</strong>
+              </div>
             </div>
+            {job && (
+              <p className="muted">
+                Parsed as {job.title} · {job.seniority || "seniority n/a"} · {job.location || "location n/a"}
+              </p>
+            )}
             <p className="muted">{fit.disclaimer}</p>
+            <h3>Do this next (not keyword stuffing)</h3>
+            {(fit.nextActions || []).map((a) => (
+              <p key={a.title}>
+                <button className="chip" onClick={() => setStep(a.step as StepId)}>
+                  {a.title}
+                </button>{" "}
+                {a.detail}
+              </p>
+            ))}
+            <h3>What actually moves this score</h3>
+            {(fit.scoreMovers || []).map((m) => (
+              <p key={m.title}>
+                <strong>{m.title}.</strong> {m.detail}
+              </p>
+            ))}
             <div className="grid-2" style={{ marginTop: 12 }}>
               {Object.entries(fit.subScores).map(([k, v]) => (
                 <div key={k}>
@@ -381,14 +520,24 @@ export default function CandidateApp() {
                 <p>{s.proposed}</p>
                 <p className="muted">{s.reason}</p>
                 {!s.blocked && (
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button className="chip" onClick={() => setSuggestions((list) => list.map((x, i) => (i === idx ? { ...x, status: "accepted" } : x)))}>
-                      Accept
-                    </button>
-                    <button className="chip" onClick={() => setSuggestions((list) => list.map((x, i) => (i === idx ? { ...x, status: "rejected" } : x)))}>
-                      Reject
-                    </button>
-                    <span className="badge mid">{s.status}</span>
+                  <div>
+                    <textarea
+                      className="form-control"
+                      rows={2}
+                      value={s.proposed}
+                      onChange={(e) =>
+                        setSuggestions((list) => list.map((x, i) => (i === idx ? { ...x, proposed: e.target.value, status: "edited" } : x)))
+                      }
+                    />
+                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                      <button className="chip" onClick={() => setSuggestions((list) => list.map((x, i) => (i === idx ? { ...x, status: "accepted" } : x)))}>
+                        Accept
+                      </button>
+                      <button className="chip" onClick={() => setSuggestions((list) => list.map((x, i) => (i === idx ? { ...x, status: "rejected" } : x)))}>
+                        Reject
+                      </button>
+                      <span className="badge mid">{s.status}</span>
+                    </div>
                   </div>
                 )}
               </article>
@@ -435,23 +584,44 @@ export default function CandidateApp() {
             {!kit && <p className="muted">Run verification, then build the kit.</p>}
             {kit && (
               <>
+                <p className="muted">Copy beats download in India/WhatsApp-first hiring. Every block is evidence-bound.</p>
                 <button className="btn-primary" onClick={downloadKit}>
                   Download Markdown
                 </button>
                 <button className="btn-ghost" onClick={() => window.print()} style={{ marginLeft: 8 }}>
                   Print to PDF
                 </button>
+                <h3>
+                  WhatsApp note <CopyButton text={kit.whatsappNote} />
+                </h3>
+                <pre className="pre">{kit.whatsappNote}</pre>
+                <h3>
+                  LinkedIn note <CopyButton text={kit.linkedinNote} />
+                </h3>
+                <pre className="pre">{kit.linkedinNote}</pre>
+                <h3>
+                  Recruiter email <CopyButton text={kit.recruiterEmail} />
+                </h3>
+                <pre className="pre">{kit.recruiterEmail}</pre>
+                <h3>
+                  Cover letter <CopyButton text={kit.coverLetter} />
+                </h3>
+                <pre className="pre">{kit.coverLetter}</pre>
+                <h3>
+                  Thank-you note (24h) <CopyButton text={kit.thankYouNote} />
+                </h3>
+                <pre className="pre">{kit.thankYouNote}</pre>
+                <h3>
+                  Referral ask <CopyButton text={kit.referralNote} />
+                </h3>
+                <pre className="pre">{kit.referralNote}</pre>
                 <h3>Checklist</h3>
                 {kit.checklist.map((c) => (
                   <p key={c}>☐ {c}</p>
                 ))}
-                <h3>Cover letter</h3>
-                <pre className="pre">{kit.coverLetter}</pre>
-                <h3>Recruiter email</h3>
-                <pre className="pre">{kit.recruiterEmail}</pre>
-                <h3>LinkedIn note</h3>
-                <pre className="pre">{kit.linkedinNote}</pre>
-                <h3>Tailored resume</h3>
+                <h3>
+                  Tailored resume <CopyButton text={kit.tailoredResume} label="Copy resume" />
+                </h3>
                 <pre className="pre">{kit.tailoredResume}</pre>
                 <button className="btn-primary" onClick={saveApp}>
                   Save to application tracker
@@ -464,46 +634,52 @@ export default function CandidateApp() {
         {step === "tracker" && (
           <section className="card">
             <h3>7. Application tracker</h3>
+            <p className="muted">Market pattern: pipeline + follow-up, not a spreadsheet. 3 days after Applied is the usual nudge. Ghosted roles belong in Rejected — do not keep polishing a dead JD.</p>
             <button className="btn-primary" onClick={saveApp}>
               Log current job
             </button>
-            <table>
-              <thead>
-                <tr>
-                  <th>Role</th>
-                  <th>Company</th>
-                  <th>Status</th>
-                  <th>Version</th>
-                </tr>
-              </thead>
-              <tbody>
-                {apps.map((a) => (
-                  <tr key={a.id}>
-                    <td>{a.jobTitle}</td>
-                    <td>{a.company}</td>
-                    <td>
-                      <select
-                        className="form-select"
-                        value={a.status}
-                        onChange={async (e) => {
-                          const updated = await fetch("/api/applications", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ id: a.id, status: e.target.value })
-                          }).then((r) => r.json());
-                          setApps((list) => list.map((x) => (x.id === a.id ? updated : x)));
-                        }}
-                      >
-                        {["Saved", "Applied", "Screening", "Interview", "Offer", "Rejected", "Withdrawn"].map((s) => (
-                          <option key={s}>{s}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>{a.resumeVersionId || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="kanban">
+              {["Saved", "Applied", "Interview", "Offer", "Rejected"].map((col) => (
+                <div className="kanban-col" key={col}>
+                  <h4>{col}</h4>
+                  {apps
+                    .filter((a) =>
+                      col === "Interview" ? a.status === "Interview" || a.status === "Screening" : col === "Rejected" ? a.status === "Rejected" || a.status === "Withdrawn" : a.status === col
+                    )
+                    .map((a) => {
+                      const start = new Date(a.appliedAt || a.savedAt).getTime();
+                      const days = Math.max(0, Math.round((Date.now() - start) / 86400000));
+                      const nudge = a.status === "Applied" && days >= 3;
+                      const followUp = `Hi, following up on my ${a.jobTitle} application at ${a.company} (${days}d ago). Happy to share a 3-line project summary from my resume.`;
+                      return (
+                        <article className="chain-item" key={a.id}>
+                          <strong>{a.jobTitle}</strong>
+                          <div className="muted">{a.company}</div>
+                          <div className="muted">{days}d in stage</div>
+                          {nudge && <span className="badge mid followup">Follow up</span>}
+                          {nudge && <CopyButton text={followUp} label="Copy follow-up" />}
+                          <select
+                            className="form-select"
+                            value={a.status}
+                            onChange={async (e) => {
+                              const updated = await fetch("/api/applications", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ id: a.id, status: e.target.value })
+                              }).then((r) => r.json());
+                              setApps((list) => list.map((x) => (x.id === a.id ? updated : x)));
+                            }}
+                          >
+                            {["Saved", "Applied", "Screening", "Interview", "Offer", "Rejected", "Withdrawn"].map((s) => (
+                              <option key={s}>{s}</option>
+                            ))}
+                          </select>
+                        </article>
+                      );
+                    })}
+                </div>
+              ))}
+            </div>
             <button className="btn-ghost" style={{ marginTop: 12 }} onClick={runInterview}>
               Open interview prep for this job
             </button>
@@ -513,6 +689,7 @@ export default function CandidateApp() {
         {step === "interview" && (
           <section className="card">
             <h3>8. Interview copilot</h3>
+            <p className="muted">Practice in the same tool you applied from. Score yourself on structure — we do not invent achievements.</p>
             <button className="btn-primary" onClick={runInterview}>
               Generate questions & STAR stories
             </button>
@@ -526,16 +703,44 @@ export default function CandidateApp() {
               </article>
             ))}
             {prep?.questions?.map((q, i) => (
-              <p key={i}>
-                <strong>{q.category}:</strong> {q.question}
-              </p>
+              <article className="card" key={i}>
+                <p>
+                  <strong>{q.category}:</strong> {q.question}
+                </p>
+                <CopyButton text={q.question} label="Copy question" />
+              </article>
             ))}
+            {prep && (
+              <div className="practice">
+                <label className="form-label">Practice answer (stays on this device)</label>
+                <textarea className="form-control" rows={4} value={answerDraft} onChange={(e) => setAnswerDraft(e.target.value)} />
+                <p className="muted">
+                  Self-check: Situation? Task? Action with tools from the vault? Result only if a number already exists in evidence?
+                </p>
+                {prep.thankYouNote && (
+                  <>
+                    <h3>
+                      Post-interview thank-you <CopyButton text={prep.thankYouNote} />
+                    </h3>
+                    <pre className="pre">{prep.thankYouNote}</pre>
+                  </>
+                )}
+              </div>
+            )}
           </section>
         )}
 
         {step === "change" && (
           <section className="card">
             <h3>9. Career Change Mode</h3>
+            <p className="muted">Pick a family, then we map vault proof vs honest gaps — not a fake “career switch resume”.</p>
+            <div className="chips">
+              {["software engineer", "machine learning engineer", "data analyst", "product manager", "marketing"].map((role) => (
+                <button key={role} className="chip" onClick={() => setTargetRole(role)}>
+                  {role}
+                </button>
+              ))}
+            </div>
             <input className="form-control" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="Target role e.g. product manager" />
             <button className="btn-primary" onClick={runChange} style={{ marginTop: 12 }}>
               Map transferable skills
@@ -552,6 +757,20 @@ export default function CandidateApp() {
                 {change.missing.map((m) => (
                   <p key={m}>🔴 {m}</p>
                 ))}
+                <h3>30–60–90 plan</h3>
+                {change.plan90?.map((p) => (
+                  <p key={p.window}>
+                    <strong>{p.window}:</strong> {p.action}
+                  </p>
+                ))}
+                {change.thisMonthLearn?.length ? (
+                  <>
+                    <h3>Learn this month (then vault it)</h3>
+                    {change.thisMonthLearn.map((t) => (
+                      <p key={t}>📘 {t}</p>
+                    ))}
+                  </>
+                ) : null}
                 <h3>Truthful framing</h3>
                 {change.truthfulFraming.map((t) => (
                   <p key={t}>{t}</p>

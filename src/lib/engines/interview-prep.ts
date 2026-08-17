@@ -25,5 +25,7 @@ export function buildInterviewPrep(profile: CandidateProfile, jd: JobDescription
       result: "Only quote a metric if this vault item already contains it."
     }));
 
-  return { questions, stories, missingPrep: result.missingRequirements };
+  const thankYouNote = `Hi, thank you for discussing ${jd.title} at ${jd.companyName}. I can walk through ${stories[0]?.situation || "a project already on my resume"} using STAR — I will not add metrics that are not in my Career Vault.`;
+
+  return { questions, stories, missingPrep: result.missingRequirements, thankYouNote };
 }
