@@ -1,0 +1,17 @@
+POSITION: Mechanical Engineer
+COMPANY: Precision Dynamics Systems
+DOMAIN: Mechanical Engineering
+
+MANDATORY REQUIREMENTS:
+- AutoCAD
+- SolidWorks
+- Mechanical Design
+
+PREFERRED REQUIREMENTS:
+- Finite Element Analysis (FEA)
+- Thermodynamics
+- GD&T
+- Manufacturing Processes
+
+DESCRIPTION:
+Seeking a Mechanical Engineer to design mechanical components using AutoCAD and SolidWorks, perform structural stress analysis, and oversee prototype fabrication.

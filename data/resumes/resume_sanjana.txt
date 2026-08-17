@@ -1,0 +1,34 @@
+NAME: Sanjana R
+EMAIL: sanjana@example.com
+PHONE: +91 9876543214
+PREFERRED ROLE: AI/ML Engineer
+PREFERRED DOMAIN: Artificial Intelligence
+DREAM COMPANIES: Google, OpenAI, Meta
+
+SUMMARY:
+Machine Learning engineer with hands-on expertise in Deep Learning, Computer Vision, and Python. Passionate about developing state-of-the-art AI systems.
+
+EDUCATION:
+- B.Tech in Artificial Intelligence & Data Science, Elite Technology Institute (2022 - 2026), CGPA: 9.4/10
+
+TECHNICAL SKILLS:
+- Languages: Python, C++, SQL
+- Frameworks: PyTorch, TensorFlow, OpenCV, Scikit-learn
+- Domains: Machine Learning, Deep Learning, Computer Vision
+- Tools: Git, Docker, CUDA, Linux
+
+PROJECTS:
+- Real-Time Traffic Sign Detection using Computer Vision & Deep Learning
+  Engineered a real-time object detection system using OpenCV and Convolutional Neural Networks (CNNs) in Python. Achieved 96% mAP on benchmark dataset. Deployed model using ONNX Runtime.
+- AI-Powered Recommendation System
+  Developed an AI-powered recommendation system using collaborative filtering and PyTorch. Processed over 100,000 user interactions and improved click-through rate by 18%.
+- Medical Image Segmentation
+  Trained U-Net deep learning models on X-ray image datasets using Python and PyTorch.
+
+WORK EXPERIENCE:
+- Computer Vision Research Intern, AI Research Labs (2025)
+  Researched deep neural networks and computer vision techniques. Developed data processing scripts in Python and SQL. Tracked experiments using Git.
+
+CERTIFICATIONS:
+- Deep Learning Specialization (DeepLearning.AI)
+- TensorFlow Developer Certificate

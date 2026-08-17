@@ -1,0 +1,17 @@
+POSITION: Renewable Energy Systems Engineer
+COMPANY: Horizon Green Energy
+DOMAIN: Renewable Energy
+
+MANDATORY REQUIREMENTS:
+- Photovoltaic System Design
+- Grid Integration
+- Solar Energy Engineering
+
+PREFERRED REQUIREMENTS:
+- Energy Storage Systems
+- PVSyst
+- Environmental Impact Assessment
+- Microgrid Architecture
+
+DESCRIPTION:
+Looking for a Renewable Energy Systems Engineer to design commercial solar PV systems, model grid interconnection schemes, and integrate battery storage units.

@@ -1,0 +1,23 @@
+POSITION: AI/ML Intern
+
+MANDATORY REQUIREMENTS:
+- Python
+- Machine Learning
+- At least 1 AI/ML project
+
+PREFERRED REQUIREMENTS:
+- SQL
+- Deep Learning
+- Computer Vision
+- Git
+
+EXPERIENCE:
+- 0 to 2 years
+
+EDUCATION:
+- B.Tech / B.E / equivalent in Computer Science or related field
+
+DESCRIPTION:
+We are looking for an AI/ML Intern to join our research and engineering team.
+The candidate must be proficient in Python and Machine Learning, with hands-on experience in building at least one AI/ML project.
+Preferred skills include SQL for data processing, Deep Learning frameworks, Computer Vision algorithms, and Git for version control.
