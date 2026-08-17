@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { parseJD } from "@/lib/parsers/jd-extractor";
 import { fetchJobFromUrl } from "@/lib/parsers/job-board-fetch";
 import { computeFitReport } from "@/lib/engines/fit-score";
-import { getSeeker, setActiveJob, setFit } from "@/lib/workspace-store";
+import { getSeeker, setActiveJob, setFit, setLastJobInput } from "@/lib/workspace-store";
 
 export const dynamic = "force-dynamic";
 
@@ -31,5 +31,6 @@ export async function POST(request: Request) {
   const fit = computeFitReport(seeker.profile, jd, seeker.vault);
   setActiveJob(jd);
   setFit(fit);
+  setLastJobInput({ jobUrl: body.jobUrl || "", jdText: body.jdText || "" });
   return NextResponse.json({ job: jd, fit, fetchSource });
 }

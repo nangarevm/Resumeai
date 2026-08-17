@@ -29,6 +29,26 @@ const STEPS = [
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
+type ImportMode = "paste" | "file" | "linkedin" | "sample";
+
+function jobInputKey(jobUrl: string, jdText: string) {
+  return `${jobUrl.trim()}\n---\n${jdText.trim()}`;
+}
+
+function resumeImportStats(text: string) {
+  const trimmed = text.trim();
+  const lines = trimmed ? trimmed.split("\n").length : 0;
+  const sectionHints = ["SUMMARY", "EXPERIENCE", "WORK", "EDUCATION", "SKILLS", "PROJECTS", "CERTIFICATION"];
+  const sections = sectionHints.filter((s) => new RegExp(`\\b${s}\\b`, "i").test(trimmed));
+  return {
+    chars: trimmed.length,
+    lines,
+    sections,
+    hasEmail: /[\w.-]+@[\w.-]+\.\w+/.test(trimmed),
+    hasPhone: /(?:\+?\d[\d\s().-]{8,}|\(\d{3}\)\s*\d{3}[-.\s]?\d{4})/.test(trimmed),
+    hasName: /^[A-Z][A-Za-z.'\s-]{2,40}$/m.test(trimmed.split("\n")[0]?.trim() || "")
+  };
+}
 
 export default function CandidateApp() {
   const [step, setStep] = useState<StepId>("vault");
@@ -53,7 +73,7 @@ export default function CandidateApp() {
   } | null>(null);
   const [change, setChange] = useState<CareerChangePlan | null>(null);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("New here? Finish steps 1–3 to get a Fit Score in a few minutes.");
+  const [notice, setNotice] = useState("");
   const [override, setOverride] = useState(false);
   const [answerDraft, setAnswerDraft] = useState("");
   const [linkedinPaste, setLinkedinPaste] = useState("");
@@ -63,6 +83,14 @@ export default function CandidateApp() {
   const [referredBy, setReferredBy] = useState("");
   const [referralUrl, setReferralUrl] = useState("");
   const [jobFetchSource, setJobFetchSource] = useState("");
+  const [analyzedInputKey, setAnalyzedInputKey] = useState("");
+  const [importMode, setImportMode] = useState<ImportMode>("paste");
+  const [onboardingDismissed, setOnboardingDismissed] = useState(true);
+
+  const currentJobInputKey = useMemo(() => jobInputKey(jobUrl, jdText), [jobUrl, jdText]);
+  const jobIntelStale = Boolean(job && analyzedInputKey && analyzedInputKey !== currentJobInputKey);
+  const resumeStats = useMemo(() => resumeImportStats(resumeText), [resumeText]);
+  const vaultReadyToSave = resumeStats.chars >= 80;
 
   const resumePreview = useMemo(() => {
     if (!ws?.profile.rawResumeText) return "";
@@ -79,16 +107,31 @@ export default function CandidateApp() {
     setWs(data.seeker);
     setResumeText(data.seeker.profile.rawResumeText);
     setTargetRole(data.seeker.vault.targetRole || "");
+    setGoals(data.seeker.vault.goals || "");
     setFit(data.seeker.fit);
     setJob(data.seeker.activeJob);
     setSuggestions(data.seeker.suggestions || []);
     setFindings(data.seeker.findings || []);
     setApps(data.seeker.applications || []);
     setDraft(data.seeker.tailoredDraft || "");
+    if (data.seeker.lastJobInput) {
+      setJobUrl(data.seeker.lastJobInput.jobUrl || "");
+      setJdText(data.seeker.lastJobInput.jdText || "");
+      setAnalyzedInputKey(jobInputKey(data.seeker.lastJobInput.jobUrl || "", data.seeker.lastJobInput.jdText || ""));
+    } else if (data.seeker.activeJob?.rawText) {
+      const raw = data.seeker.activeJob.rawText.replace(/^https?:\/\/[^\s\n]+\n?/, "").trim();
+      setJdText(raw);
+      setAnalyzedInputKey(jobInputKey("", raw));
+    }
   }
 
   useEffect(() => {
     refresh();
+    try {
+      setOnboardingDismissed(localStorage.getItem("resumeproof-onboarding-dismissed") === "1");
+    } catch {
+      setOnboardingDismissed(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -129,9 +172,35 @@ export default function CandidateApp() {
     const demo = await fetch("/api/demo").then((r) => r.json());
     setResumeText(demo.resume);
     setJdText(demo.jd);
+    setJobUrl("");
     setTargetRole(demo.targetRole);
     setGoals(demo.goals);
-    setNotice("Sample intern resume + AI/ML JD loaded. Save the vault, then analyze the job — 3 minutes to a Fit Score.");
+    setImportMode("sample");
+    setNotice("Sample intern resume + AI/ML JD loaded. Save the vault, then analyze the job — about 3 minutes to a Fit Score.");
+  }
+
+  async function loadSampleJd() {
+    const demo = await fetch("/api/demo").then((r) => r.json());
+    setJdText(demo.jd);
+    setJobUrl("");
+    setNotice("Sample AI/ML intern JD loaded. Click Analyze job & score fit to parse it.");
+  }
+
+  function onJdTextChange(value: string) {
+    setJdText(value);
+  }
+
+  function onJobUrlChange(value: string) {
+    setJobUrl(value);
+  }
+
+  function dismissOnboarding() {
+    setOnboardingDismissed(true);
+    try {
+      localStorage.setItem("resumeproof-onboarding-dismissed", "1");
+    } catch {
+      /* ignore */
+    }
   }
 
   async function setEvidence(id: string, verificationStatus: "approved" | "archived" | "unconfirmed") {
@@ -239,6 +308,7 @@ export default function CandidateApp() {
     setJob(data.job);
     setFit(data.fit);
     setJobFetchSource(data.fetchSource || "");
+    setAnalyzedInputKey(jobInputKey(jobUrl, jdText));
     setNotice(
       data.fetchSource
         ? `Job loaded via ${data.fetchSource} parser. ${data.fit.jdInsight?.parseNote || ""}`
@@ -415,6 +485,8 @@ export default function CandidateApp() {
 
   const current = STEPS.find((s) => s.id === step)!;
   const vaultHealth = ws ? vaultCompleteness(ws.vault) : null;
+  const showOnboardingBanner =
+    !onboardingDismissed && (step === "vault" || step === "job" || step === "fit") && progress < 55;
 
   return (
     <div className="app-shell">
@@ -460,39 +532,94 @@ export default function CandidateApp() {
           </div>
         </header>
 
-        {notice && <div className="banner">{notice}</div>}
+        {notice && (
+          <div className="banner">
+            <span style={{ flex: 1 }}>{notice}</span>
+            <button type="button" className="banner-dismiss" onClick={() => setNotice("")} aria-label="Dismiss notice">
+              ×
+            </button>
+          </div>
+        )}
+
+        {showOnboardingBanner && (
+          <div className="banner onboarding">
+            <span style={{ flex: 1 }}>New here? Finish steps 1–3 to get a Fit Score in a few minutes.</span>
+            <button type="button" className="banner-dismiss" onClick={dismissOnboarding} aria-label="Dismiss onboarding tip">
+              ×
+            </button>
+          </div>
+        )}
 
         {step === "vault" && (
           <section className="card">
             <h3>1. Import your resume</h3>
-            <p className="muted">Paste text or upload PDF/DOCX. Or load a sample to see the full path in under 5 minutes — the market-standard first-run.</p>
-            <button className="chip" onClick={loadDemo} type="button">
-              Try with sample intern resume
-            </button>
-            <input className="form-control" type="file" accept=".txt,.md,.pdf,.docx" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
-            <details style={{ marginTop: 16 }}>
-              <summary className="form-label" style={{ cursor: "pointer" }}>
-                Import from LinkedIn paste (no crawl — TOS-safe)
-              </summary>
-              <p className="muted" style={{ margin: "8px 0" }}>
-                Open your LinkedIn profile, select About + Experience + Education + Skills, copy, and paste here. We only keep what you pasted — never scrape LinkedIn.
-              </p>
-              <textarea
-                className="form-control"
-                rows={8}
-                value={linkedinPaste}
-                onChange={(e) => setLinkedinPaste(e.target.value)}
-                placeholder={"Your Name\nHeadline\n\nAbout\n...\n\nExperience\nCompany\nRole\n...\n\nSkills\nPython, SQL"}
-              />
-              <button className="chip" type="button" disabled={busy || !linkedinPaste.trim()} onClick={importLinkedIn} style={{ marginTop: 8 }}>
-                Convert LinkedIn paste → resume text
-              </button>
-              {linkedinWarnings.map((w) => (
-                <p className="muted" key={w}>
-                  ⚠ {w}
-                </p>
+            <p className="muted">Your vault is the source of truth — we only store what you paste or upload. Nothing is invented.</p>
+
+            <div className="import-tabs" role="tablist" aria-label="Import method">
+              {(
+                [
+                  ["paste", "Paste text"],
+                  ["file", "Upload file"],
+                  ["linkedin", "LinkedIn paste"],
+                  ["sample", "Sample resume"]
+                ] as const
+              ).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="tab"
+                  aria-selected={importMode === mode}
+                  className={`import-tab ${importMode === mode ? "active" : ""}`}
+                  onClick={() => setImportMode(mode)}
+                >
+                  {label}
+                </button>
               ))}
-            </details>
+            </div>
+
+            {importMode === "sample" && (
+              <div className="import-panel">
+                <p className="muted">Load a realistic intern resume to walk the full path — vault → job → Fit Score — in under 5 minutes.</p>
+                <button className="chip" onClick={loadDemo} type="button">
+                  Try with sample intern resume
+                </button>
+              </div>
+            )}
+
+            {importMode === "file" && (
+              <div className="import-panel">
+                <p className="muted">PDF, DOCX, TXT, or Markdown. We extract plain text — review before saving.</p>
+                <label className="file-upload">
+                  <span className="file-upload-btn">Choose file</span>
+                  <span className="file-upload-hint">PDF · DOCX · TXT · MD</span>
+                  <input type="file" accept=".txt,.md,.pdf,.docx" hidden onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
+                </label>
+              </div>
+            )}
+
+            {importMode === "linkedin" && (
+              <div className="import-panel">
+                <p className="muted">
+                  Open your LinkedIn profile, select About + Experience + Education + Skills, copy, and paste here. TOS-safe — we never crawl LinkedIn.
+                </p>
+                <textarea
+                  className="form-control resume-editor"
+                  rows={10}
+                  value={linkedinPaste}
+                  onChange={(e) => setLinkedinPaste(e.target.value)}
+                  placeholder={"Your Name\nHeadline\n\nAbout\n...\n\nExperience\nCompany\nRole\n...\n\nSkills\nPython, SQL"}
+                />
+                <button className="chip" type="button" disabled={busy || !linkedinPaste.trim()} onClick={importLinkedIn} style={{ marginTop: 8 }}>
+                  Convert LinkedIn paste → resume text
+                </button>
+                {linkedinWarnings.map((w) => (
+                  <p className="muted" key={w}>
+                    ⚠ {w}
+                  </p>
+                ))}
+              </div>
+            )}
+
             <div className="form-grid" style={{ marginTop: 12 }}>
               <div>
                 <label className="form-label">Target role (optional)</label>
@@ -503,13 +630,41 @@ export default function CandidateApp() {
                 <input className="form-control" value={goals} onChange={(e) => setGoals(e.target.value)} placeholder="e.g. First internship in applied ML" />
               </div>
               <div className="span-3">
-                <label className="form-label">Resume text</label>
-                <textarea className="form-control" rows={10} value={resumeText} onChange={(e) => setResumeText(e.target.value)} />
+                <div className="form-label-row">
+                  <label className="form-label">Resume text</label>
+                  {resumeStats.chars > 0 && (
+                    <span className="resume-stats">
+                      {resumeStats.lines} lines · {resumeStats.chars.toLocaleString()} chars
+                      {resumeStats.sections.length > 0 && ` · ${resumeStats.sections.length} section hints`}
+                    </span>
+                  )}
+                </div>
+                <textarea
+                  className="form-control resume-editor"
+                  rows={16}
+                  value={resumeText}
+                  onChange={(e) => setResumeText(e.target.value)}
+                  placeholder={"NAME: Your Name\nEMAIL: you@example.com\nPHONE: +1 555 0100\n\nSUMMARY\n...\n\nWORK EXPERIENCE\nCompany | Role | Dates\n- Bullet with evidence\n\nSKILLS\nPython, SQL, ..."}
+                />
+                {resumeStats.chars > 0 && !vaultReadyToSave && (
+                  <p className="hint warn">Add more resume content (at least ~80 characters) before saving.</p>
+                )}
+                {resumeStats.chars > 0 && (
+                  <div className="checklist-inline">
+                    <span className={resumeStats.hasName ? "ok" : "miss"}>Name</span>
+                    <span className={resumeStats.hasEmail ? "ok" : "miss"}>Email</span>
+                    <span className={resumeStats.hasPhone ? "ok" : "miss"}>Phone</span>
+                    <span className={resumeStats.sections.length >= 2 ? "ok" : "miss"}>Sections</span>
+                  </div>
+                )}
               </div>
             </div>
-            <button className="btn-primary" disabled={busy} onClick={importVault} style={{ marginTop: 12 }}>
-              Save Career Vault
-            </button>
+            <div className="vault-actions">
+              <button className="btn-primary" disabled={busy || !vaultReadyToSave} onClick={importVault}>
+                Save Career Vault
+              </button>
+              {!vaultReadyToSave && <p className="muted">Paste or upload your resume to continue.</p>}
+            </div>
             {ws && vaultHealth && (
               <div style={{ marginTop: 16 }}>
                 <h3>
@@ -545,47 +700,78 @@ export default function CandidateApp() {
           <section className="card">
             <h3>2. Add the job you want</h3>
             <p className="muted">
-              Paste beats URLs in 2026 — most boards block scrapers. If a URL fails, paste the description. We still split required vs preferred and guess seniority/location.
+              Paste beats URLs in 2026 — most boards block scrapers. If a URL fails, paste the description. We split required vs preferred skills and infer seniority/location.
             </p>
-            <button className="chip" type="button" onClick={loadDemo}>
-              Load sample AI/ML intern JD
-            </button>
+            <div className="chips">
+              <button className="chip" type="button" onClick={loadSampleJd}>
+                Load sample AI/ML intern JD
+              </button>
+              {jobIntelStale && (
+                <span className="stale-pill">JD changed — re-analyze to refresh</span>
+              )}
+            </div>
             <label className="form-label">Public job URL (optional)</label>
-            <input className="form-control" value={jobUrl} onChange={(e) => setJobUrl(e.target.value)} placeholder="https://..." />
+            <input className="form-control" value={jobUrl} onChange={(e) => onJobUrlChange(e.target.value)} placeholder="https://boards.greenhouse.io/... or https://jobs.lever.co/..." />
             <label className="form-label" style={{ marginTop: 12 }}>
               Or paste the job description
             </label>
-            <textarea className="form-control" rows={10} value={jdText} onChange={(e) => setJdText(e.target.value)} placeholder={"POSITION: AI/ML Intern\nMANDATORY REQUIREMENTS:\n- Python\n- Machine Learning"} />
-            <button className="btn-primary" disabled={busy} onClick={analyzeJob} style={{ marginTop: 12 }}>
+            <textarea
+              className="form-control jd-editor"
+              rows={14}
+              value={jdText}
+              onChange={(e) => onJdTextChange(e.target.value)}
+              placeholder={"POSITION: AI/ML Intern\nMANDATORY REQUIREMENTS:\n- Python\n- Machine Learning"}
+            />
+            <p className="muted" style={{ marginTop: 8 }}>
+              {jdText.trim() ? `${jdText.trim().split("\n").length} lines · ${jdText.trim().length.toLocaleString()} chars` : "Paste a JD or load the sample to continue."}
+            </p>
+            <button className="btn-primary" disabled={busy || (!jdText.trim() && !jobUrl.trim())} onClick={analyzeJob} style={{ marginTop: 12 }}>
               Analyze job & score fit
             </button>
-            {job && (
-              <div style={{ marginTop: 16 }}>
+            {jobIntelStale && job && (
+              <div className="stale-banner" style={{ marginTop: 16 }}>
+                <strong>Parsed intel is out of date</strong>
+                <p className="muted" style={{ marginTop: 6 }}>
+                  You changed the job URL or description since the last analyze. The Fit Score and tags below still reflect{" "}
+                  <em>{job.title}</em> — click Analyze to refresh.
+                </p>
+              </div>
+            )}
+            {job && !jobIntelStale && (
+              <div className="job-intel-panel" style={{ marginTop: 16 }}>
                 <h3>Parsed job intel</h3>
                 {jobFetchSource && <p className="muted">Fetched via {jobFetchSource} parser</p>}
                 <p>
-                  {job.title} · {job.companyName} · {job.seniority || "seniority n/a"} · {job.location || "location n/a"}
+                  <strong>{job.title}</strong> · {job.companyName || "Company n/a"} · {job.seniority || "seniority n/a"} · {job.location || "location n/a"}
                 </p>
                 <p className="muted">Core skills scored ({job.mandatoryRequirements.length} required · {job.preferredRequirements.length} preferred)</p>
-                {job.mandatoryRequirements.slice(0, 20).map((r) => (
-                  <span className="tag" key={r.name}>
-                    {r.name}
-                  </span>
-                ))}
+                <div className="tag-row">
+                  {job.mandatoryRequirements.slice(0, 20).map((r) => (
+                    <span className="tag" key={r.name}>
+                      {r.name}
+                    </span>
+                  ))}
+                </div>
                 {job.mandatoryRequirements.length > 20 && (
                   <p className="muted">+ {job.mandatoryRequirements.length - 20} more skills mined from the JD</p>
                 )}
-                <p className="muted" style={{ marginTop: 8 }}>
-                  Preferred
-                </p>
-                {job.preferredRequirements.slice(0, 12).map((r) => (
-                  <span className="tag pref" key={r.name}>
-                    {r.name}
-                  </span>
-                ))}
+                {job.preferredRequirements.length > 0 && (
+                  <>
+                    <p className="muted" style={{ marginTop: 8 }}>
+                      Preferred
+                    </p>
+                    <div className="tag-row">
+                      {job.preferredRequirements.slice(0, 12).map((r) => (
+                        <span className="tag pref" key={r.name}>
+                          {r.name}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
                 {job.responsibilities && job.responsibilities.length > 0 && (
                   <p className="muted" style={{ marginTop: 8 }}>
-                    {job.responsibilities.length} responsibility lines stored for context (not counted as 68 separate requirements).
+                    {job.responsibilities.length} responsibility lines stored for context (not counted as separate requirements).
                   </p>
                 )}
               </div>
@@ -595,6 +781,17 @@ export default function CandidateApp() {
 
         {step === "fit" && fit && (
           <section className="card">
+            {jobIntelStale && (
+              <div className="stale-banner" style={{ marginBottom: 16 }}>
+                <strong>Fit Score may be stale</strong>
+                <p className="muted" style={{ marginTop: 6 }}>
+                  The job description changed after this score was calculated. Go back to Target job and click Analyze to refresh.
+                </p>
+                <button className="chip" type="button" onClick={() => setStep("job")} style={{ marginTop: 8 }}>
+                  Back to Target job
+                </button>
+              </div>
+            )}
             <h3>3. ResumeProof Fit Score</h3>
             {fit.applyReadiness && (
               <div className={`banner ${fit.applyReadiness.level === "apply_now" ? "" : ""}`}>

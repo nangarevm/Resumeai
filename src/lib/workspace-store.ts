@@ -6,6 +6,7 @@ import type {
   ApplicationRecord,
   CareerVault,
   FitReport,
+  JobInputSnapshot,
   ResumeVersion,
   SeekerWorkspace,
   TailorSuggestion,
@@ -116,6 +117,12 @@ export function updateVault(patch: Partial<CareerVault>): CareerVault {
 export function setActiveJob(job: JobDescription): void {
   const ws = load();
   ws.seeker.activeJob = job;
+  save();
+}
+
+export function setLastJobInput(input: JobInputSnapshot): void {
+  const ws = load();
+  ws.seeker.lastJobInput = input;
   save();
 }
 

@@ -165,6 +165,11 @@ export interface AgencyWorkspace {
   seats: Array<{ clientId: string; clientName: string; status: string; progress: string; notes?: string }>;
 }
 
+export interface JobInputSnapshot {
+  jobUrl: string;
+  jdText: string;
+}
+
 export interface SeekerWorkspace {
   profile: CandidateProfile;
   vault: CareerVault;
@@ -172,6 +177,7 @@ export interface SeekerWorkspace {
   applications: ApplicationRecord[];
   activeJob: JobDescription | null;
   fit: FitReport | null;
+  lastJobInput?: JobInputSnapshot;
   suggestions: TailorSuggestion[];
   findings: VerificationFinding[];
   tailoredDraft?: string;
