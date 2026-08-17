@@ -5,6 +5,7 @@
   "description": "ResumeProof — evidence-based candidate matching, claim verification, and honest resume optimization.",
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3000",
+    "dev:clean": "rm -rf .next .next-dev && next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p 3000",
     "test": "vitest run",
