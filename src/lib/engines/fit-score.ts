@@ -6,6 +6,7 @@ import { EVIDENCE_STRENGTH } from "../models";
 import type { CareerVault, FitReport } from "../srs-models";
 import { approvedEvidence } from "./career-vault";
 import { cleanMarkdown } from "../parsers/jd-extractor";
+import { matchExperience } from "./experience-matcher";
 
 export function computeFitReport(
   profile: CandidateProfile,
@@ -66,6 +67,8 @@ export function computeFitReport(
       ? `Parsed ${explicit.length} core skills (not ${responsibilityCount} duty lines). Fit Score uses skills you can honestly claim — not every job bullet.`
       : `Parsed ${explicit.length} core skills from this job text.`;
 
+  const experienceMatch = matchExperience(profile, jd);
+
   const applyReadiness = buildApplyReadiness({
     profile,
     jd,
@@ -73,7 +76,8 @@ export function computeFitReport(
     coreGaps,
     keywordCoverage,
     atsScore: ats.score,
-    atsTips: ats.recommendations
+    atsTips: ats.recommendations,
+    experience: experienceMatch
   });
 
   const explanation = [
@@ -84,6 +88,13 @@ export function computeFitReport(
   ].join(" ");
 
   const nextActions: FitReport["nextActions"] = [];
+  if (experienceMatch.status === "under") {
+    nextActions.push({
+      title: "Years requirement gap",
+      detail: experienceMatch.summary,
+      step: "change"
+    });
+  }
   if (applyReadiness.level === "fix_basics") {
     nextActions.push({
       title: "Fix resume basics before applying",
@@ -161,7 +172,14 @@ export function computeFitReport(
       parseNote
     },
     coreMatches,
-    coreGaps
+    coreGaps,
+    experienceMatch: {
+      jdMinYears: experienceMatch.jdMinYears,
+      jdMaxYears: experienceMatch.jdMaxYears,
+      resumeYears: experienceMatch.resumeYears,
+      status: experienceMatch.status,
+      summary: experienceMatch.summary
+    }
   };
 }
 
@@ -173,6 +191,7 @@ function buildApplyReadiness(input: {
   keywordCoverage: number;
   atsScore: number;
   atsTips: string[];
+  experience: ReturnType<typeof matchExperience>;
 }): FitReport["applyReadiness"] {
   const checklist: string[] = [];
   const placeholderEmail = /example\.com|candidate\d@/i.test(input.profile.email);
@@ -182,18 +201,17 @@ function buildApplyReadiness(input: {
   if (badPhone) checklist.push("Add a real phone number in plain text (ATS parsers miss icons-only contact blocks).");
   if (input.atsScore < 55) checklist.push(input.atsTips[0] || "Add SKILLS, WORK EXPERIENCE, and EDUCATION section headings.");
 
-  const seniorJd = input.jd.seniority === "Senior" || input.jd.seniority === "Lead";
-  const resumeBlob = input.profile.rawResumeText.toLowerCase();
-  const hasYears = /\d+\+?\s*years?|\d+\s*[-–]\s*\d+\s*years?/i.test(resumeBlob);
-  const stretch = seniorJd && !hasYears && /intern|student|fresher|graduate/i.test(resumeBlob);
-
-  if (stretch) {
-    checklist.push("JD asks for senior experience — only apply if your years match; never inflate titles.");
+  if (input.experience.status === "under") {
+    checklist.push(input.experience.summary);
     return {
       level: "stretch_role",
-      headline: "Stretch role: seniority on the JD may not match your vault yet. Tailor honestly or target mid-level roles.",
+      headline: "Experience years may be below the JD — apply only if your dated history supports it.",
       checklist
     };
+  }
+
+  if (input.experience.status === "unknown" && input.experience.jdMinYears != null) {
+    checklist.push(input.experience.summary);
   }
 
   if (checklist.length >= 2 || input.atsScore < 45) {

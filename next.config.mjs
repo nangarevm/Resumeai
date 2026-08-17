@@ -5,7 +5,7 @@ const nextConfig = {
   distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: ["pdf-parse", "mammoth"]
+    serverComponentsExternalPackages: ["pdf-parse", "mammoth", "docx", "jszip"]
   }
 };
 

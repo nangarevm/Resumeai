@@ -79,6 +79,13 @@ export interface FitReport {
   };
   coreMatches: string[];
   coreGaps: string[];
+  experienceMatch: {
+    jdMinYears: number | null;
+    jdMaxYears: number | null;
+    resumeYears: number;
+    status: "meets" | "under" | "over" | "unknown";
+    summary: string;
+  };
 }
 
 export interface TailorSuggestion {
@@ -111,18 +118,33 @@ export interface ApplicationRecord {
   savedAt: string;
   appliedAt?: string;
   outcome?: string;
+  fitScore?: number;
+  fitLabel?: string;
+  fitBand?: string;
+  referredBy?: string;
+  referralUrl?: string;
 }
 
 export interface ApplicationKit {
   tailoredResume: string;
   coverLetter: string;
+  shortCover: string;
   recruiterEmail: string;
   linkedinNote: string;
   whatsappNote: string;
   thankYouNote: string;
   referralNote: string;
+  referrerChecklist: string[];
   highlights: string[];
   checklist: string[];
+}
+
+export interface OutcomeStats {
+  byBand: Record<
+    string,
+    { saved: number; applied: number; interview: number; offer: number; rejected: number }
+  >;
+  totals: { applications: number; interviewRate: number; offerRate: number };
 }
 
 export interface CareerChangePlan {

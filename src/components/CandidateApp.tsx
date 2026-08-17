@@ -58,6 +58,11 @@ export default function CandidateApp() {
   const [answerDraft, setAnswerDraft] = useState("");
   const [linkedinPaste, setLinkedinPaste] = useState("");
   const [linkedinWarnings, setLinkedinWarnings] = useState<string[]>([]);
+  const [rewrites, setRewrites] = useState<Array<{ id: string; original: string; rewritten: string; reason: string }>>([]);
+  const [outcomes, setOutcomes] = useState<{ totals: { interviewRate: number; offerRate: number; applications: number }; byBand: Record<string, unknown> } | null>(null);
+  const [referredBy, setReferredBy] = useState("");
+  const [referralUrl, setReferralUrl] = useState("");
+  const [jobFetchSource, setJobFetchSource] = useState("");
 
   const resumePreview = useMemo(() => {
     if (!ws?.profile.rawResumeText) return "";
@@ -85,6 +90,12 @@ export default function CandidateApp() {
   useEffect(() => {
     refresh();
   }, []);
+
+  useEffect(() => {
+    if (step === "tracker") {
+      void fetch("/api/outcomes").then((r) => r.json()).then(setOutcomes);
+    }
+  }, [step, apps.length]);
 
   const done = useMemo(
     () => ({
@@ -227,7 +238,12 @@ export default function CandidateApp() {
     }
     setJob(data.job);
     setFit(data.fit);
-    setNotice("Job analyzed. Scroll the Fit Score — every number has a reason.");
+    setJobFetchSource(data.fetchSource || "");
+    setNotice(
+      data.fetchSource
+        ? `Job loaded via ${data.fetchSource} parser. ${data.fit.jdInsight?.parseNote || ""}`
+        : "Job analyzed. Scroll the Fit Score — every number has a reason."
+    );
     setStep("fit");
   }
 
@@ -277,15 +293,66 @@ export default function CandidateApp() {
     setStep("kit");
   }
 
-  async function saveApp() {
+  async function saveApp(extra?: { status?: string }) {
     const row = await fetch("/api/applications", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({})
+      body: JSON.stringify({
+        status: extra?.status,
+        referredBy: referredBy || undefined,
+        referralUrl: referralUrl || undefined
+      })
     }).then((r) => r.json());
     setApps((prev) => [row, ...prev]);
-    setNotice("Application saved as 'Saved'. Update status when you actually apply.");
+    void fetch("/api/outcomes").then((r) => r.json()).then(setOutcomes);
+    setNotice("Application saved. Update status when you actually apply.");
     setStep("tracker");
+  }
+
+  async function downloadApplyPack() {
+    setBusy(true);
+    const res = await fetch("/api/apply-pack", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ override, draft: draft || resumePreview })
+    });
+    setBusy(false);
+    if (!res.ok) {
+      const err = await res.json();
+      setNotice(err.error || "Could not build apply pack.");
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "resumeproof-apply-pack.zip";
+    a.click();
+    setNotice("Apply pack downloaded — resume DOCX, 3-line cover, LinkedIn note, referral checklist.");
+  }
+
+  async function downloadDocx(kind: "resume" | "cover") {
+    const text = kind === "resume" ? draft || resumePreview || kit?.tailoredResume : kit?.shortCover || kit?.coverLetter;
+    if (!text) return;
+    const res = await fetch("/api/export-docx", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind, text })
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = kind === "resume" ? "tailored-resume.docx" : "cover-letter.docx";
+    a.click();
+  }
+
+  async function runRewrite() {
+    setBusy(true);
+    const data = await fetch("/api/rewrite", { method: "POST" }).then((r) => r.json());
+    setBusy(false);
+    setRewrites(data.rewrites || []);
+    setNotice(data.notice || "Evidence-bound rewrites ready — review before accepting.");
   }
 
   async function runInterview() {
@@ -495,6 +562,7 @@ export default function CandidateApp() {
             {job && (
               <div style={{ marginTop: 16 }}>
                 <h3>Parsed job intel</h3>
+                {jobFetchSource && <p className="muted">Fetched via {jobFetchSource} parser</p>}
                 <p>
                   {job.title} · {job.companyName} · {job.seniority || "seniority n/a"} · {job.location || "location n/a"}
                 </p>
@@ -575,6 +643,14 @@ export default function CandidateApp() {
               </p>
             )}
             <p className="muted">{fit.disclaimer}</p>
+            {fit.experienceMatch && (
+              <div className="chain-item" style={{ marginBottom: 12 }}>
+                <span className={`badge ${fit.experienceMatch.status === "meets" ? "ok" : fit.experienceMatch.status === "under" ? "no" : "mid"}`}>
+                  Years: {fit.experienceMatch.status}
+                </span>{" "}
+                {fit.experienceMatch.summary}
+              </div>
+            )}
             <h3>Do this next (not keyword stuffing)</h3>
             {(fit.nextActions || []).map((a) => (
               <p key={a.title}>
@@ -674,7 +750,20 @@ export default function CandidateApp() {
               </article>
             ))}
             <h3>Tailored resume preview</h3>
-            <p className="muted">Accept suggestions above, then edit the full draft. Export or save before verification.</p>
+            <p className="muted">Accept suggestions above, then edit the full draft. Try evidence-bound rewrites (no LLM, no new facts).</p>
+            <button className="chip" type="button" disabled={busy} onClick={runRewrite}>
+              Suggest bullet rewrites
+            </button>
+            {rewrites.map((r) => (
+              <article className="chain-item yellow" key={r.id}>
+                <p className="muted">Was: {r.original}</p>
+                <p>{r.rewritten}</p>
+                <p className="muted">{r.reason}</p>
+                <button className="chip" type="button" onClick={() => setDraft((d) => `${d || resumePreview}\n- ${r.rewritten}`)}>
+                  Append to draft
+                </button>
+              </article>
+            ))}
             <textarea className="form-control" rows={12} value={draft || resumePreview} onChange={(e) => setDraft(e.target.value)} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
               <button className="chip" type="button" onClick={() => setDraft(resumePreview)}>
@@ -688,6 +777,9 @@ export default function CandidateApp() {
               </button>
               <button className="chip" type="button" onClick={() => downloadResumeFile(draft || resumePreview, "md")}>
                 Export .md
+              </button>
+              <button className="chip" type="button" onClick={() => downloadDocx("resume")}>
+                Export .docx
               </button>
               <CopyButton text={draft || resumePreview} label="Copy resume" />
             </div>
@@ -731,6 +823,9 @@ export default function CandidateApp() {
               <button className="chip" type="button" onClick={() => downloadResumeFile(draft, "md")}>
                 Export .md
               </button>
+              <button className="chip" type="button" onClick={() => downloadDocx("resume")}>
+                Export .docx
+              </button>
               <CopyButton text={draft} label="Copy resume" />
             </div>
             <label className="muted">
@@ -751,12 +846,25 @@ export default function CandidateApp() {
             {kit && (
               <>
                 <p className="muted">Copy beats download in India/WhatsApp-first hiring. Every block is evidence-bound.</p>
-                <button className="btn-primary" onClick={downloadKit}>
+                <button className="btn-primary" onClick={downloadApplyPack}>
+                  Download Apply pack (ZIP)
+                </button>
+                <button className="btn-ghost" onClick={downloadKit} style={{ marginLeft: 8 }}>
                   Download Markdown
                 </button>
-                <button className="btn-ghost" onClick={() => window.print()} style={{ marginLeft: 8 }}>
-                  Print to PDF
+                <button className="btn-ghost" onClick={() => downloadDocx("resume")} style={{ marginLeft: 8 }}>
+                  Resume DOCX
                 </button>
+                <button className="btn-ghost" onClick={() => downloadDocx("cover")} style={{ marginLeft: 8 }}>
+                  Cover DOCX
+                </button>
+                <button className="btn-ghost" onClick={() => window.print()} style={{ marginLeft: 8 }}>
+                  Print / PDF
+                </button>
+                <h3>
+                  3-line cover <CopyButton text={kit.shortCover} />
+                </h3>
+                <pre className="pre">{kit.shortCover}</pre>
                 <h3>
                   WhatsApp note <CopyButton text={kit.whatsappNote} />
                 </h3>
@@ -781,6 +889,20 @@ export default function CandidateApp() {
                   Referral ask <CopyButton text={kit.referralNote} />
                 </h3>
                 <pre className="pre">{kit.referralNote}</pre>
+                <h3>Referrer checklist</h3>
+                {kit.referrerChecklist?.map((c) => (
+                  <p key={c}>☐ {c}</p>
+                ))}
+                <div className="form-grid" style={{ marginTop: 12 }}>
+                  <div>
+                    <label className="form-label">Referred by (optional)</label>
+                    <input className="form-control" value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder="Employee name" />
+                  </div>
+                  <div>
+                    <label className="form-label">Referral / job link</label>
+                    <input className="form-control" value={referralUrl} onChange={(e) => setReferralUrl(e.target.value)} placeholder="https://..." />
+                  </div>
+                </div>
                 <h3>Checklist</h3>
                 {kit.checklist.map((c) => (
                   <p key={c}>☐ {c}</p>
@@ -789,7 +911,7 @@ export default function CandidateApp() {
                   Tailored resume <CopyButton text={kit.tailoredResume} label="Copy resume" />
                 </h3>
                 <pre className="pre">{kit.tailoredResume}</pre>
-                <button className="btn-primary" onClick={saveApp}>
+                <button className="btn-primary" onClick={() => saveApp()}>
                   Save to application tracker
                 </button>
               </>
@@ -800,8 +922,24 @@ export default function CandidateApp() {
         {step === "tracker" && (
           <section className="card">
             <h3>7. Application tracker</h3>
-            <p className="muted">Market pattern: pipeline + follow-up, not a spreadsheet. 3 days after Applied is the usual nudge. Ghosted roles belong in Rejected — do not keep polishing a dead JD.</p>
-            <button className="btn-primary" onClick={saveApp}>
+            <p className="muted">Pipeline + follow-up. Log outcomes so ResumeProof can show interview rate by fit band.</p>
+            {outcomes && outcomes.totals.applications > 0 && (
+              <div className="metrics">
+                <div className="metric">
+                  <span>APPS LOGGED</span>
+                  <strong>{outcomes.totals.applications}</strong>
+                </div>
+                <div className="metric">
+                  <span>INTERVIEW RATE</span>
+                  <strong>{outcomes.totals.interviewRate}%</strong>
+                </div>
+                <div className="metric">
+                  <span>OFFER RATE</span>
+                  <strong>{outcomes.totals.offerRate}%</strong>
+                </div>
+              </div>
+            )}
+            <button className="btn-primary" onClick={() => saveApp()}>
               Log current job
             </button>
             <div className="kanban">
@@ -821,6 +959,12 @@ export default function CandidateApp() {
                         <article className="chain-item" key={a.id}>
                           <strong>{a.jobTitle}</strong>
                           <div className="muted">{a.company}</div>
+                          {a.fitScore != null && (
+                            <div className="muted">
+                              Fit {a.fitScore} · {a.fitBand || a.fitLabel}
+                            </div>
+                          )}
+                          {a.referredBy && <div className="muted">Referral: {a.referredBy}</div>}
                           <div className="muted">{days}d in stage</div>
                           {nudge && <span className="badge mid followup">Follow up</span>}
                           {nudge && <CopyButton text={followUp} label="Copy follow-up" />}

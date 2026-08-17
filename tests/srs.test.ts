@@ -8,6 +8,10 @@ import { scanVerification, hasBlockingFindings } from "@/lib/engines/verificatio
 import { planCareerChange } from "@/lib/engines/career-change";
 import { buildApplicationKit } from "@/lib/engines/application-kit";
 import { convertLinkedInProfile } from "@/lib/engines/linkedin-import";
+import { matchExperience, parseJdYears } from "@/lib/engines/experience-matcher";
+import { computeOutcomeStats } from "@/lib/engines/outcome-tracker";
+import { strengthenBullets } from "@/lib/engines/evidence-rewrite";
+import { parseJsonLdJobPosting } from "@/lib/parsers/job-board-fetch";
 import { applyAcceptedSuggestions } from "@/lib/engines/tailoring";
 
 const RESUME = `NAME: Anuja P
@@ -88,6 +92,8 @@ describe("SRS v2 candidate engines", () => {
     expect(kit.whatsappNote).toMatch(/AI\/ML Intern/);
     expect(kit.thankYouNote).toMatch(/thank you/i);
     expect(kit.referralNote).toMatch(/will not claim/i);
+    expect(kit.shortCover).toMatch(/Applying for/);
+    expect(kit.referrerChecklist.length).toBeGreaterThan(2);
   });
 
   it("job parser infers intern seniority from the title", () => {
@@ -195,5 +201,70 @@ Python, Machine Learning, SQL`;
     const next = applyAcceptedSuggestions(resume, suggestions);
     expect(next).toMatch(/Machine Learning/);
     expect(next).not.toMatch(/Do not add Kubernetes/);
+  });
+
+  it("experience matcher compares JD years to resume dates", () => {
+    const resume = `NAME: Vivek
+WORK EXPERIENCE:
+QA Engineer — Acme
+Jan 2019 - Present
+- Playwright automation`;
+    const jd = parseJD("j", "Senior QA\n5-8 years experience required\nPlaywright");
+    const m = matchExperience(parseResume("v", resume), jd);
+    expect(parseJdYears(jd).min).toBe(5);
+    expect(m.resumeYears).toBeGreaterThan(0);
+    expect(["meets", "under", "over", "unknown"]).toContain(m.status);
+  });
+
+  it("outcome tracker aggregates interview rate by fit band", () => {
+    const stats = computeOutcomeStats([
+      {
+        id: "1",
+        jobId: "j",
+        jobTitle: "QA",
+        company: "Co",
+        status: "Interview",
+        notes: "",
+        savedAt: "",
+        fitScore: 72,
+        fitBand: "60–79 Promising"
+      },
+      {
+        id: "2",
+        jobId: "j2",
+        jobTitle: "Dev",
+        company: "Co",
+        status: "Rejected",
+        notes: "",
+        savedAt: "",
+        fitScore: 30,
+        fitBand: "0–39 Early"
+      }
+    ]);
+    expect(stats.totals.applications).toBe(2);
+    expect(stats.byBand["60–79 Promising"]?.interview).toBe(1);
+  });
+
+  it("evidence rewrite does not add new tool names", () => {
+    const profile = parseResume(
+      "v",
+      `NAME: T
+SKILLS: Playwright
+WORK EXPERIENCE:
+- Built regression suites with Playwright for checkout flows`
+    );
+    const jd = parseJD("j", "POSITION: QA\nMANDATORY:\n- Playwright");
+    const vault = buildCareerVault(profile);
+    const rw = strengthenBullets(profile, jd, vault);
+    expect(rw.length).toBeGreaterThan(0);
+    expect(rw[0].rewritten.toLowerCase()).toMatch(/playwright/);
+    expect(rw[0].rewritten.toLowerCase()).not.toMatch(/kubernetes/);
+  });
+
+  it("JSON-LD job parser extracts title from HTML", () => {
+    const html = `<script type="application/ld+json">{"@type":"JobPosting","title":"QA Engineer","description":"<p>Playwright required</p>","hiringOrganization":{"name":"Acme"}}</script>`;
+    const r = parseJsonLdJobPosting(html);
+    expect(r?.title).toBe("QA Engineer");
+    expect(r?.text).toMatch(/Playwright/);
   });
 });

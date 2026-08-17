@@ -44,22 +44,39 @@ export function buildApplicationKit(
   ].join(" ");
   const referralNote = `Hi — if you're open to a referral for ${jd.title} at ${jd.companyName}, here is one line from my resume I can defend: ${proofLine}. I will not claim skills that are not in that document.`;
 
+  const shortCover = [
+    `Applying for ${jd.title} at ${jd.companyName}.`,
+    strong[0] ? `Proof: ${strong[0].requirementName} — ${strong[0].snippet.slice(0, 100)}.` : "Happy to share resume-aligned project details.",
+    "Available to walk through evidence in an interview — no inflated claims."
+  ].join(" ");
+
+  const referrerChecklist = [
+    "Confirm you know the referrer personally (employee link or referral program)",
+    "Send referralNote — one defensible proof line only",
+    "Attach tailored resume DOCX from Apply pack, not the generic vault export",
+    "Ask referrer to paste your proof line into the internal referral form",
+    "Log referralUrl and referredBy in Tracker when you submit",
+    "Follow up with referrer 5 days after they submit if no recruiter reply"
+  ];
+
   return {
     tailoredResume,
     coverLetter: cover.letter,
+    shortCover,
     recruiterEmail,
     linkedinNote,
     whatsappNote,
     thankYouNote,
     referralNote,
+    referrerChecklist,
     highlights: strong.map((e) => e.requirementName),
     checklist: [
       "Confirm every yellow suggestion in Career Vault",
       "Resolve high-risk verification findings or explicitly override",
+      "Download Apply pack (ZIP) or DOCX before submitting",
       "Copy WhatsApp / LinkedIn note only after you can defend each line",
-      "If referred, send the referral note — never a rewritten seniority claim",
+      "If referred, complete referrer checklist — never a rewritten seniority claim",
       "After the interview, send the thank-you note within 24 hours",
-      "Export PDF/Markdown application kit",
       "Log the application in Tracker and set a 3-day follow-up"
     ]
   };
