@@ -7,6 +7,8 @@ import { generateTailoringSuggestions } from "@/lib/engines/tailoring";
 import { scanVerification, hasBlockingFindings } from "@/lib/engines/verification";
 import { planCareerChange } from "@/lib/engines/career-change";
 import { buildApplicationKit } from "@/lib/engines/application-kit";
+import { convertLinkedInProfile } from "@/lib/engines/linkedin-import";
+import { applyAcceptedSuggestions } from "@/lib/engines/tailoring";
 
 const RESUME = `NAME: Anuja P
 EMAIL: anuja@example.com
@@ -91,5 +93,56 @@ describe("SRS v2 candidate engines", () => {
   it("job parser infers intern seniority from the title", () => {
     const jd = parseJD("j", JD);
     expect(jd.seniority).toBe("Intern");
+  });
+
+  it("LinkedIn paste import never adds facts beyond the paste", () => {
+    const paste = `Anuja P
+AI/ML student
+
+About
+Applied ML projects in Python
+
+Experience
+University Lab
+Research Intern
+Built a disease prediction model in Python
+
+Skills
+Python, Machine Learning, SQL`;
+
+    const out = convertLinkedInProfile(paste);
+    expect(out.resumeText).toMatch(/Anuja P/);
+    expect(out.resumeText).toMatch(/Python/);
+    expect(out.resumeText).not.toMatch(/Kubernetes/);
+    expect(out.sections).toContain("WORK EXPERIENCE");
+  });
+
+  it("tailored draft applies only accepted suggestions", () => {
+    const resume = "NAME: Test\nSKILLS:\n- Python\nPROJECTS:\n- Old bullet about Python";
+    const suggestions = [
+      {
+        id: "1",
+        original: "Old bullet about Python",
+        proposed: "Old bullet about Python (relevant to Machine Learning)",
+        evidenceIds: ["ev-1"],
+        confidence: 80,
+        reason: "test",
+        status: "accepted" as const,
+        blocked: false
+      },
+      {
+        id: "2",
+        original: "",
+        proposed: "Do not add Kubernetes",
+        evidenceIds: [],
+        confidence: 95,
+        reason: "blocked",
+        status: "pending" as const,
+        blocked: true
+      }
+    ];
+    const next = applyAcceptedSuggestions(resume, suggestions);
+    expect(next).toMatch(/Machine Learning/);
+    expect(next).not.toMatch(/Do not add Kubernetes/);
   });
 });

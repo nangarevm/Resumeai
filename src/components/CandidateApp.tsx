@@ -13,6 +13,7 @@ import type {
 } from "@/lib/srs-models";
 import type { JobDescription } from "@/lib/models";
 import { vaultCompleteness } from "@/lib/engines/career-vault";
+import { applyAcceptedSuggestions } from "@/lib/engines/tailoring";
 import CopyButton from "@/components/CopyButton";
 
 const STEPS = [
@@ -55,6 +56,13 @@ export default function CandidateApp() {
   const [notice, setNotice] = useState("New here? Finish steps 1–3 to get a Fit Score in a few minutes.");
   const [override, setOverride] = useState(false);
   const [answerDraft, setAnswerDraft] = useState("");
+  const [linkedinPaste, setLinkedinPaste] = useState("");
+  const [linkedinWarnings, setLinkedinWarnings] = useState<string[]>([]);
+
+  const resumePreview = useMemo(() => {
+    if (!ws?.profile.rawResumeText) return "";
+    return applyAcceptedSuggestions(ws.profile.rawResumeText, suggestions);
+  }, [ws?.profile.rawResumeText, suggestions]);
 
   const progress = useMemo(() => {
     const flags = [ws?.vault.evidence.length, job, fit, suggestions.some((s) => s.status !== "pending"), findings.length, kit, apps.length, prep, change];
@@ -71,6 +79,7 @@ export default function CandidateApp() {
     setSuggestions(data.seeker.suggestions || []);
     setFindings(data.seeker.findings || []);
     setApps(data.seeker.applications || []);
+    setDraft(data.seeker.tailoredDraft || "");
   }
 
   useEffect(() => {
@@ -142,6 +151,57 @@ export default function CandidateApp() {
     setNotice("Workspace reset. Your previous vault was deleted on this device.");
   }
 
+  async function importLinkedIn() {
+    setBusy(true);
+    const res = await fetch("/api/linkedin-import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paste: linkedinPaste, merge: Boolean(resumeText.trim()) })
+    });
+    const data = await res.json();
+    setBusy(false);
+    if (!res.ok) {
+      setNotice(data.error || "Could not parse LinkedIn paste.");
+      return;
+    }
+    setResumeText(data.resumeText);
+    setLinkedinWarnings(data.warnings || []);
+    setNotice(data.notice || "LinkedIn paste converted. Review, then Save Career Vault.");
+  }
+
+  function downloadResumeFile(text: string, ext: "txt" | "md") {
+    const role = job?.title || ws?.vault.targetRole || "resume";
+    const blob = new Blob([text], { type: ext === "md" ? "text/markdown" : "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `resumeproof-${role.replace(/\s+/g, "-").toLowerCase()}.${ext}`;
+    a.click();
+  }
+
+  async function saveResumeDraft(text: string) {
+    const data = await fetch("/api/resume-draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ draft: text, suggestions, action: "save" })
+    }).then((r) => r.json());
+    setDraft(data.draft || text);
+    setNotice("Tailored resume draft saved as a version snapshot.");
+  }
+
+  async function rescanDraft(text: string) {
+    setBusy(true);
+    const data = await fetch("/api/resume-draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ draft: text, suggestions, action: "rescan" })
+    }).then((r) => r.json());
+    setBusy(false);
+    setDraft(data.draft || text);
+    setFindings(data.findings || []);
+    setNotice(data.findings?.length ? "Re-scanned your edited draft." : "Draft looks clean against the vault.");
+  }
+
   async function onUpload(file: File) {
     const form = new FormData();
     form.append("file", file);
@@ -186,14 +246,15 @@ export default function CandidateApp() {
 
   async function runVerify() {
     setBusy(true);
+    const workingDraft = draft || resumePreview;
     const data = await fetch("/api/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ suggestions })
+      body: JSON.stringify({ suggestions, draft: workingDraft })
     }).then((r) => r.json());
     setBusy(false);
     setFindings(data.findings || []);
-    setDraft(data.draft || "");
+    setDraft(data.draft || workingDraft);
     setNotice(data.findings?.length ? "Resolve high-risk findings before export." : "No high-risk findings.");
     setStep("verify");
   }
@@ -203,7 +264,7 @@ export default function CandidateApp() {
     const res = await fetch("/api/kit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ override })
+      body: JSON.stringify({ override, draft: draft || resumePreview })
     });
     const data = await res.json();
     setBusy(false);
@@ -342,6 +403,29 @@ export default function CandidateApp() {
               Try with sample intern resume
             </button>
             <input className="form-control" type="file" accept=".txt,.md,.pdf,.docx" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
+            <details style={{ marginTop: 16 }}>
+              <summary className="form-label" style={{ cursor: "pointer" }}>
+                Import from LinkedIn paste (no crawl — TOS-safe)
+              </summary>
+              <p className="muted" style={{ margin: "8px 0" }}>
+                Open your LinkedIn profile, select About + Experience + Education + Skills, copy, and paste here. We only keep what you pasted — never scrape LinkedIn.
+              </p>
+              <textarea
+                className="form-control"
+                rows={8}
+                value={linkedinPaste}
+                onChange={(e) => setLinkedinPaste(e.target.value)}
+                placeholder={"Your Name\nHeadline\n\nAbout\n...\n\nExperience\nCompany\nRole\n...\n\nSkills\nPython, SQL"}
+              />
+              <button className="chip" type="button" disabled={busy || !linkedinPaste.trim()} onClick={importLinkedIn} style={{ marginTop: 8 }}>
+                Convert LinkedIn paste → resume text
+              </button>
+              {linkedinWarnings.map((w) => (
+                <p className="muted" key={w}>
+                  ⚠ {w}
+                </p>
+              ))}
+            </details>
             <div className="form-grid" style={{ marginTop: 12 }}>
               <div>
                 <label className="form-label">Target role (optional)</label>
@@ -542,6 +626,24 @@ export default function CandidateApp() {
                 )}
               </article>
             ))}
+            <h3>Tailored resume preview</h3>
+            <p className="muted">Accept suggestions above, then edit the full draft. Export or save before verification.</p>
+            <textarea className="form-control" rows={12} value={draft || resumePreview} onChange={(e) => setDraft(e.target.value)} />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              <button className="chip" type="button" onClick={() => setDraft(resumePreview)}>
+                Reset from accepted suggestions
+              </button>
+              <button className="chip" type="button" onClick={() => saveResumeDraft(draft || resumePreview)}>
+                Save draft
+              </button>
+              <button className="chip" type="button" onClick={() => downloadResumeFile(draft || resumePreview, "txt")}>
+                Export .txt
+              </button>
+              <button className="chip" type="button" onClick={() => downloadResumeFile(draft || resumePreview, "md")}>
+                Export .md
+              </button>
+              <CopyButton text={draft || resumePreview} label="Copy resume" />
+            </div>
             <button className="btn-primary" onClick={runVerify} style={{ marginTop: 12 }}>
               Scan for unsupported claims
             </button>
@@ -566,7 +668,24 @@ export default function CandidateApp() {
                 </div>
               </article>
             ))}
-            {draft && <pre className="pre">{draft}</pre>}
+            <h3>Edit export resume</h3>
+            <p className="muted">Fix lines here, re-scan, then export or build the application kit.</p>
+            <textarea className="form-control" rows={14} value={draft} onChange={(e) => setDraft(e.target.value)} />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              <button className="chip" type="button" disabled={busy} onClick={() => rescanDraft(draft)}>
+                Re-scan draft
+              </button>
+              <button className="chip" type="button" onClick={() => saveResumeDraft(draft)}>
+                Save draft
+              </button>
+              <button className="chip" type="button" onClick={() => downloadResumeFile(draft, "txt")}>
+                Export .txt
+              </button>
+              <button className="chip" type="button" onClick={() => downloadResumeFile(draft, "md")}>
+                Export .md
+              </button>
+              <CopyButton text={draft} label="Copy resume" />
+            </div>
             <label className="muted">
               <input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} /> I explicitly override remaining high-risk items
             </label>

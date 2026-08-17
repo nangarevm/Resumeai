@@ -140,4 +140,5 @@ export interface SeekerWorkspace {
   fit: FitReport | null;
   suggestions: TailorSuggestion[];
   findings: VerificationFinding[];
+  tailoredDraft?: string;
 }

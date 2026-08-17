@@ -41,7 +41,8 @@ function defaultSeeker(): SeekerWorkspace {
     activeJob: null,
     fit: null,
     suggestions: [],
-    findings: []
+    findings: [],
+    tailoredDraft: ""
   };
 }
 
@@ -175,6 +176,18 @@ export function snapshot(reason: string, snapshotText: string): ResumeVersion {
 export function setFindings(list: VerificationFinding[]): void {
   load().seeker.findings = list;
   save();
+}
+
+export function setTailoredDraft(text: string): string {
+  const ws = load();
+  ws.seeker.tailoredDraft = text;
+  save();
+  return text;
+}
+
+export function getTailoredDraft(fallback: string): string {
+  const draft = load().seeker.tailoredDraft?.trim();
+  return draft || fallback;
 }
 
 export function addApplication(app: ApplicationRecord): ApplicationRecord {
