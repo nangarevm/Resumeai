@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ResumeProof — Examine the evidence",
+  title: "ResumeProof — AI Job Application Copilot",
   description:
-    "Evidence-based candidate matching, claim verification, honest resume optimization, ATS scoring, and interview intelligence."
+    "Career Vault, transparent fit scores, evidence-based tailoring, verification, application tracking, interview prep, and an agency hiring desk. Never fabricates experience."
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

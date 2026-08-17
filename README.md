@@ -1,57 +1,9 @@
-# ResumeProof
+# ResumeProof SRS v2.0
 
-Evidence-based candidate matching, claim verification, and honest resume optimization.
+Two workspaces, one promise: **build from real career evidence and never fabricate experience.**
 
-> Don't just match the resume. Examine the evidence.
-
-This product implements the ResumeProof engineering plan as a working web application, then goes deeper module by module. Every scoring path is **deterministic** (rule engines + regex + explainable formulas). Optional GitHub lookup uses the public API only to corroborate a handle — it never invents experience.
-
-## What was built
-
-### Recruiter modules (original plan)
-
-| Module | What it does |
-| --- | --- |
-| Resume parser | Sections, skills, projects, contact, GitHub/LinkedIn URLs, career preferences |
-| JD extractor | Mandatory / preferred requirements, categories, synonym expansion |
-| Context engine | Negation, action verbs, coursework, weak phrasing, competency phrasing |
-| Evidence engine | Requirement → snippet → section → strength 🟢🟡🟠🔴⛔ |
-| Claim verification | 5-point checklist: verb, tools, method, metric, production context |
-| Mode evaluator | **STRICT** / **BALANCED** / **BEST MATCH** with published formulas |
-| Ranking engine | Shortlist first, then score, then strong-evidence tie-break + explanation |
-| Skill-gap engine | Strong / partial / missing / verify buckets |
-| Preference engine | Role, domain, dream-company alignment |
-| Discovery engine | Multi-term AND search across the pool |
-| Interview intelligence | Priority questions + STAR guides from weak evidence and gaps |
-
-### Suggested modules (also implemented)
-
-| Module | Why it is here |
-| --- | --- |
-| Four-layer honest optimizer | Repair → career logic → recruiter rewrite → JD match. **Green writes, yellow asks, red is blocked.** |
-| Timeline / logic validator | Overlaps, impossible dates, claimed years vs dated span, intern vs executive claims |
-| Synonym lexicon | ML ↔ machine learning, CV ↔ OpenCV, Git ↔ GitHub, and domain aliases |
-| ATS score | Contact, headings, length, bullets, keyword coverage, stuffing detector |
-| Evidence-bound cover letter | Only resume-backed proof; missing JD skills are listed as blocked |
-| GitHub proof | Extract handle/URLs; optional public profile/repo overlap |
-| PDF/DOCX upload | Parse into the same pipeline as pasted text |
-| Interview studio | Same question engine with STAR coaching for hiring managers |
-
-## Scoring (from the engineering plan)
-
-- 🟢 Strong evidence: `1.00`
-- 🟡 Partial: `0.60`
-- 🟠 Unclear: `0.30`
-- 🔴 Not found: `0.00`
-- ⛔ Negative / not demonstrated: `-0.50`
-
-**Strict:** any mandatory requirement that is missing, negative, or unclear → not shortlisted, score `0`.
-
-**Balanced:** `0.65 * mandatory_ratio + 0.35 * preferred_ratio`. Missing/negative mandatory → not shortlisted, score still shown.
-
-**Best match:** no elimination. Weighted by importance × category weight.
-
-## Run locally
+- Job seekers: [`/candidate`](/candidate)
+- Recruiters / agencies / coaches: [`/agency`](/agency)
 
 ```bash
 npm install
@@ -59,23 +11,52 @@ npm test
 npm run dev
 ```
 
-Open http://localhost:3000
+Then open the app (on this cloud VM the public preview is a tunnel; on your own machine use http://localhost:3000).
 
-Seed resumes live in `data/resumes/` and job templates in `data/job_descriptions/` (AI/ML intern, software, finance, marketing, mechanical, renewable energy).
+## What is implemented (MVP + suggestions)
 
-## API
+| SRS area | Status | Where |
+| --- | --- | --- |
+| Split candidate vs agency screens | Done | `/` chooser, `/candidate`, `/agency` |
+| FR-1 Import resume PDF/DOCX/text | Done | Candidate step 1 |
+| FR-3 Career Vault (typed evidence, source, approved-only generation) | Done | `/api/vault` |
+| FR-4 Job intelligence (paste JD + public URL fetch) | Done | `/api/job-intel` |
+| FR-2 Fit Score + sub-scores + disclaimer + parser preview | Done | Candidate step 3 |
+| FR-5 Tailoring with accept/reject + blocked fabrication | Done | Candidate step 4 |
+| FR-1.6 / FR-5.6 Version snapshot before tailor | Done | `/api/tailor` |
+| FR-6 Verification Remove/Confirm/Edit + export gate | Done | Candidate step 5, `/api/kit` |
+| Application kit (resume, cover, recruiter email, LinkedIn, checklist) | Done | Step 6 |
+| Application tracker statuses | Done | Step 7 |
+| Interview copilot + STAR from vault | Done | Step 8 |
+| Career Change Mode | Done | Step 9 |
+| Agency ranking STRICT/BALANCED/BEST MATCH | Done | `/agency` hiring desk |
+| Agency white-label + client seats | Done (MVP) | `/agency` brand & clients |
+| Free Markdown + print-to-PDF export | Done | Kit + Print |
+| Evidence engines, claim checks, GitHub proof, ATS | Done | Existing `/api/*` used by agency |
 
-- `GET/POST /api/jobs` — active JD, create or switch template
-- `GET /api/sample-jobs`
-- `GET/POST /api/candidates`
-- `GET /api/search?q=`
-- `GET /api/analyze?mode=STRICT|BALANCED|BEST_MATCH`
-- `POST /api/optimize`
-- `POST /api/ats`
-- `POST /api/cover-letter`
-- `POST /api/github-proof`
-- `POST /api/parse` — multipart file upload
+## What is left (Phase 2–3 / deferred)
+
+| Item | Why it is not in this cut |
+| --- | --- |
+| Real consumer billing / Stripe / India pricing meters | Needs payment keys; UI copy only |
+| Native DOCX writer (we import DOCX; export is Markdown + print PDF) | Add `docx` library next |
+| LinkedIn profile import / optimization crawler | Privacy + TOS; paste-only today |
+| Answer grading for interview practice | Needs optional LLM |
+| University SSO, enterprise RBAC, invoice reconciliation | Phase 3 |
+| Native mobile apps, video resumes, employer ATS, social network | Explicitly deferred in SRS |
+| Autosave debounce 2s to a real user account | In-memory + JSON file workspace, no auth yet |
+| Human Expert Review add-on | Marketplace / ops |
+
+## How we can improve next
+
+1. Add login (email magic link) so vaults are per-user, not a single workspace file.
+2. Generate real `.docx` / paginated PDF from the kit.
+3. Optional LLM only behind the same evidence gate (still no fabrication).
+4. Outcome analytics: conversion by fit band (north-star metric).
+5. Agency: invite links, seat billing, bulk JD upload.
+6. WCAG pass on contrast, keyboard, and focus for the wizard.
+7. Job URL parser per-board (LinkedIn/Greenhouse) instead of generic HTML strip.
 
 ## Product rule
 
-ResumeProof can help people **express real work more clearly**. It will not fabricate schools, employers, certificates, projects, metrics, tech stacks, or stories the candidate cannot defend in an interview.
+ResumeProof can rephrase real work. It will not invent schools, employers, certificates, projects, metrics, or tech stacks.
