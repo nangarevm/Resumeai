@@ -4,6 +4,8 @@ node_modules
 out
 dist
 data/runtime/*.json
+data/users/
+data/runtime/market-cache.json
 *.log
 .DS_Store
 .env

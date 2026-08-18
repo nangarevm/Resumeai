@@ -4,6 +4,7 @@ import type { CareerVault, TailorSuggestion, FitReport } from "../srs-models";
 import { approvedEvidence } from "./career-vault";
 import { emphasizeRequirement } from "./tailoring-helpers";
 import { suggestSummaryLine } from "./summary-suggestion";
+import { applySummaryToResume as formatSummaryIntoResume, polishResumeDraft } from "./resume-formatter";
 
 export function generateTailoringSuggestions(
   profile: CandidateProfile,
@@ -75,11 +76,7 @@ export function buildSummaryTailorSuggestion(
 }
 
 export function applySummaryToResume(resumeText: string, summaryLine: string): string {
-  const base = resumeText;
-  if (/SUMMARY/i.test(base)) {
-    return base.replace(/SUMMARY[\s\n]*[^\n]+/i, `SUMMARY\n${summaryLine}`);
-  }
-  return `SUMMARY\n${summaryLine}\n\n${base}`;
+  return formatSummaryIntoResume(resumeText, summaryLine);
 }
 
 export function injectSummaryTailorSuggestion(
@@ -101,9 +98,13 @@ export function applyAcceptedSuggestions(
   let next = resumeText;
   for (const s of suggestions) {
     if (s.blocked || s.status === "rejected") continue;
+    if (s.kind === "summary" && (s.status === "accepted" || s.status === "edited") && s.proposed) {
+      next = formatSummaryIntoResume(next, s.proposed);
+      continue;
+    }
     if ((s.status === "accepted" || s.status === "edited") && s.original && s.proposed && s.original !== s.proposed) {
       next = next.replace(s.original, s.proposed);
     }
   }
-  return next;
+  return polishResumeDraft(next);
 }

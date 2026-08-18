@@ -16,11 +16,12 @@ import type {
 import type { JobDescription } from "@/lib/models";
 import { vaultCompleteness } from "@/lib/engines/career-vault";
 import { bandFromScore } from "@/lib/engines/outcome-tracker";
-import { applyAcceptedSuggestions } from "@/lib/engines/tailoring";
+import { applyAcceptedSuggestions, applySummaryToResume } from "@/lib/engines/tailoring";
 import { buildWhatsAppBundle } from "@/lib/export/whatsapp-bundle";
 import CopyButton from "@/components/CopyButton";
 import OptimizerReportPanel from "@/components/OptimizerReportPanel";
 import AuthBar from "@/components/AuthBar";
+import ResumeDraftPreview from "@/components/ResumeDraftPreview";
 
 const STEPS = [
   { id: "vault", n: 1, title: "Career Vault", help: "Your source of truth. Import a resume. We only store what you provided." },
@@ -459,9 +460,7 @@ export default function CandidateApp() {
     const summary = fit?.optimizer?.summarySuggestion;
     if (!summary) return;
     const base = draft || resumePreview || resumeText;
-    const withSummary = base.replace(/SUMMARY[\s\n]*[^\n]+/i, `SUMMARY\n${summary}`);
-    const next = /SUMMARY/i.test(base) ? withSummary : `SUMMARY\n${summary}\n\n${base}`;
-    setDraft(next);
+    setDraft(applySummaryToResume(base, summary));
     setNotice("Summary line applied to draft — review and save.");
   }
 
@@ -1208,7 +1207,10 @@ export default function CandidateApp() {
                 </div>
               </article>
             ))}
-            <textarea className="form-control" rows={12} value={draft || resumePreview} onChange={(e) => setDraft(e.target.value)} />
+            <h3>Edit tailored draft</h3>
+            <p className="muted">Accept suggestions above, then edit the full draft. Try evidence-bound rewrites (no LLM, no new facts).</p>
+            <ResumeDraftPreview text={draft || resumePreview} />
+            <textarea className="form-control resume-draft-editor" rows={12} value={draft || resumePreview} onChange={(e) => setDraft(e.target.value)} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
               <button className="chip" type="button" onClick={() => setDraft(resumePreview)}>
                 Reset from accepted suggestions
@@ -1257,7 +1259,8 @@ export default function CandidateApp() {
             ))}
             <h3>Edit export resume</h3>
             <p className="muted">Fix lines here, re-scan, then export or build the application kit.</p>
-            <textarea className="form-control" rows={14} value={draft || resumePreview} onChange={(e) => setDraft(e.target.value)} />
+            <ResumeDraftPreview text={draft || resumePreview} />
+            <textarea className="form-control resume-draft-editor" rows={14} value={draft || resumePreview} onChange={(e) => setDraft(e.target.value)} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
               <button className="chip" type="button" disabled={busy} onClick={() => rescanDraft(draft || resumePreview)}>
                 Re-scan draft

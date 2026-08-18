@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { scanVerification } from "@/lib/engines/verification";
-import { applyAcceptedSuggestions } from "@/lib/engines/tailoring";
+import { applyAcceptedSuggestions, applySummaryToResume } from "@/lib/engines/tailoring";
+import { polishResumeDraft } from "@/lib/engines/resume-formatter";
 import { getSeeker, setFindings, setSuggestions, setTailoredDraft } from "@/lib/workspace-store";
 import type { TailorSuggestion } from "@/lib/srs-models";
 
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
   if (body.suggestions) setSuggestions(body.suggestions);
   const current = getSeeker();
   const auto = applyAcceptedSuggestions(current.profile.rawResumeText, current.suggestions);
-  const draft = typeof body.draft === "string" ? body.draft : auto;
+  const draft = polishResumeDraft(typeof body.draft === "string" ? body.draft : auto);
   setTailoredDraft(draft);
   const findings = scanVerification(draft, current.vault, current.profile);
   setFindings(findings);

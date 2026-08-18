@@ -16,7 +16,7 @@ export async function resumeTextToDocxBuffer(text: string, title = "Resume"): Pr
       continue;
     }
     const isHeading =
-      /^(NAME|EMAIL|PHONE|SUMMARY|SKILLS|TECHNICAL SKILLS|WORK EXPERIENCE|EXPERIENCE|PROJECTS|EDUCATION|CERTIFICATIONS):?$/i.test(trimmed) ||
+      /^(NAME|EMAIL|PHONE|SUMMARY|PROFILE SUMMARY|PROFILE|CONTACT|SKILLS|TECHNICAL SKILLS|KEY SKILLS|WORK EXPERIENCE|EXPERIENCE|PROJECTS|EDUCATION|CERTIFICATIONS):?$/i.test(trimmed) ||
       (trimmed.endsWith(":") && trimmed.length < 40 && !trimmed.includes("@"));
 
     if (isHeading) {
