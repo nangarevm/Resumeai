@@ -48,6 +48,12 @@ Then open the app (on this cloud VM the public preview is a tunnel; on your own 
 | Outcome tracking by fit band | Done | Tracker, `/api/outcomes` |
 | Referral flow + checklist | Done | Kit step 6 |
 | Evidence-bound bullet rewrite (no LLM) | Done | Tailor step 4, `/api/rewrite` |
+| AI Career & CV Optimizer (13-section report) | Done | Fit step 3, `OptimizerReportPanel`, `/api/export-report` |
+| JD match breakdown (skills, exp, tech, duties, ATS, edu) | Done | `career-intelligence.ts` |
+| Career Opportunity Score + opportunity detector | Done | Fit step 3 |
+| Skill gap plan (🟢🟡🔴⭐) + market intel (curated) | Done | `skill-gap-plan.ts`, `data/market/role-signals.json` |
+| Responsibility evidence map + soft-skill dimensions | Done | `responsibility-matcher.ts`, `soft-skill-scorer.ts` |
+| Seamless Build optimized CV (tailor→verify→kit) | Done | Fit + Kit steps, `CandidateApp` |
 | Evidence engines, claim checks, GitHub proof, ATS | Done | Agency modal + `/api/*` |
 | API smoke tests | Done | `tests/api.test.ts` |
 
@@ -61,7 +67,9 @@ Then open the app (on this cloud VM the public preview is a tunnel; on your own 
 | LinkedIn profile crawler | Privacy + TOS; paste-only |
 | Interview answer grading | Needs optional LLM behind evidence gate |
 | University SSO, enterprise RBAC, custom domains | Phase 3 |
-| Native paginated PDF (beyond print CSS) | Deferred |
+| Native paginated PDF (beyond print CSS) | Deferred — career report exports Markdown; resume uses print CSS |
+| Live `{{CURRENT_MARKET_DATA}}` API feed | Curated `role-signals.json` only today |
+| Full 13-section DOCX career report | Markdown report only; resume/cover DOCX separate |
 | LLM summary tailor / grading | Optional Phase D |
 | Human Expert Review add-on | Marketplace / ops |
 | WCAG audit | Improvement backlog |

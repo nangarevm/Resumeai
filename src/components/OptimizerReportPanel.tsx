@@ -33,7 +33,10 @@ export default function OptimizerReportPanel({ report }: { report: CareerOptimiz
               ["Technology", report.jdMatch.technologyMatch],
               ["Responsibilities", report.jdMatch.responsibilityMatch],
               ["ATS keywords", report.jdMatch.atsKeywordMatch],
-              ["Education/Cert", report.jdMatch.educationCertMatch]
+              ["Education/Cert", report.jdMatch.educationCertMatch],
+              ["Leadership", report.jdMatch.leadershipMatch ?? 0],
+              ["Communication", report.jdMatch.communicationMatch ?? 0],
+              ["AI relevance", report.jdMatch.aiRelevanceMatch ?? 0]
             ] as const
           ).map(([label, val]) => (
             <div key={label}>
@@ -45,7 +48,37 @@ export default function OptimizerReportPanel({ report }: { report: CareerOptimiz
             </div>
           ))}
         </div>
+        {report.jdMatch.responsibilityTotalCount ? (
+          <p className="muted" style={{ marginTop: 8 }}>
+            {report.jdMatch.responsibilityMatchedCount ?? 0} of {report.jdMatch.responsibilityTotalCount} JD duty lines
+            have resume/vault keyword overlap (not scored as separate requirements).
+          </p>
+        ) : null}
+        {report.jdMatch.dimensionNotes && (
+          <div style={{ marginTop: 8 }}>
+            <p className="muted"><strong>Leadership:</strong> {report.jdMatch.dimensionNotes.leadership}</p>
+            <p className="muted"><strong>Communication:</strong> {report.jdMatch.dimensionNotes.communication}</p>
+            <p className="muted"><strong>AI relevance:</strong> {report.jdMatch.dimensionNotes.aiRelevance}</p>
+          </div>
+        )}
       </details>
+
+      {report.responsibilityHighlights?.length ? (
+        <details className="opt-section">
+          <summary>Responsibility evidence map</summary>
+          {report.responsibilityHighlights.map((h) => (
+            <div key={h.responsibility} className="chain-item" style={{ marginBottom: 8 }}>
+              <strong>{h.coverage}% overlap</strong> — {h.responsibility}
+              <p className="muted">{h.evidenceSnippet}</p>
+            </div>
+          ))}
+          {report.responsibilityGaps?.length ? (
+            <p className="muted">
+              <strong>Gaps:</strong> {report.responsibilityGaps.join(" · ")}
+            </p>
+          ) : null}
+        </details>
+      ) : null}
 
       <details className="opt-section">
         <summary>Skill gap plan</summary>

@@ -95,8 +95,24 @@ export interface JdMatchBreakdown {
   experienceMatch: number;
   technologyMatch: number;
   responsibilityMatch: number;
+  responsibilityMatchedCount?: number;
+  responsibilityTotalCount?: number;
   atsKeywordMatch: number;
   educationCertMatch: number;
+  leadershipMatch?: number;
+  communicationMatch?: number;
+  aiRelevanceMatch?: number;
+  dimensionNotes?: {
+    leadership: string;
+    communication: string;
+    aiRelevance: string;
+  };
+}
+
+export interface ResponsibilityHighlight {
+  responsibility: string;
+  evidenceSnippet: string;
+  coverage: number;
 }
 
 export interface RoleOpportunity {
@@ -137,6 +153,8 @@ export interface CareerOptimizerReport {
   whyMoreCompetitive: string[];
   nextBestActions: Array<{ title: string; detail: string; step: string }>;
   summarySuggestion?: string;
+  responsibilityHighlights?: ResponsibilityHighlight[];
+  responsibilityGaps?: string[];
 }
 
 export interface TailorSuggestion {

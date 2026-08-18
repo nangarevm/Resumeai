@@ -1,5 +1,5 @@
 import type { CandidateProfile, JobDescription } from "../models";
-import type { CareerVault, FitReport, CareerOptimizerReport } from "../srs-models";
+import type { CareerVault, FitReport, CareerOptimizerReport, SkillGapItem } from "../srs-models";
 import { scoreAts } from "./ats-score-engine";
 import { scorableRequirements } from "../models";
 import { findEvidenceForRequirement } from "./evidence-engine";
@@ -7,6 +7,8 @@ import { approvedEvidence } from "./career-vault";
 import { marketIntelligenceForCandidate } from "./market-intelligence";
 import { detectOpportunities } from "./opportunity-detector";
 import { buildSkillGapPlan } from "./skill-gap-plan";
+import { scoreResponsibilityMatch } from "./responsibility-matcher";
+import { scoreSoftSkillDimensions } from "./soft-skill-scorer";
 
 export function buildCareerOptimizerReport(
   profile: CandidateProfile,
@@ -25,18 +27,9 @@ export function buildCareerOptimizerReport(
   ).length;
   const techTotal = scorable.filter((r) => r.category === "SKILL_TECH" || r.category === "PROJECT").length || scorable.length;
 
-  const respCount = jd.responsibilities?.length || 0;
-  const respOverlap =
-    respCount > 0
-      ? Math.min(
-          100,
-          Math.round(
-            (evidence.filter((e) => e.strength === "STRONG" || e.strength === "PARTIAL").length /
-              Math.max(scorable.length, 1)) *
-              100
-          )
-        )
-      : fit.subScores.keywordCoverage;
+  const respResult = scoreResponsibilityMatch(profile, jd, vault);
+  const softSkills = scoreSoftSkillDimensions(profile, jd, vault);
+  const respOverlap = respResult.totalCount > 0 ? respResult.score : fit.subScores.keywordCoverage;
 
   const eduEvidence = approvedEvidence(vault).filter((e) => e.type === "education" || e.type === "certification");
   const eduCertMatch = Math.min(100, eduEvidence.length >= 1 ? 70 + eduEvidence.length * 10 : 40);
@@ -56,8 +49,18 @@ export function buildCareerOptimizerReport(
     experienceMatch: expScore,
     technologyMatch: techTotal ? Math.round((techHits / techTotal) * 100) : fit.subScores.keywordCoverage,
     responsibilityMatch: respOverlap,
+    responsibilityMatchedCount: respResult.matchedCount,
+    responsibilityTotalCount: respResult.totalCount,
     atsKeywordMatch: ats.score,
-    educationCertMatch: eduCertMatch
+    educationCertMatch: eduCertMatch,
+    leadershipMatch: softSkills.leadershipMatch,
+    communicationMatch: softSkills.communicationMatch,
+    aiRelevanceMatch: softSkills.aiRelevanceMatch,
+    dimensionNotes: {
+      leadership: softSkills.leadershipNote,
+      communication: softSkills.communicationNote,
+      aiRelevance: softSkills.aiRelevanceNote
+    }
   };
 
   const approved = approvedEvidence(vault);
@@ -103,7 +106,9 @@ export function buildCareerOptimizerReport(
     recommendedCvChanges,
     whyMoreCompetitive,
     nextBestActions: fit.nextActions,
-    summarySuggestion
+    summarySuggestion,
+    responsibilityHighlights: respResult.highlights,
+    responsibilityGaps: respResult.gaps
   };
 }
 
