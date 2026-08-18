@@ -146,6 +146,8 @@ export interface CareerOptimizerReport {
     increasingDemand: string[];
     declining: string[];
     aiOpportunities: string[];
+    liveSource?: string;
+    liveFetchedAt?: string;
   };
   opportunities: RoleOpportunity[];
   skillGapPlan: SkillGapItem[];
@@ -166,6 +168,7 @@ export interface TailorSuggestion {
   reason: string;
   status: SuggestionStatus;
   blocked: boolean;
+  kind?: "bullet" | "summary";
 }
 
 export interface VerificationFinding {

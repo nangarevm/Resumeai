@@ -20,6 +20,7 @@ import { applyAcceptedSuggestions } from "@/lib/engines/tailoring";
 import { buildWhatsAppBundle } from "@/lib/export/whatsapp-bundle";
 import CopyButton from "@/components/CopyButton";
 import OptimizerReportPanel from "@/components/OptimizerReportPanel";
+import AuthBar from "@/components/AuthBar";
 
 const STEPS = [
   { id: "vault", n: 1, title: "Career Vault", help: "Your source of truth. Import a resume. We only store what you provided." },
@@ -383,7 +384,22 @@ export default function CandidateApp() {
     a.href = url;
     a.download = "resumeproof-career-report.md";
     a.click();
-    setNotice("Career optimizer report downloaded (.md). Print to PDF from your editor if needed.");
+    setNotice("Career optimizer report downloaded (.md).");
+  }
+
+  async function downloadCareerReportPdf() {
+    const res = await fetch("/api/export-report?format=pdf", { method: "POST" });
+    if (!res.ok) {
+      setNotice("Analyze a job first to export the career report PDF.");
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "resumeproof-career-report.pdf";
+    a.click();
+    setNotice("Career optimizer report downloaded (PDF).");
   }
 
   async function buildOptimizedCv() {
@@ -395,8 +411,13 @@ export default function CandidateApp() {
       return;
     }
     setSuggestions(tailorData.suggestions);
-    const preview = applyAcceptedSuggestions(ws?.profile.rawResumeText || resumeText, tailorData.suggestions);
+    const preview =
+      tailorData.tailoredPreview ||
+      applyAcceptedSuggestions(ws?.profile.rawResumeText || resumeText, tailorData.suggestions);
     setDraft(preview);
+    if (tailorData.summaryApplied) {
+      setNotice("Summary auto-applied to draft — review tailor step.");
+    }
 
     const verifyData = await fetch("/api/verify", {
       method: "POST",
@@ -644,7 +665,8 @@ export default function CandidateApp() {
             </div>
             <p className="muted">Journey {progress}% complete</p>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <AuthBar />
             <button className="btn-ghost" onClick={loadDemo}>
               Load sample resume
             </button>
@@ -1013,7 +1035,10 @@ export default function CandidateApp() {
                 Build optimized CV (tailor → verify → kit)
               </button>
               <button className="btn-ghost" type="button" onClick={downloadCareerReport}>
-                Export career report
+                Export career report (.md)
+              </button>
+              <button className="btn-ghost" type="button" onClick={downloadCareerReportPdf}>
+                Export career report (PDF)
               </button>
               {fit.optimizer?.summarySuggestion && (
                 <button className="chip" type="button" onClick={applySummarySuggestion}>

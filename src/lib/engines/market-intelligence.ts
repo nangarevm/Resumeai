@@ -11,6 +11,8 @@ export interface RoleMarketSignals {
   aiOpportunities: string[];
   adjacentRoles: Array<{ role: string; overlapSkills: string[] }>;
   unlockSkills: string[];
+  liveSource?: string;
+  liveFetchedAt?: string;
 }
 
 type MarketFile = Record<string, RoleMarketSignals>;
@@ -43,8 +45,8 @@ export function getMarketSignals(jobTitle: string, domain?: string): RoleMarketS
 
 export function marketIntelligenceForCandidate(
   jobTitle: string,
-  domain?: string,
-  vaultSkillBlob: string
+  vaultSkillBlob: string,
+  domain?: string
 ): {
   roleFamily: string;
   fastGrowing: string[];

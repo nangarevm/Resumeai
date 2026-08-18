@@ -53,6 +53,11 @@ Then open the app (on this cloud VM the public preview is a tunnel; on your own 
 | Career Opportunity Score + opportunity detector | Done | Fit step 3 |
 | Skill gap plan (🟢🟡🔴⭐) + market intel (curated) | Done | `skill-gap-plan.ts`, `data/market/role-signals.json` |
 | Responsibility evidence map + soft-skill dimensions | Done | `responsibility-matcher.ts`, `soft-skill-scorer.ts` |
+| Native PDF career report | Done | `/api/export-report?format=pdf`, `@react-pdf/renderer` |
+| Live market data feed (npm + GitHub + cache) | Done | `live-market-feed.ts`, refreshed on job analyze |
+| Auth + per-user vault (magic link + GitHub OAuth) | Done | `/login`, NextAuth, `data/users/{id}/workspace.json` |
+| Summary auto-inject on tailor | Done | `/api/tailor` applies JD-aligned summary to draft |
+| API test workspace isolation | Done | `tests/setup.ts`, `RESUMEPROOF_WORKSPACE_FILE` |
 | Seamless Build optimized CV (tailor→verify→kit) | Done | Fit + Kit steps, `CandidateApp` |
 | Evidence engines, claim checks, GitHub proof, ATS | Done | Agency modal + `/api/*` |
 | API smoke tests | Done | `tests/api.test.ts` |
@@ -62,14 +67,13 @@ Then open the app (on this cloud VM the public preview is a tunnel; on your own 
 | Item | Why it is not in this cut |
 | --- | --- |
 | Real consumer billing / Stripe / India pricing meters | Needs payment keys; usage meters are local counters only |
-| Auth + per-user vault (magic link / OAuth) | Single `workspace.json` per deployment today |
-| Postgres / multi-tenant database | File-based persistence |
+| Postgres / multi-tenant database | File-based per-user JSON today |
+| SMTP magic-link email delivery | Dev link + GitHub OAuth; wire SMTP for production email |
 | LinkedIn profile crawler | Privacy + TOS; paste-only |
 | Interview answer grading | Needs optional LLM behind evidence gate |
 | University SSO, enterprise RBAC, custom domains | Phase 3 |
-| Native paginated PDF (beyond print CSS) | Deferred — career report exports Markdown; resume uses print CSS |
-| Live `{{CURRENT_MARKET_DATA}}` API feed | Curated `role-signals.json` only today |
-| Full 13-section DOCX career report | Markdown report only; resume/cover DOCX separate |
+| Resume native paginated PDF | Career report PDF done; resume still print CSS |
+| Full 13-section DOCX career report | Markdown + PDF report; resume/cover DOCX separate |
 | LLM summary tailor / grading | Optional Phase D |
 | Human Expert Review add-on | Marketplace / ops |
 | WCAG audit | Improvement backlog |

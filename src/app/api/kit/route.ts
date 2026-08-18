@@ -3,10 +3,12 @@ import { buildApplicationKit } from "@/lib/engines/application-kit";
 import { applyAcceptedSuggestions } from "@/lib/engines/tailoring";
 import { hasBlockingFindings } from "@/lib/engines/verification";
 import { getSeeker } from "@/lib/workspace-store";
+import { bindWorkspaceUser } from "@/lib/auth/bind-workspace";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  await bindWorkspaceUser();
   const body = (await request.json()) as { override?: boolean; draft?: string };
   const seeker = getSeeker();
   if (!seeker.activeJob) return NextResponse.json({ error: "Analyze a job first." }, { status: 400 });

@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { parseResume } from "@/lib/parsers/resume-parser";
 import { setEvidenceStatus, setSeekerProfile, updateVault } from "@/lib/workspace-store";
 import type { CareerVault, VerificationStatus } from "@/lib/srs-models";
+import { bindWorkspaceUser } from "@/lib/auth/bind-workspace";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  await bindWorkspaceUser();
   const body = (await request.json()) as {
     resumeText?: string;
     targetRole?: string;

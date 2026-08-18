@@ -112,6 +112,12 @@ export default function OptimizerReportPanel({ report }: { report: CareerOptimiz
         <p className="muted">
           <strong>AI opportunities:</strong> {report.marketTrends.aiOpportunities.join("; ")}
         </p>
+        {report.marketTrends.liveSource && (
+          <p className="muted" style={{ fontSize: 11 }}>
+            Live feed: {report.marketTrends.liveSource}
+            {report.marketTrends.liveFetchedAt ? ` · ${report.marketTrends.liveFetchedAt.slice(0, 10)}` : ""}
+          </p>
+        )}
       </details>
 
       <details className="opt-section">

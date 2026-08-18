@@ -1,14 +1,16 @@
 import type { CandidateProfile, JobDescription } from "../models";
-import type { CareerVault, FitReport, CareerOptimizerReport, SkillGapItem } from "../srs-models";
+import type { CareerVault, FitReport, CareerOptimizerReport, SkillGapItem, JdMatchBreakdown } from "../srs-models";
 import { scoreAts } from "./ats-score-engine";
 import { scorableRequirements } from "../models";
 import { findEvidenceForRequirement } from "./evidence-engine";
 import { approvedEvidence } from "./career-vault";
-import { marketIntelligenceForCandidate } from "./market-intelligence";
+import { marketIntelligenceForCandidate, getMarketSignals, resolveRoleFamily } from "./market-intelligence";
 import { detectOpportunities } from "./opportunity-detector";
 import { buildSkillGapPlan } from "./skill-gap-plan";
 import { scoreResponsibilityMatch } from "./responsibility-matcher";
 import { scoreSoftSkillDimensions } from "./soft-skill-scorer";
+import { suggestSummaryLine } from "./summary-suggestion";
+import { getCachedLiveOverlay, mergeLiveWithStatic } from "./live-market-feed";
 
 export function buildCareerOptimizerReport(
   profile: CandidateProfile,
@@ -65,7 +67,8 @@ export function buildCareerOptimizerReport(
 
   const approved = approvedEvidence(vault);
   const vaultBlob = approved.map((e) => e.content).join(" ").toLowerCase();
-  const market = marketIntelligenceForCandidate(jd.title, jd.domain, vaultBlob);
+  const signals = mergeLiveWithStatic(getMarketSignals(jd.title, jd.domain), getCachedLiveOverlay(resolveRoleFamily(jd.title, jd.domain)));
+  const market = marketIntelligenceForCandidate(jd.title, vaultBlob, jd.domain);
 
   const skillGapPlan = buildSkillGapPlan(profile, jd);
   const opportunities = detectOpportunities(profile, jd, vault, fit.score);
@@ -99,7 +102,9 @@ export function buildCareerOptimizerReport(
       emerging: market.emerging,
       increasingDemand: market.increasingDemand,
       declining: market.declining,
-      aiOpportunities: market.aiOpportunities
+      aiOpportunities: market.aiOpportunities,
+      liveSource: signals.liveSource,
+      liveFetchedAt: signals.liveFetchedAt
     },
     opportunities,
     skillGapPlan,
@@ -110,16 +115,6 @@ export function buildCareerOptimizerReport(
     responsibilityHighlights: respResult.highlights,
     responsibilityGaps: respResult.gaps
   };
-}
-
-export function suggestSummaryLine(profile: CandidateProfile, jd: JobDescription, coreMatches: string[]): string {
-  const skills = coreMatches.slice(0, 4);
-  if (!skills.length) {
-    return profile.parsedSections.SUMMARY?.split("\n")[0]?.trim() || `${profile.name} — add a summary from vault evidence.`;
-  }
-  const years = profile.rawResumeText.match(/(\d+)\+?\s*years?/i)?.[1];
-  const yearPhrase = years ? `${years}+ years` : "Experienced";
-  return `${yearPhrase} ${jd.title} professional with evidenced strengths in ${skills.join(", ")} — all claims traceable to Career Vault.`;
 }
 
 function buildCvChanges(

@@ -17,7 +17,39 @@ import { getCandidate, getStore } from "./store";
 import { parseResume } from "./parsers/resume-parser";
 import { buildCareerVault } from "./engines/career-vault";
 
-const FILE = path.join(process.cwd(), "data", "runtime", "workspace.json");
+function sanitizeUserId(id: string): string {
+  return id.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
+}
+
+function resolveActiveUserId(): string {
+  if (process.env.RESUMEPROOF_WORKSPACE_USER) return process.env.RESUMEPROOF_WORKSPACE_USER;
+  if (activeUserId) return activeUserId;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { cookies } = require("next/headers") as typeof import("next/headers");
+    const jar = cookies();
+    const authUser = jar.get("rp_user")?.value;
+    if (authUser) return authUser;
+    const guest = jar.get("rp_guest")?.value;
+    if (guest) return guest;
+  } catch {
+    /* outside request context (tests, scripts) */
+  }
+  return "default";
+}
+
+function resolveWorkspaceFile(): string {
+  if (process.env.RESUMEPROOF_WORKSPACE_FILE) {
+    return process.env.RESUMEPROOF_WORKSPACE_FILE;
+  }
+  const userId = sanitizeUserId(resolveActiveUserId());
+  return path.join(process.cwd(), "data", "users", userId, "workspace.json");
+}
+
+const LEGACY_FILE = path.join(process.cwd(), "data", "runtime", "workspace.json");
+
+let activeUserId: string | null = null;
+let cacheKey: string | null = null;
 
 interface WorkspaceFile {
   seeker: SeekerWorkspace;
@@ -25,6 +57,21 @@ interface WorkspaceFile {
 }
 
 let cache: WorkspaceFile | null = null;
+
+export function setWorkspaceUserId(userId: string): void {
+  activeUserId = sanitizeUserId(userId);
+  cache = null;
+  cacheKey = null;
+}
+
+export function resetWorkspaceCache(): void {
+  cache = null;
+  cacheKey = null;
+}
+
+export function getWorkspaceFilePath(): string {
+  return resolveWorkspaceFile();
+}
 
 function defaultSeeker(): SeekerWorkspace {
   const profile = getStore().candidates[0] || parseResume("seeker", "NAME: New user\nEMAIL: you@example.com\nSKILLS:\n- Communication\n");
@@ -79,25 +126,37 @@ function ensureUsageMeters(agency: AgencyWorkspace): AgencyWorkspace["usageMeter
 }
 
 function load(): WorkspaceFile {
-  if (cache) return cache;
+  const file = resolveWorkspaceFile();
+  if (cache && cacheKey === file) return cache;
+
   try {
-    if (fs.existsSync(FILE)) {
-      cache = JSON.parse(fs.readFileSync(FILE, "utf8")) as WorkspaceFile;
+    if (fs.existsSync(file)) {
+      cache = JSON.parse(fs.readFileSync(file, "utf8")) as WorkspaceFile;
+      cacheKey = file;
+      return cache;
+    }
+    if (file !== LEGACY_FILE && fs.existsSync(LEGACY_FILE) && resolveActiveUserId() === "default") {
+      cache = JSON.parse(fs.readFileSync(LEGACY_FILE, "utf8")) as WorkspaceFile;
+      cacheKey = file;
+      save();
       return cache;
     }
   } catch {
     /* ignore */
   }
   cache = { seeker: defaultSeeker(), agency: defaultAgency() };
+  cacheKey = file;
   save();
   return cache;
 }
 
 function save() {
   if (!cache) return;
-  const dir = path.dirname(FILE);
+  const file = resolveWorkspaceFile();
+  const dir = path.dirname(file);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(FILE, JSON.stringify(cache, null, 2));
+  fs.writeFileSync(file, JSON.stringify(cache, null, 2));
+  cacheKey = file;
 }
 
 export function getSeeker(): SeekerWorkspace {

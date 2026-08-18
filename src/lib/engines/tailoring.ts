@@ -1,8 +1,9 @@
 import type { CandidateProfile, JobDescription } from "../models";
 import { extractEvidence } from "./evidence-engine";
-import type { CareerVault, TailorSuggestion } from "../srs-models";
+import type { CareerVault, TailorSuggestion, FitReport } from "../srs-models";
 import { approvedEvidence } from "./career-vault";
 import { emphasizeRequirement } from "./tailoring-helpers";
+import { suggestSummaryLine } from "./summary-suggestion";
 
 export function generateTailoringSuggestions(
   profile: CandidateProfile,
@@ -45,6 +46,52 @@ export function generateTailoringSuggestions(
   }
 
   return suggestions.slice(0, 14);
+}
+
+export function buildSummaryTailorSuggestion(
+  profile: CandidateProfile,
+  jd: JobDescription,
+  fit: FitReport | null
+): TailorSuggestion | null {
+  const coreMatches = fit?.coreMatches || [];
+  const summaryLine = fit?.optimizer?.summarySuggestion || suggestSummaryLine(profile, jd, coreMatches);
+  if (!summaryLine) return null;
+
+  const existing =
+    profile.parsedSections.SUMMARY?.split("\n").find((l) => l.trim().length > 0)?.trim() ||
+    "(no summary section)";
+
+  return {
+    id: "sug-summary",
+    kind: "summary",
+    original: existing,
+    proposed: summaryLine,
+    evidenceIds: [],
+    confidence: 88,
+    reason: "JD-aligned summary from evidenced core skills — review before accepting.",
+    status: "pending",
+    blocked: false
+  };
+}
+
+export function applySummaryToResume(resumeText: string, summaryLine: string): string {
+  const base = resumeText;
+  if (/SUMMARY/i.test(base)) {
+    return base.replace(/SUMMARY[\s\n]*[^\n]+/i, `SUMMARY\n${summaryLine}`);
+  }
+  return `SUMMARY\n${summaryLine}\n\n${base}`;
+}
+
+export function injectSummaryTailorSuggestion(
+  profile: CandidateProfile,
+  jd: JobDescription,
+  fit: FitReport | null,
+  suggestions: TailorSuggestion[]
+): TailorSuggestion[] {
+  const summary = buildSummaryTailorSuggestion(profile, jd, fit);
+  if (!summary) return suggestions;
+  if (suggestions.some((s) => s.kind === "summary")) return suggestions;
+  return [summary, ...suggestions];
 }
 
 export function applyAcceptedSuggestions(
