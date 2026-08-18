@@ -4,6 +4,7 @@ import { findEvidenceForRequirement } from "./evidence-engine";
 import { scoreAts } from "./ats-score-engine";
 import { EVIDENCE_STRENGTH } from "../models";
 import type { CareerVault, FitReport } from "../srs-models";
+import { buildCareerOptimizerReport } from "./career-intelligence";
 import { approvedEvidence } from "./career-vault";
 import { cleanMarkdown } from "../parsers/jd-extractor";
 import { matchExperience } from "./experience-matcher";
@@ -149,7 +150,7 @@ export function computeFitReport(
     });
   }
 
-  return {
+  const report: FitReport = {
     score,
     label,
     disclaimer:
@@ -181,6 +182,12 @@ export function computeFitReport(
       summary: experienceMatch.summary
     }
   };
+
+  if (vault) {
+    report.optimizer = buildCareerOptimizerReport(profile, jd, vault, report);
+  }
+
+  return report;
 }
 
 function buildApplyReadiness(input: {

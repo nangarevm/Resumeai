@@ -86,6 +86,57 @@ export interface FitReport {
     status: "meets" | "under" | "over" | "unknown";
     summary: string;
   };
+  optimizer?: CareerOptimizerReport;
+}
+
+export interface JdMatchBreakdown {
+  overall: number;
+  skillsMatch: number;
+  experienceMatch: number;
+  technologyMatch: number;
+  responsibilityMatch: number;
+  atsKeywordMatch: number;
+  educationCertMatch: number;
+}
+
+export interface RoleOpportunity {
+  role: string;
+  matchPercent: number;
+  why: string;
+  skillsToAdd?: string[];
+  category: "best_fit" | "adjacent" | "high_growth" | "quick_win";
+}
+
+export interface SkillGapItem {
+  skill: string;
+  level: "strong" | "improve" | "missing" | "emerging";
+  emoji: string;
+  whyItMatters: string;
+  marketNote: string;
+  priority: "High" | "Medium" | "Low";
+  learningApproach: string;
+  evidenceStrength?: string;
+}
+
+export interface CareerOptimizerReport {
+  jdMatch: JdMatchBreakdown;
+  careerOpportunityScore: number;
+  careerOpportunityLabel: string;
+  topStrengths: string[];
+  missingWeakSkills: string[];
+  marketTrends: {
+    fastGrowing: string[];
+    emerging: string[];
+    increasingDemand: string[];
+    declining: string[];
+    aiOpportunities: string[];
+  };
+  opportunities: RoleOpportunity[];
+  skillGapPlan: SkillGapItem[];
+  recommendedCvChanges: Array<{ area: string; change: string; truthful: boolean }>;
+  whyMoreCompetitive: string[];
+  nextBestActions: Array<{ title: string; detail: string; step: string }>;
+  summarySuggestion?: string;
 }
 
 export interface TailorSuggestion {

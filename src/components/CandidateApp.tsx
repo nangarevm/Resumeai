@@ -19,6 +19,7 @@ import { bandFromScore } from "@/lib/engines/outcome-tracker";
 import { applyAcceptedSuggestions } from "@/lib/engines/tailoring";
 import { buildWhatsAppBundle } from "@/lib/export/whatsapp-bundle";
 import CopyButton from "@/components/CopyButton";
+import OptimizerReportPanel from "@/components/OptimizerReportPanel";
 
 const STEPS = [
   { id: "vault", n: 1, title: "Career Vault", help: "Your source of truth. Import a resume. We only store what you provided." },
@@ -368,6 +369,79 @@ export default function CandidateApp() {
     setDraft(data.draft || workingDraft);
     setNotice(data.findings?.length ? "Resolve high-risk findings before export." : "No high-risk findings.");
     setStep("verify");
+  }
+
+  async function downloadCareerReport() {
+    const res = await fetch("/api/export-report", { method: "POST" });
+    if (!res.ok) {
+      setNotice("Analyze a job first to export the career report.");
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "resumeproof-career-report.md";
+    a.click();
+    setNotice("Career optimizer report downloaded (.md). Print to PDF from your editor if needed.");
+  }
+
+  async function buildOptimizedCv() {
+    setBusy(true);
+    const tailorData = await fetch("/api/tailor", { method: "POST" }).then((r) => r.json());
+    if (tailorData.error) {
+      setBusy(false);
+      setNotice(tailorData.error);
+      return;
+    }
+    setSuggestions(tailorData.suggestions);
+    const preview = applyAcceptedSuggestions(ws?.profile.rawResumeText || resumeText, tailorData.suggestions);
+    setDraft(preview);
+
+    const verifyData = await fetch("/api/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ suggestions: tailorData.suggestions, draft: preview })
+    }).then((r) => r.json());
+    setFindings(verifyData.findings || []);
+    const workingDraft = verifyData.draft || preview;
+    setDraft(workingDraft);
+
+    const blocking = (verifyData.findings || []).some(
+      (f: VerificationFinding) => f.risk === "high" && f.resolution === "open"
+    );
+    if (blocking) {
+      setBusy(false);
+      setNotice("Optimized CV paused — resolve high-risk claims on Verify, then build kit.");
+      setStep("verify");
+      return;
+    }
+
+    const kitRes = await fetch("/api/kit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ draft: workingDraft })
+    });
+    const kitData = await kitRes.json();
+    setBusy(false);
+    if (!kitRes.ok) {
+      setNotice(kitData.error || "Could not build application kit.");
+      setStep("verify");
+      return;
+    }
+    setKit(kitData);
+    setNotice("Optimized CV ready — tailored resume, cover letter, and exports in Application kit.");
+    setStep("kit");
+  }
+
+  function applySummarySuggestion() {
+    const summary = fit?.optimizer?.summarySuggestion;
+    if (!summary) return;
+    const base = draft || resumePreview || resumeText;
+    const withSummary = base.replace(/SUMMARY[\s\n]*[^\n]+/i, `SUMMARY\n${summary}`);
+    const next = /SUMMARY/i.test(base) ? withSummary : `SUMMARY\n${summary}\n\n${base}`;
+    setDraft(next);
+    setNotice("Summary line applied to draft — review and save.");
   }
 
   async function runKit() {
@@ -933,6 +1007,20 @@ export default function CandidateApp() {
                 {fit.experienceMatch.summary}
               </div>
             )}
+            {fit.optimizer && <OptimizerReportPanel report={fit.optimizer} />}
+            <div className="chips" style={{ marginTop: 16 }}>
+              <button className="btn-primary" type="button" disabled={busy} onClick={buildOptimizedCv}>
+                Build optimized CV (tailor → verify → kit)
+              </button>
+              <button className="btn-ghost" type="button" onClick={downloadCareerReport}>
+                Export career report
+              </button>
+              {fit.optimizer?.summarySuggestion && (
+                <button className="chip" type="button" onClick={applySummarySuggestion}>
+                  Apply summary suggestion
+                </button>
+              )}
+            </div>
             <h3>Do this next (not keyword stuffing)</h3>
             {(fit.nextActions || []).map((a) => (
               <p key={a.title}>
@@ -1076,9 +1164,23 @@ export default function CandidateApp() {
                 <p className="muted">Was: {r.original}</p>
                 <p>{r.rewritten}</p>
                 <p className="muted">{r.reason}</p>
-                <button className="chip" type="button" onClick={() => setDraft((d) => `${d || resumePreview}\n- ${r.rewritten}`)}>
-                  Append to draft
-                </button>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    className="chip"
+                    type="button"
+                    onClick={() => {
+                      const base = draft || resumePreview;
+                      const next = base.includes(r.original) ? base.replace(r.original, r.rewritten) : `${base}\n- ${r.rewritten}`;
+                      setDraft(next);
+                      setNotice("Rewrite applied to draft — re-scan before export.");
+                    }}
+                  >
+                    Apply to draft
+                  </button>
+                  <button className="chip" type="button" onClick={() => setDraft((d) => `${d || resumePreview}\n- ${r.rewritten}`)}>
+                    Append to draft
+                  </button>
+                </div>
               </article>
             ))}
             <textarea className="form-control" rows={12} value={draft || resumePreview} onChange={(e) => setDraft(e.target.value)} />
@@ -1163,7 +1265,17 @@ export default function CandidateApp() {
         {step === "kit" && (
           <section className="card">
             <h3>6. Application kit</h3>
-            {!kit && <p className="muted">Run verification, then build the kit.</p>}
+            {!kit && (
+              <>
+                <p className="muted">Build your evidence-bound kit: tailored resume, cover letter, recruiter email, and exports.</p>
+                <button className="btn-primary" disabled={busy} onClick={buildOptimizedCv}>
+                  Build optimized CV & kit
+                </button>
+                <button className="btn-ghost" disabled={busy} onClick={runKit} style={{ marginLeft: 8 }}>
+                  Build kit only (skip auto-tailor)
+                </button>
+              </>
+            )}
             {kit && (
               <>
                 <p className="muted">Copy beats download in India/WhatsApp-first hiring. Every block is evidence-bound.</p>

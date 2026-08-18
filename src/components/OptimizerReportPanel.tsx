@@ -1,0 +1,122 @@
+"use client";
+
+import type { CareerOptimizerReport } from "@/lib/srs-models";
+
+export default function OptimizerReportPanel({ report }: { report: CareerOptimizerReport }) {
+  return (
+    <div className="optimizer-report" style={{ marginTop: 20 }}>
+      <h3>AI Career & CV Optimizer</h3>
+      <p className="muted">Evidence-bound analysis — market signals are curated guides, not invented skills.</p>
+
+      <div className="metrics" style={{ marginTop: 12 }}>
+        <div className="metric">
+          <span>CAREER OPPORTUNITY</span>
+          <strong>{report.careerOpportunityScore}</strong>
+        </div>
+        <div className="metric">
+          <span>LABEL</span>
+          <strong>{report.careerOpportunityLabel}</strong>
+        </div>
+        <div className="metric">
+          <span>JD MATCH</span>
+          <strong>{report.jdMatch.overall}</strong>
+        </div>
+      </div>
+
+      <details open className="opt-section">
+        <summary>JD Match breakdown (spec-aligned)</summary>
+        <div className="grid-2" style={{ marginTop: 8 }}>
+          {(
+            [
+              ["Skills", report.jdMatch.skillsMatch],
+              ["Experience", report.jdMatch.experienceMatch],
+              ["Technology", report.jdMatch.technologyMatch],
+              ["Responsibilities", report.jdMatch.responsibilityMatch],
+              ["ATS keywords", report.jdMatch.atsKeywordMatch],
+              ["Education/Cert", report.jdMatch.educationCertMatch]
+            ] as const
+          ).map(([label, val]) => (
+            <div key={label}>
+              <span className="muted">{label}</span>
+              <div className="progress">
+                <span style={{ width: `${val}%` }} />
+              </div>
+              <strong>{val}%</strong>
+            </div>
+          ))}
+        </div>
+      </details>
+
+      <details className="opt-section">
+        <summary>Skill gap plan</summary>
+        <div style={{ marginTop: 8 }}>
+          {report.skillGapPlan.map((g) => (
+            <div key={g.skill} className="chain-item" style={{ marginBottom: 8 }}>
+              <strong>{g.emoji} {g.skill}</strong>
+              <span className={`badge ${g.priority === "High" ? "no" : g.priority === "Medium" ? "mid" : "ok"}`}>{g.priority}</span>
+              <p className="muted">{g.whyItMatters}</p>
+              <p className="muted">{g.marketNote}</p>
+              <p className="muted"><em>{g.learningApproach}</em></p>
+            </div>
+          ))}
+        </div>
+      </details>
+
+      <details className="opt-section">
+        <summary>Market intelligence (2026 curated)</summary>
+        <p className="muted" style={{ marginTop: 8 }}>
+          <strong>Fast-growing:</strong> {report.marketTrends.fastGrowing.join(", ")}
+        </p>
+        <p className="muted">
+          <strong>Emerging:</strong> {report.marketTrends.emerging.join(", ")}
+        </p>
+        <p className="muted">
+          <strong>In demand:</strong> {report.marketTrends.increasingDemand.join(", ")}
+        </p>
+        <p className="muted">
+          <strong>Declining emphasis:</strong> {report.marketTrends.declining.join(", ")}
+        </p>
+        <p className="muted">
+          <strong>AI opportunities:</strong> {report.marketTrends.aiOpportunities.join("; ")}
+        </p>
+      </details>
+
+      <details className="opt-section">
+        <summary>Opportunity detector</summary>
+        {report.opportunities.map((op) => (
+          <div key={op.role} className="chain-item" style={{ marginBottom: 8 }}>
+            <strong>{op.role}</strong> · {op.matchPercent}% · <span className="badge mid">{op.category.replace("_", " ")}</span>
+            <p className="muted">{op.why}</p>
+            {op.skillsToAdd?.length && <p className="muted">Skills to add: {op.skillsToAdd.join(", ")}</p>}
+          </div>
+        ))}
+      </details>
+
+      <details className="opt-section">
+        <summary>Recommended CV changes</summary>
+        {report.recommendedCvChanges.map((c, i) => (
+          <p key={i}>
+            <strong>{c.area}:</strong> {c.change}
+            {!c.truthful && <span className="badge mid"> verify first</span>}
+          </p>
+        ))}
+      </details>
+
+      {report.summarySuggestion && (
+        <div className="chain-item green" style={{ marginTop: 12 }}>
+          <strong>Suggested summary line</strong>
+          <p>{report.summarySuggestion}</p>
+        </div>
+      )}
+
+      <details className="opt-section">
+        <summary>Why this CV is more competitive</summary>
+        <ul className="muted" style={{ margin: "8px 0 0 18px" }}>
+          {report.whyMoreCompetitive.map((w) => (
+            <li key={w}>{w}</li>
+          ))}
+        </ul>
+      </details>
+    </div>
+  );
+}

@@ -281,7 +281,18 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .job-intel-panel {
   padding-top: 12px; border-top: 1px solid var(--border-color);
 }
-.agency-modal { max-height: 90vh; overflow: auto; }
+.opt-section {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+}
+.opt-section summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+}
 .job-library .chain-item { align-items: center; }
 
 @media print {
