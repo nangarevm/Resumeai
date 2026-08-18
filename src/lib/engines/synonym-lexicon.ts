@@ -13,7 +13,7 @@ const GROUPS: string[][] = [
   ["computer vision", "cv", "opencv", "object detection", "image detection", "traffic sign"],
   ["ai/ml project", "ai project", "ml project", "machine learning project", "prediction system", "disease prediction"],
   ["git", "github", "gitlab", "version control"],
-  ["playwright", "selenium", "cypress", "ui automation", "end-to-end", "e2e"],
+  ["playwright", "selenium", "cypress", "ui automation", "end-to-end", "e2e", "jbehave", "bdd"],
   ["jenkins", "github actions", "gitlab ci", "azure devops", "ci/cd", "pipeline"],
   ["postman", "rest api", "api testing", "supertest", "swagger"],
   ["jira", "zephyr", "testrail", "defect management"],

@@ -1,5 +1,6 @@
 import type { CandidateProfile, JobDescription } from "../models";
 import { extractEvidence } from "./evidence-engine";
+import { expandSynonyms } from "./synonym-lexicon";
 import type { CareerVault, TailorSuggestion } from "../srs-models";
 import { approvedEvidence } from "./career-vault";
 
@@ -61,7 +62,31 @@ export function applyAcceptedSuggestions(
 }
 
 function emphasizeRequirement(snippet: string, requirement: string): string {
-  const clean = snippet.replace(/^[-•*]\s*/, "").trim();
-  if (clean.toLowerCase().includes(requirement.toLowerCase())) return clean;
-  return `${clean} (relevant to ${requirement})`;
+  const clean = normalizeSnippet(snippet);
+  const lower = clean.toLowerCase();
+  const reqLower = requirement.toLowerCase().trim();
+
+  if (reqLower && lower.includes(reqLower)) return clean;
+
+  const synonyms = expandSynonyms(requirement);
+  const hasRelated = synonyms.some((s) => s.length >= 3 && lower.includes(s));
+  if (hasRelated) return clean;
+
+  // Never append "(relevant to X)" — that reads like the keyword is in the bullet when it isn't.
+  return clean;
+}
+
+/** Fix truncated snippets and broken parentheses from sentence splitting. */
+function normalizeSnippet(snippet: string): string {
+  let clean = snippet.replace(/^[-•*]\s*/, "").trim();
+  if (!clean) return clean;
+
+  // Drop trailing incomplete parenthetical (e.g. "...framework (JBehave,")
+  const open = (clean.match(/\(/g) || []).length;
+  const close = (clean.match(/\)/g) || []).length;
+  if (open > close) {
+    clean = clean.replace(/\([^)]*$/, "").replace(/[,;]\s*$/, "").trim();
+  }
+
+  return clean.replace(/\s{2,}/g, " ").trim();
 }

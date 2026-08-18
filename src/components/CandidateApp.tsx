@@ -141,10 +141,16 @@ export default function CandidateApp() {
   }, []);
 
   useEffect(() => {
-    if (step === "tracker" || step === "fit") {
-      void fetch("/api/outcomes").then((r) => r.json()).then(setOutcomes);
+    if (step === "verify" && notice.includes("Pre-tailoring")) {
+      setNotice("");
     }
-  }, [step, apps.length]);
+  }, [step]);
+
+  useEffect(() => {
+    if (step === "tailor" && !draft.trim() && (ws?.profile.rawResumeText || resumeText)) {
+      setDraft(applyAcceptedSuggestions(ws?.profile.rawResumeText || resumeText, suggestions));
+    }
+  }, [step, ws?.profile.rawResumeText, resumeText, suggestions]);
 
   const done = useMemo(
     () => ({
@@ -343,6 +349,8 @@ export default function CandidateApp() {
       return;
     }
     setSuggestions(data.suggestions);
+    const preview = applyAcceptedSuggestions(ws?.profile.rawResumeText || resumeText, data.suggestions);
+    setDraft(preview);
     setNotice("Pre-tailoring snapshot saved. Accept only what you can defend in an interview.");
     setStep("tailor");
   }
@@ -995,13 +1003,41 @@ export default function CandidateApp() {
           <section className="card">
             <h3>4. Evidence-based tailoring</h3>
             <p className="muted">A snapshot was saved automatically. Nothing is written into your resume until you accept it.</p>
+            {suggestions.length === 0 && <p className="muted">No suggestions yet — run Fit Score → Create tailoring suggestions.</p>}
             {suggestions.map((s, idx) => (
-              <article className={`chain-item ${s.blocked ? "red" : "yellow"}`} key={s.id}>
-                {s.blocked ? "⛔ Blocked" : `Confidence ${s.confidence}%`} · evidence {s.evidenceIds.join(", ") || "none"}
-                <p>{s.proposed}</p>
-                <p className="muted">{s.reason}</p>
-                {!s.blocked && (
-                  <div>
+              <article
+                className={`chain-item ${s.blocked ? "red" : s.status === "accepted" ? "green" : s.status === "rejected" ? "" : "yellow"}`}
+                key={s.id}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                  <span>
+                    {s.blocked ? "⛔ Blocked" : `Confidence ${s.confidence}%`} · evidence {s.evidenceIds.join(", ") || "none"}
+                  </span>
+                  <span className={`badge ${s.blocked ? "no" : s.status === "accepted" ? "ok" : s.status === "rejected" ? "mid" : "mid"}`}>
+                    {s.blocked ? "blocked" : s.status}
+                  </span>
+                </div>
+                {s.blocked ? (
+                  <>
+                    <p>{s.proposed}</p>
+                    <p className="muted">{s.reason}</p>
+                    <button
+                      className="chip"
+                      type="button"
+                      onClick={() => setSuggestions((list) => list.map((x, i) => (i === idx ? { ...x, status: "rejected" } : x)))}
+                    >
+                      Dismiss
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {s.original && s.original !== s.proposed && (
+                      <p className="muted" style={{ marginTop: 8 }}>
+                        <strong>Original:</strong> {s.original}
+                      </p>
+                    )}
+                    <p className="muted" style={{ marginTop: 6 }}>{s.reason}</p>
+                    <label className="form-label" style={{ marginTop: 8 }}>Suggested line (edit if needed)</label>
                     <textarea
                       className="form-control"
                       rows={2}
@@ -1011,15 +1047,22 @@ export default function CandidateApp() {
                       }
                     />
                     <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                      <button className="chip" onClick={() => setSuggestions((list) => list.map((x, i) => (i === idx ? { ...x, status: "accepted" } : x)))}>
+                      <button
+                        className="chip"
+                        type="button"
+                        onClick={() => {
+                          const next = suggestions.map((x, i) => (i === idx ? { ...x, status: "accepted" as const } : x));
+                          setSuggestions(next);
+                          setDraft(applyAcceptedSuggestions(ws?.profile.rawResumeText || resumeText, next));
+                        }}
+                      >
                         Accept
                       </button>
-                      <button className="chip" onClick={() => setSuggestions((list) => list.map((x, i) => (i === idx ? { ...x, status: "rejected" } : x)))}>
+                      <button className="chip" type="button" onClick={() => setSuggestions((list) => list.map((x, i) => (i === idx ? { ...x, status: "rejected" } : x)))}>
                         Reject
                       </button>
-                      <span className="badge mid">{s.status}</span>
                     </div>
-                  </div>
+                  </>
                 )}
               </article>
             ))}
@@ -1066,7 +1109,11 @@ export default function CandidateApp() {
         {step === "verify" && (
           <section className="card">
             <h3>5. Resume verification</h3>
-            {findings.length === 0 && <p>No high-risk unsupported claims found in this draft.</p>}
+            {findings.length === 0 && (
+              <p className="muted">
+                {draft.trim() ? "No high-risk unsupported claims found in this draft." : "Scan your tailored draft to check for unsupported claims."}
+              </p>
+            )}
             {findings.map((f, idx) => (
               <article className="chain-item red" key={f.id}>
                 <span className="badge no">{f.risk}</span> {f.claim}
@@ -1083,24 +1130,24 @@ export default function CandidateApp() {
             ))}
             <h3>Edit export resume</h3>
             <p className="muted">Fix lines here, re-scan, then export or build the application kit.</p>
-            <textarea className="form-control" rows={14} value={draft} onChange={(e) => setDraft(e.target.value)} />
+            <textarea className="form-control" rows={14} value={draft || resumePreview} onChange={(e) => setDraft(e.target.value)} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-              <button className="chip" type="button" disabled={busy} onClick={() => rescanDraft(draft)}>
+              <button className="chip" type="button" disabled={busy} onClick={() => rescanDraft(draft || resumePreview)}>
                 Re-scan draft
               </button>
-              <button className="chip" type="button" onClick={() => saveResumeDraft(draft)}>
+              <button className="chip" type="button" onClick={() => saveResumeDraft(draft || resumePreview)}>
                 Save draft
               </button>
-              <button className="chip" type="button" onClick={() => downloadResumeFile(draft, "txt")}>
+              <button className="chip" type="button" onClick={() => downloadResumeFile(draft || resumePreview, "txt")}>
                 Export .txt
               </button>
-              <button className="chip" type="button" onClick={() => downloadResumeFile(draft, "md")}>
+              <button className="chip" type="button" onClick={() => downloadResumeFile(draft || resumePreview, "md")}>
                 Export .md
               </button>
               <button className="chip" type="button" onClick={() => downloadDocx("resume")}>
                 Export .docx
               </button>
-              <CopyButton text={draft} label="Copy resume" />
+              <CopyButton text={draft || resumePreview} label="Copy resume" />
             </div>
             <label className="muted">
               <input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} /> I explicitly override remaining high-risk items

@@ -4,7 +4,8 @@ import { normalize, splitList } from "./text-normalizer";
 
 /** Skills we scan for inside long JD prose (responsibilities, qualifications blocks). */
 const SKILL_CATALOG: Array<{ label: string; patterns: RegExp[] }> = [
-  { label: "Playwright", patterns: [/\bplaywright\b/i] },
+  { label: "playwright", patterns: [/\bplaywright\b/i] },
+  { label: "JBehave", patterns: [/\bjbehave\b/i] },
   { label: "Selenium", patterns: [/\bselenium\b/i] },
   { label: "Cypress", patterns: [/\bcypress\b/i] },
   { label: "API testing", patterns: [/\bapi testing\b/i, /\brest api\b/i, /\brestful api\b/i] },

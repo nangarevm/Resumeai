@@ -54,6 +54,23 @@ describe("SRS v2 candidate engines", () => {
     expect(fit.scoreMovers.length).toBeGreaterThan(0);
   });
 
+  it("tailoring does not append misleading (relevant to X) on partial automation bullets", () => {
+    const resume = `NAME: Vivek
+WORK EXPERIENCE
+- Developed and maintained a Java BDD UI automation framework (JBehave, Selenium)
+SKILLS
+- Java, Selenium, API testing`;
+    const profile = parseResume("v", resume);
+    const jd = parseJD("j", "POSITION: SDET\nMANDATORY REQUIREMENTS:\n- Playwright\n- Python\n");
+    const suggestions = generateTailoringSuggestions(profile, jd, buildCareerVault(profile));
+    const playwrightSug = suggestions.find((s) => /playwright/i.test(s.reason) && !s.blocked);
+    if (playwrightSug) {
+      expect(playwrightSug.proposed).not.toMatch(/\(relevant to Playwright\)/i);
+      expect(playwrightSug.proposed).not.toMatch(/\(\s*$/);
+    }
+    expect(suggestions.some((s) => s.blocked && /Python/i.test(s.proposed))).toBe(true);
+  });
+
   it("tailoring blocks requirements with no evidence", () => {
     const profile = parseResume("1", RESUME);
     const jd = parseJD(
