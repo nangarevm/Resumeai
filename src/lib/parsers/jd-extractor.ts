@@ -251,7 +251,10 @@ function dedupeRequirements(list: Requirement[]): Requirement[] {
 
 function inferYearsRequirement(text: string): string | null {
   const m = text.match(/(\d+\s*[–-]\s*\d+|\d+\+)\s*years?(?:\s+of)?(?:\s+\w+){0,4}\s+(?:qa|testing|experience)/i);
-  if (m) return `${cleanMarkdown(m[0])} experience`;
+  if (m) {
+    const cleaned = cleanMarkdown(m[0]);
+    return /experience$/i.test(cleaned) ? cleaned : `${cleaned} experience`;
+  }
   const m2 = text.match(/\b(\d+\+)\s*years?\b/i);
   if (m2) return `${m2[1]}+ years experience`;
   return null;

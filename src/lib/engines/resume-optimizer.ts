@@ -124,7 +124,7 @@ function layerRewrite(candidate: CandidateProfile): OptimizerLayer {
   const bullets = collectBullets(candidate);
 
   for (const bullet of bullets) {
-    const inflated = FORBIDDEN_INVENTIONS.find((re) => re.test(bullet) && !/\d/.test(bullet));
+    const inflated = FORBIDDEN_INVENTIONS.find((re) => re.test(bullet));
     if (inflated) {
       chain.push({
         original: bullet,

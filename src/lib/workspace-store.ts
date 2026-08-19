@@ -23,17 +23,21 @@ function sanitizeUserId(id: string): string {
 
 function resolveActiveUserId(): string {
   if (process.env.RESUMEPROOF_WORKSPACE_USER) return process.env.RESUMEPROOF_WORKSPACE_USER;
-  if (activeUserId) return activeUserId;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { cookies } = require("next/headers") as typeof import("next/headers");
+    // cookies() is request-scoped (Next.js AsyncLocalStorage) — always trust it over
+    // the module-level activeUserId global when we're inside a request, since that
+    // global is shared process-wide and would otherwise leak one user's identity
+    // into a concurrent request from a different user.
     const jar = cookies();
     const authUser = jar.get("rp_user")?.value;
     if (authUser) return authUser;
     const guest = jar.get("rp_guest")?.value;
     if (guest) return guest;
   } catch {
-    /* outside request context (tests, scripts) */
+    /* outside request context (tests, scripts) — activeUserId is the only signal */
+    if (activeUserId) return activeUserId;
   }
   return "default";
 }
@@ -49,24 +53,25 @@ function resolveWorkspaceFile(): string {
 const LEGACY_FILE = path.join(process.cwd(), "data", "runtime", "workspace.json");
 
 let activeUserId: string | null = null;
-let cacheKey: string | null = null;
 
 interface WorkspaceFile {
   seeker: SeekerWorkspace;
   agency: AgencyWorkspace;
 }
 
-let cache: WorkspaceFile | null = null;
+// Keyed by resolved file path (one entry per user) instead of a single shared slot —
+// a single-slot cache let one request's load overwrite the in-memory copy another
+// concurrent request from a different user was about to save, corrupting either
+// user's data. Each user's entry is independent, so interleaved requests from
+// different users can no longer stomp on each other.
+const workspaceCache = new Map<string, WorkspaceFile>();
 
 export function setWorkspaceUserId(userId: string): void {
   activeUserId = sanitizeUserId(userId);
-  cache = null;
-  cacheKey = null;
 }
 
 export function resetWorkspaceCache(): void {
-  cache = null;
-  cacheKey = null;
+  workspaceCache.clear();
 }
 
 export function getWorkspaceFilePath(): string {
@@ -127,36 +132,36 @@ function ensureUsageMeters(agency: AgencyWorkspace): AgencyWorkspace["usageMeter
 
 function load(): WorkspaceFile {
   const file = resolveWorkspaceFile();
-  if (cache && cacheKey === file) return cache;
+  const cached = workspaceCache.get(file);
+  if (cached) return cached;
 
   try {
     if (fs.existsSync(file)) {
-      cache = JSON.parse(fs.readFileSync(file, "utf8")) as WorkspaceFile;
-      cacheKey = file;
-      return cache;
+      const ws = JSON.parse(fs.readFileSync(file, "utf8")) as WorkspaceFile;
+      workspaceCache.set(file, ws);
+      return ws;
     }
     if (file !== LEGACY_FILE && fs.existsSync(LEGACY_FILE) && resolveActiveUserId() === "default") {
-      cache = JSON.parse(fs.readFileSync(LEGACY_FILE, "utf8")) as WorkspaceFile;
-      cacheKey = file;
-      save();
-      return cache;
+      const ws = JSON.parse(fs.readFileSync(LEGACY_FILE, "utf8")) as WorkspaceFile;
+      workspaceCache.set(file, ws);
+      save(ws);
+      return ws;
     }
   } catch {
     /* ignore */
   }
-  cache = { seeker: defaultSeeker(), agency: defaultAgency() };
-  cacheKey = file;
-  save();
-  return cache;
+  const ws: WorkspaceFile = { seeker: defaultSeeker(), agency: defaultAgency() };
+  workspaceCache.set(file, ws);
+  save(ws);
+  return ws;
 }
 
-function save() {
-  if (!cache) return;
+function save(ws: WorkspaceFile) {
   const file = resolveWorkspaceFile();
   const dir = path.dirname(file);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(cache, null, 2));
-  cacheKey = file;
+  fs.writeFileSync(file, JSON.stringify(ws, null, 2));
+  workspaceCache.set(file, ws);
 }
 
 export function getSeeker(): SeekerWorkspace {
@@ -177,27 +182,27 @@ export function setSeekerProfile(profile: CandidateProfile): SeekerWorkspace {
     snapshot: profile.rawResumeText,
     createdAt: new Date().toISOString()
   });
-  save();
+  save(ws);
   return ws.seeker;
 }
 
 export function updateVault(patch: Partial<CareerVault>): CareerVault {
   const ws = load();
   ws.seeker.vault = { ...ws.seeker.vault, ...patch, updatedAt: new Date().toISOString() };
-  save();
+  save(ws);
   return ws.seeker.vault;
 }
 
 export function setActiveJob(job: JobDescription): void {
   const ws = load();
   ws.seeker.activeJob = job;
-  save();
+  save(ws);
 }
 
 export function setLastJobInput(input: JobInputSnapshot): void {
   const ws = load();
   ws.seeker.lastJobInput = input;
-  save();
+  save(ws);
 }
 
 export function saveJobToLibrary(entry: Omit<SavedJob, "id" | "savedAt"> & { id?: string }): SavedJob {
@@ -216,7 +221,7 @@ export function saveJobToLibrary(entry: Omit<SavedJob, "id" | "savedAt"> & { id?
   if (idx >= 0) ws.seeker.savedJobs[idx] = saved;
   else ws.seeker.savedJobs.unshift(saved);
   ws.seeker.savedJobs = ws.seeker.savedJobs.slice(0, 24);
-  save();
+  save(ws);
   return saved;
 }
 
@@ -224,7 +229,7 @@ export function deleteSavedJob(id: string): void {
   const ws = load();
   if (ws.seeker.savedJobs) {
     ws.seeker.savedJobs = ws.seeker.savedJobs.filter((j) => j.id !== id);
-    save();
+    save(ws);
   }
 }
 
@@ -232,7 +237,7 @@ export function incrementAgencyUsage(kind: "analyzesRun" | "candidatesAdded" | "
   const ws = load();
   const meters = ensureUsageMeters(ws.agency)!;
   meters[kind] += n;
-  save();
+  save(ws);
   return ws.agency;
 }
 
@@ -244,14 +249,14 @@ export function setFit(fit: FitReport): void {
     fit.delta = fit.score - previous;
   }
   ws.seeker.fit = fit;
-  save();
+  save(ws);
 }
 
 export function setEvidenceStatus(id: string, verificationStatus: CareerVault["evidence"][0]["verificationStatus"]): CareerVault {
   const ws = load();
   ws.seeker.vault.evidence = ws.seeker.vault.evidence.map((e) => (e.id === id ? { ...e, verificationStatus } : e));
   ws.seeker.vault.updatedAt = new Date().toISOString();
-  save();
+  save(ws);
   return ws.seeker.vault;
 }
 
@@ -262,20 +267,21 @@ export function exportWorkspace() {
 export function resetSeekerWorkspace(): SeekerWorkspace {
   const ws = load();
   ws.seeker = defaultSeeker();
-  save();
+  save(ws);
   return ws.seeker;
 }
 
 export function updateSeatNotes(clientId: string, notes: string): AgencyWorkspace {
   const ws = load();
   ws.agency.seats = ws.agency.seats.map((s) => (s.clientId === clientId ? { ...s, notes } : s));
-  save();
+  save(ws);
   return ws.agency;
 }
 
 export function setSuggestions(list: TailorSuggestion[]): void {
-  load().seeker.suggestions = list;
-  save();
+  const ws = load();
+  ws.seeker.suggestions = list;
+  save(ws);
 }
 
 export function snapshot(reason: string, snapshotText: string): ResumeVersion {
@@ -285,20 +291,22 @@ export function snapshot(reason: string, snapshotText: string): ResumeVersion {
     snapshot: snapshotText,
     createdAt: new Date().toISOString()
   };
-  load().seeker.versions.unshift(version);
-  save();
+  const ws = load();
+  ws.seeker.versions.unshift(version);
+  save(ws);
   return version;
 }
 
 export function setFindings(list: VerificationFinding[]): void {
-  load().seeker.findings = list;
-  save();
+  const ws = load();
+  ws.seeker.findings = list;
+  save(ws);
 }
 
 export function setTailoredDraft(text: string): string {
   const ws = load();
   ws.seeker.tailoredDraft = text;
-  save();
+  save(ws);
   return text;
 }
 
@@ -308,8 +316,9 @@ export function getTailoredDraft(fallback: string): string {
 }
 
 export function addApplication(app: ApplicationRecord): ApplicationRecord {
-  load().seeker.applications.unshift(app);
-  save();
+  const ws = load();
+  ws.seeker.applications.unshift(app);
+  save(ws);
   return app;
 }
 
@@ -318,14 +327,14 @@ export function updateApplication(id: string, patch: Partial<ApplicationRecord>)
   const row = ws.seeker.applications.find((a) => a.id === id);
   if (!row) return undefined;
   Object.assign(row, patch);
-  save();
+  save(ws);
   return row;
 }
 
 export function updateAgency(patch: Partial<AgencyWorkspace>): AgencyWorkspace {
   const ws = load();
   ws.agency = { ...ws.agency, ...patch };
-  save();
+  save(ws);
   return ws.agency;
 }
 
@@ -339,7 +348,7 @@ export function attachClientFromPool(candidateId: string): AgencyWorkspace {
       status: "Active",
       progress: "In review"
     });
-    save();
+    save(ws);
   }
   return ws.agency;
 }
