@@ -20,12 +20,16 @@ interface MarketCacheFile {
 
 const ROLE_SEARCH_QUERIES: Record<string, string[]> = {
   sdet: ["playwright", "api testing", "test automation"],
-  software_engineer: ["typescript", "react", "nodejs"],
-  ml_engineer: ["pytorch", "machine learning", "llm"],
+  software_engineer: ["typescript", "react", "ai agent"],
+  ml_engineer: ["pytorch", "llm agent", "rag pipeline"],
   backend_engineer: ["microservices", "rest api", "golang"],
   devops: ["kubernetes", "terraform", "ci cd"],
   data_analyst: ["pandas", "sql analytics", "data visualization"],
-  intern: ["python portfolio", "git github", "rest api"]
+  finance: ["financial modeling", "fintech api", "power bi"],
+  marketing: ["marketing analytics", "seo tools", "martech"],
+  renewable_energy: ["solar pv", "energy storage", "grid analytics"],
+  intern: ["python portfolio", "git github", "rest api"],
+  general: ["career development", "workplace ai tools", "professional certification"]
 };
 
 function readCache(): MarketCacheFile {

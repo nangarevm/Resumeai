@@ -11,9 +11,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST() {
   await bindWorkspaceUser();
-  const seeker = getSeeker();
+  const seeker = await getSeeker();
   if (!seeker.activeJob) return NextResponse.json({ error: "Analyze a job first." }, { status: 400 });
-  snapshot("Pre-tailoring snapshot", seeker.profile.rawResumeText);
+  await snapshot("Pre-tailoring snapshot", seeker.profile.rawResumeText);
 
   let suggestions = generateTailoringSuggestions(seeker.profile, seeker.activeJob, seeker.vault);
   suggestions = injectSummaryTailorSuggestion(seeker.profile, seeker.activeJob, seeker.fit, suggestions);
@@ -26,13 +26,14 @@ export async function POST() {
     tailoredPreview = applySummaryToResume(seeker.profile.rawResumeText, summarySug.proposed);
     summarySug.status = "accepted";
     summaryApplied = true;
-    setTailoredDraft(tailoredPreview);
+    await setTailoredDraft(tailoredPreview);
   }
 
-  setSuggestions(suggestions);
+  await setSuggestions(suggestions);
+  const updated = await getSeeker();
   return NextResponse.json({
     suggestions,
-    versionCount: getSeeker().versions.length,
+    versionCount: updated.versions.length,
     summaryApplied,
     summarySuggestion: summarySug?.proposed,
     tailoredPreview

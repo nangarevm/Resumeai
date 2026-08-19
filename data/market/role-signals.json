@@ -16,7 +16,7 @@
   },
   "software_engineer": {
     "label": "Software Engineer",
-    "titleHints": ["software", "developer", "engineer", "backend", "frontend"],
+    "titleHints": ["software engineer", "software developer", "frontend", "front-end", "full stack", "full-stack"],
     "fastGrowing": ["TypeScript", "cloud-native", "API design", "observability"],
     "emerging": ["AI pair programming", "platform engineering", "internal developer portals"],
     "increasingDemand": ["Python", "Go", "Kubernetes", "SQL", "system design"],
@@ -55,5 +55,100 @@
       { "role": "Junior Data Analyst", "overlapSkills": ["Python", "SQL", "Excel"] }
     ],
     "unlockSkills": ["one deployed portfolio project", "open-source contribution", "certification in core stack"]
+  },
+  "backend_engineer": {
+    "label": "Backend Engineer",
+    "titleHints": ["backend", "back-end", "api engineer", "server-side", "platform engineer"],
+    "fastGrowing": ["Go", "distributed systems", "event-driven architecture", "gRPC"],
+    "emerging": ["AI agent backends / tool-calling APIs", "edge computing", "serverless at scale"],
+    "increasingDemand": ["Go", "Kubernetes", "microservices", "REST/GraphQL APIs", "SQL/NoSQL"],
+    "declining": ["monolith-only backend without cloud/microservices exposure"],
+    "aiOpportunities": ["building LLM-backed APIs", "RAG service infrastructure"],
+    "adjacentRoles": [
+      { "role": "DevOps / Platform Engineer", "overlapSkills": ["Kubernetes", "CI/CD"] },
+      { "role": "Software Engineer", "overlapSkills": ["APIs", "system design"] }
+    ],
+    "unlockSkills": ["Kubernetes", "system design depth", "gRPC/GraphQL"]
+  },
+  "devops": {
+    "label": "DevOps / Platform Engineer",
+    "titleHints": ["devops", "platform engineer", "site reliability", "sre", "infrastructure engineer"],
+    "fastGrowing": ["Kubernetes", "Terraform", "GitOps", "observability (Datadog/Grafana)"],
+    "emerging": ["AI-assisted incident response", "platform engineering / internal developer portals", "policy-as-code"],
+    "increasingDemand": ["Kubernetes", "Terraform", "CI/CD", "cloud (AWS/Azure/GCP)", "observability"],
+    "declining": ["manual server provisioning without infrastructure-as-code"],
+    "aiOpportunities": ["AI-driven anomaly detection", "automated runbooks/copilots for on-call"],
+    "adjacentRoles": [
+      { "role": "Backend Engineer", "overlapSkills": ["APIs", "cloud"] },
+      { "role": "Cloud / Platform Architect", "overlapSkills": ["Terraform", "cloud"] }
+    ],
+    "unlockSkills": ["Terraform", "Kubernetes certification (CKA)", "observability tooling"]
+  },
+  "data_analyst": {
+    "label": "Data Analyst",
+    "titleHints": ["data analyst", "business analyst", "analytics", "reporting analyst", "bi analyst"],
+    "fastGrowing": ["SQL", "Python for analytics", "dashboarding (Power BI/Tableau)", "data storytelling"],
+    "emerging": ["AI-assisted analytics / natural-language BI queries", "embedded analytics"],
+    "increasingDemand": ["SQL", "Excel", "Power BI/Tableau", "Python (pandas)", "statistics"],
+    "declining": ["Excel-only reporting without SQL/BI tooling"],
+    "aiOpportunities": ["AI copilots for query generation", "automated anomaly detection in dashboards"],
+    "adjacentRoles": [
+      { "role": "Data Engineer", "overlapSkills": ["SQL", "pipelines"] },
+      { "role": "Business Analyst", "overlapSkills": ["reporting", "stakeholder communication"] }
+    ],
+    "unlockSkills": ["Python (pandas)", "Power BI/Tableau certification", "statistics fundamentals"]
+  },
+  "finance": {
+    "label": "Finance / Financial Analyst",
+    "titleHints": ["financial analyst", "finance", "accounting", "investment", "banking", "fp&a", "controller"],
+    "fastGrowing": ["Financial modeling", "Python for finance", "Power BI / data visualization", "ESG reporting"],
+    "emerging": ["AI-assisted forecasting", "RPA in finance ops", "real-time analytics dashboards"],
+    "increasingDemand": ["Excel/financial modeling", "SQL", "Power BI", "valuation", "forecasting"],
+    "declining": ["manual spreadsheet-only reporting without BI tooling"],
+    "aiOpportunities": ["AI copilots for variance analysis", "automated reconciliation"],
+    "adjacentRoles": [
+      { "role": "Business / Data Analyst", "overlapSkills": ["Excel", "SQL", "reporting"] },
+      { "role": "FP&A Analyst", "overlapSkills": ["forecasting", "financial modeling"] }
+    ],
+    "unlockSkills": ["SQL", "Power BI/Tableau", "Python for data analysis"]
+  },
+  "marketing": {
+    "label": "Marketing / Growth",
+    "titleHints": ["marketing", "growth", "brand", "content", "social media", "digital marketing", "seo"],
+    "fastGrowing": ["Performance marketing", "Marketing analytics", "AI content workflows", "GEO (generative engine optimization)"],
+    "emerging": ["AI-assisted content generation", "marketing automation with AI agents", "first-party data strategy"],
+    "increasingDemand": ["SEO", "content strategy", "Google Analytics", "marketing automation", "paid social"],
+    "declining": ["organic-only growth without paid/analytics skills"],
+    "aiOpportunities": ["AI copywriting workflows", "automated campaign optimization"],
+    "adjacentRoles": [
+      { "role": "Growth / Product Marketing", "overlapSkills": ["campaigns", "analytics"] },
+      { "role": "Content Strategist", "overlapSkills": ["SEO", "content"] }
+    ],
+    "unlockSkills": ["Google Analytics/GA4", "marketing automation tool (HubSpot/Marketo)", "basic SQL for reporting"]
+  },
+  "renewable_energy": {
+    "label": "Renewable Energy / Sustainability Engineering",
+    "titleHints": ["renewable", "solar", "photovoltaic", "wind energy", "sustainability", "energy systems", "clean energy"],
+    "fastGrowing": ["Battery storage systems", "Grid integration", "Solar PV design", "Energy modeling software"],
+    "emerging": ["AI-driven energy forecasting", "smart grid / IoT sensors", "green hydrogen"],
+    "increasingDemand": ["PVsyst/solar design tools", "AutoCAD", "energy systems modeling", "project permitting"],
+    "declining": ["fossil-fuel-only systems experience without renewables exposure"],
+    "aiOpportunities": ["AI-based yield forecasting", "predictive maintenance for turbines/panels"],
+    "adjacentRoles": [
+      { "role": "Sustainability Analyst", "overlapSkills": ["reporting", "ESG"] },
+      { "role": "Electrical Engineer", "overlapSkills": ["grid", "systems design"] }
+    ],
+    "unlockSkills": ["PVsyst/solar design certification", "grid integration basics", "project management (PMP)"]
+  },
+  "general": {
+    "label": "General / Cross-domain (role not confidently matched — generic guidance only)",
+    "titleHints": [],
+    "fastGrowing": ["AI literacy across roles", "data fluency (spreadsheets/SQL basics)", "cross-functional collaboration tools"],
+    "emerging": ["AI copilots becoming standard in most job functions"],
+    "increasingDemand": ["demonstrated project outcomes over keyword lists", "basic data/AI literacy"],
+    "declining": ["static, keyword-stuffed resumes without evidence"],
+    "aiOpportunities": ["using AI tools to speed up your own work, documented as a real project"],
+    "adjacentRoles": [],
+    "unlockSkills": ["one concrete, measurable project outcome in your field"]
   }
 }

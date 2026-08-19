@@ -21,55 +21,60 @@ function sanitizeUserId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
 }
 
-function resolveActiveUserId(): string {
+async function resolveActiveUserId(): Promise<string> {
   if (process.env.RESUMEPROOF_WORKSPACE_USER) return process.env.RESUMEPROOF_WORKSPACE_USER;
-  if (activeUserId) return activeUserId;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { cookies } = require("next/headers") as typeof import("next/headers");
-    const jar = cookies();
+    // cookies() is request-scoped (Next.js AsyncLocalStorage) — always trust it over
+    // the module-level activeUserId global when we're inside a request, since that
+    // global is shared process-wide and would otherwise leak one user's identity
+    // into a concurrent request from a different user.
+    const jar = await cookies();
     const authUser = jar.get("rp_user")?.value;
     if (authUser) return authUser;
     const guest = jar.get("rp_guest")?.value;
     if (guest) return guest;
   } catch {
-    /* outside request context (tests, scripts) */
+    /* outside request context (tests, scripts) — activeUserId is the only signal */
+    if (activeUserId) return activeUserId;
   }
   return "default";
 }
 
-function resolveWorkspaceFile(): string {
+async function resolveWorkspaceFile(): Promise<string> {
   if (process.env.RESUMEPROOF_WORKSPACE_FILE) {
     return process.env.RESUMEPROOF_WORKSPACE_FILE;
   }
-  const userId = sanitizeUserId(resolveActiveUserId());
+  const userId = sanitizeUserId(await resolveActiveUserId());
   return path.join(process.cwd(), "data", "users", userId, "workspace.json");
 }
 
 const LEGACY_FILE = path.join(process.cwd(), "data", "runtime", "workspace.json");
 
 let activeUserId: string | null = null;
-let cacheKey: string | null = null;
 
 interface WorkspaceFile {
   seeker: SeekerWorkspace;
   agency: AgencyWorkspace;
 }
 
-let cache: WorkspaceFile | null = null;
+// Keyed by resolved file path (one entry per user) instead of a single shared slot —
+// a single-slot cache let one request's load overwrite the in-memory copy another
+// concurrent request from a different user was about to save, corrupting either
+// user's data. Each user's entry is independent, so interleaved requests from
+// different users can no longer stomp on each other.
+const workspaceCache = new Map<string, WorkspaceFile>();
 
 export function setWorkspaceUserId(userId: string): void {
   activeUserId = sanitizeUserId(userId);
-  cache = null;
-  cacheKey = null;
 }
 
 export function resetWorkspaceCache(): void {
-  cache = null;
-  cacheKey = null;
+  workspaceCache.clear();
 }
 
-export function getWorkspaceFilePath(): string {
+export async function getWorkspaceFilePath(): Promise<string> {
   return resolveWorkspaceFile();
 }
 
@@ -125,50 +130,53 @@ function ensureUsageMeters(agency: AgencyWorkspace): AgencyWorkspace["usageMeter
   return agency.usageMeters;
 }
 
-function load(): WorkspaceFile {
-  const file = resolveWorkspaceFile();
-  if (cache && cacheKey === file) return cache;
+async function load(): Promise<WorkspaceFile> {
+  const file = await resolveWorkspaceFile();
+  const cached = workspaceCache.get(file);
+  if (cached) return cached;
 
   try {
-    if (fs.existsSync(file)) {
-      cache = JSON.parse(fs.readFileSync(file, "utf8")) as WorkspaceFile;
-      cacheKey = file;
-      return cache;
+    // file is always anchored under data/users/**, computed above — the ignore
+    // comments stop Turbopack from tracing (and bundling) the whole project just
+    // because the exact segment isn't statically known at build time.
+    if (fs.existsSync(/* turbopackIgnore: true */ file)) {
+      const ws = JSON.parse(fs.readFileSync(/* turbopackIgnore: true */ file, "utf8")) as WorkspaceFile;
+      workspaceCache.set(file, ws);
+      return ws;
     }
-    if (file !== LEGACY_FILE && fs.existsSync(LEGACY_FILE) && resolveActiveUserId() === "default") {
-      cache = JSON.parse(fs.readFileSync(LEGACY_FILE, "utf8")) as WorkspaceFile;
-      cacheKey = file;
-      save();
-      return cache;
+    if (file !== LEGACY_FILE && fs.existsSync(LEGACY_FILE) && (await resolveActiveUserId()) === "default") {
+      const ws = JSON.parse(fs.readFileSync(LEGACY_FILE, "utf8")) as WorkspaceFile;
+      workspaceCache.set(file, ws);
+      await save(ws);
+      return ws;
     }
   } catch {
     /* ignore */
   }
-  cache = { seeker: defaultSeeker(), agency: defaultAgency() };
-  cacheKey = file;
-  save();
-  return cache;
+  const ws: WorkspaceFile = { seeker: defaultSeeker(), agency: defaultAgency() };
+  workspaceCache.set(file, ws);
+  await save(ws);
+  return ws;
 }
 
-function save() {
-  if (!cache) return;
-  const file = resolveWorkspaceFile();
+async function save(ws: WorkspaceFile) {
+  const file = await resolveWorkspaceFile();
   const dir = path.dirname(file);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(cache, null, 2));
-  cacheKey = file;
+  fs.writeFileSync(file, JSON.stringify(ws, null, 2));
+  workspaceCache.set(file, ws);
 }
 
-export function getSeeker(): SeekerWorkspace {
-  return load().seeker;
+export async function getSeeker(): Promise<SeekerWorkspace> {
+  return (await load()).seeker;
 }
 
-export function getAgency(): AgencyWorkspace {
-  return load().agency;
+export async function getAgency(): Promise<AgencyWorkspace> {
+  return (await load()).agency;
 }
 
-export function setSeekerProfile(profile: CandidateProfile): SeekerWorkspace {
-  const ws = load();
+export async function setSeekerProfile(profile: CandidateProfile): Promise<SeekerWorkspace> {
+  const ws = await load();
   ws.seeker.profile = profile;
   ws.seeker.vault = buildCareerVault(profile, ws.seeker.vault.targetRole, ws.seeker.vault.goals);
   ws.seeker.versions.unshift({
@@ -177,31 +185,31 @@ export function setSeekerProfile(profile: CandidateProfile): SeekerWorkspace {
     snapshot: profile.rawResumeText,
     createdAt: new Date().toISOString()
   });
-  save();
+  await save(ws);
   return ws.seeker;
 }
 
-export function updateVault(patch: Partial<CareerVault>): CareerVault {
-  const ws = load();
+export async function updateVault(patch: Partial<CareerVault>): Promise<CareerVault> {
+  const ws = await load();
   ws.seeker.vault = { ...ws.seeker.vault, ...patch, updatedAt: new Date().toISOString() };
-  save();
+  await save(ws);
   return ws.seeker.vault;
 }
 
-export function setActiveJob(job: JobDescription): void {
-  const ws = load();
+export async function setActiveJob(job: JobDescription): Promise<void> {
+  const ws = await load();
   ws.seeker.activeJob = job;
-  save();
+  await save(ws);
 }
 
-export function setLastJobInput(input: JobInputSnapshot): void {
-  const ws = load();
+export async function setLastJobInput(input: JobInputSnapshot): Promise<void> {
+  const ws = await load();
   ws.seeker.lastJobInput = input;
-  save();
+  await save(ws);
 }
 
-export function saveJobToLibrary(entry: Omit<SavedJob, "id" | "savedAt"> & { id?: string }): SavedJob {
-  const ws = load();
+export async function saveJobToLibrary(entry: Omit<SavedJob, "id" | "savedAt"> & { id?: string }): Promise<SavedJob> {
+  const ws = await load();
   if (!ws.seeker.savedJobs) ws.seeker.savedJobs = [];
   const saved: SavedJob = {
     id: entry.id || `job-${Date.now()}`,
@@ -216,122 +224,126 @@ export function saveJobToLibrary(entry: Omit<SavedJob, "id" | "savedAt"> & { id?
   if (idx >= 0) ws.seeker.savedJobs[idx] = saved;
   else ws.seeker.savedJobs.unshift(saved);
   ws.seeker.savedJobs = ws.seeker.savedJobs.slice(0, 24);
-  save();
+  await save(ws);
   return saved;
 }
 
-export function deleteSavedJob(id: string): void {
-  const ws = load();
+export async function deleteSavedJob(id: string): Promise<void> {
+  const ws = await load();
   if (ws.seeker.savedJobs) {
     ws.seeker.savedJobs = ws.seeker.savedJobs.filter((j) => j.id !== id);
-    save();
+    await save(ws);
   }
 }
 
-export function incrementAgencyUsage(kind: "analyzesRun" | "candidatesAdded" | "shortlistsExported", n = 1): AgencyWorkspace {
-  const ws = load();
+export async function incrementAgencyUsage(kind: "analyzesRun" | "candidatesAdded" | "shortlistsExported", n = 1): Promise<AgencyWorkspace> {
+  const ws = await load();
   const meters = ensureUsageMeters(ws.agency)!;
   meters[kind] += n;
-  save();
+  await save(ws);
   return ws.agency;
 }
 
-export function setFit(fit: FitReport): void {
-  const ws = load();
+export async function setFit(fit: FitReport): Promise<void> {
+  const ws = await load();
   const previous = ws.seeker.fit?.score;
   if (typeof previous === "number") {
     fit.previousScore = previous;
     fit.delta = fit.score - previous;
   }
   ws.seeker.fit = fit;
-  save();
+  await save(ws);
 }
 
-export function setEvidenceStatus(id: string, verificationStatus: CareerVault["evidence"][0]["verificationStatus"]): CareerVault {
-  const ws = load();
+export async function setEvidenceStatus(id: string, verificationStatus: CareerVault["evidence"][0]["verificationStatus"]): Promise<CareerVault> {
+  const ws = await load();
   ws.seeker.vault.evidence = ws.seeker.vault.evidence.map((e) => (e.id === id ? { ...e, verificationStatus } : e));
   ws.seeker.vault.updatedAt = new Date().toISOString();
-  save();
+  await save(ws);
   return ws.seeker.vault;
 }
 
-export function exportWorkspace() {
+export async function exportWorkspace() {
   return load();
 }
 
-export function resetSeekerWorkspace(): SeekerWorkspace {
-  const ws = load();
+export async function resetSeekerWorkspace(): Promise<SeekerWorkspace> {
+  const ws = await load();
   ws.seeker = defaultSeeker();
-  save();
+  await save(ws);
   return ws.seeker;
 }
 
-export function updateSeatNotes(clientId: string, notes: string): AgencyWorkspace {
-  const ws = load();
+export async function updateSeatNotes(clientId: string, notes: string): Promise<AgencyWorkspace> {
+  const ws = await load();
   ws.agency.seats = ws.agency.seats.map((s) => (s.clientId === clientId ? { ...s, notes } : s));
-  save();
+  await save(ws);
   return ws.agency;
 }
 
-export function setSuggestions(list: TailorSuggestion[]): void {
-  load().seeker.suggestions = list;
-  save();
+export async function setSuggestions(list: TailorSuggestion[]): Promise<void> {
+  const ws = await load();
+  ws.seeker.suggestions = list;
+  await save(ws);
 }
 
-export function snapshot(reason: string, snapshotText: string): ResumeVersion {
+export async function snapshot(reason: string, snapshotText: string): Promise<ResumeVersion> {
   const version: ResumeVersion = {
     id: `ver-${Date.now()}`,
     reason,
     snapshot: snapshotText,
     createdAt: new Date().toISOString()
   };
-  load().seeker.versions.unshift(version);
-  save();
+  const ws = await load();
+  ws.seeker.versions.unshift(version);
+  await save(ws);
   return version;
 }
 
-export function setFindings(list: VerificationFinding[]): void {
-  load().seeker.findings = list;
-  save();
+export async function setFindings(list: VerificationFinding[]): Promise<void> {
+  const ws = await load();
+  ws.seeker.findings = list;
+  await save(ws);
 }
 
-export function setTailoredDraft(text: string): string {
-  const ws = load();
+export async function setTailoredDraft(text: string): Promise<string> {
+  const ws = await load();
   ws.seeker.tailoredDraft = text;
-  save();
+  await save(ws);
   return text;
 }
 
-export function getTailoredDraft(fallback: string): string {
-  const draft = load().seeker.tailoredDraft?.trim();
+export async function getTailoredDraft(fallback: string): Promise<string> {
+  const draft = (await load()).seeker.tailoredDraft?.trim();
   return draft || fallback;
 }
 
-export function addApplication(app: ApplicationRecord): ApplicationRecord {
-  load().seeker.applications.unshift(app);
-  save();
+export async function addApplication(app: ApplicationRecord): Promise<ApplicationRecord> {
+  const ws = await load();
+  ws.seeker.applications.unshift(app);
+  await save(ws);
   return app;
 }
 
-export function updateApplication(id: string, patch: Partial<ApplicationRecord>): ApplicationRecord | undefined {
-  const ws = load();
+export async function updateApplication(id: string, patch: Partial<ApplicationRecord>): Promise<ApplicationRecord | undefined> {
+  const ws = await load();
   const row = ws.seeker.applications.find((a) => a.id === id);
   if (!row) return undefined;
   Object.assign(row, patch);
-  save();
+  await save(ws);
   return row;
 }
 
-export function updateAgency(patch: Partial<AgencyWorkspace>): AgencyWorkspace {
-  const ws = load();
+export async function updateAgency(patch: Partial<AgencyWorkspace>): Promise<AgencyWorkspace> {
+  const ws = await load();
   ws.agency = { ...ws.agency, ...patch };
-  save();
+  await save(ws);
   return ws.agency;
 }
 
-export function attachClientFromPool(candidateId: string): AgencyWorkspace {
+export async function attachClientFromPool(candidateId: string): Promise<AgencyWorkspace> {
   const c = getCandidate(candidateId);
-  const ws = load();
+  const ws = await load();
   if (c && !ws.agency.seats.some((s) => s.clientId === c.id)) {
     ws.agency.seats.push({
       clientId: c.id,
@@ -339,7 +351,7 @@ export function attachClientFromPool(candidateId: string): AgencyWorkspace {
       status: "Active",
       progress: "In review"
     });
-    save();
+    await save(ws);
   }
   return ws.agency;
 }

@@ -9,13 +9,12 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const body = (await request.json()) as { suggestions?: TailorSuggestion[]; draft?: string };
-  const seeker = getSeeker();
-  if (body.suggestions) setSuggestions(body.suggestions);
-  const current = getSeeker();
+  if (body.suggestions) await setSuggestions(body.suggestions);
+  const current = await getSeeker();
   const auto = applyAcceptedSuggestions(current.profile.rawResumeText, current.suggestions);
   const draft = polishResumeDraft(typeof body.draft === "string" ? body.draft : auto);
-  setTailoredDraft(draft);
+  await setTailoredDraft(draft);
   const findings = scanVerification(draft, current.vault, current.profile);
-  setFindings(findings);
+  await setFindings(findings);
   return NextResponse.json({ findings, draft });
 }

@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Paste your LinkedIn profile text first." }, { status: 400 });
   }
 
-  const existing = body.merge ? getSeeker().profile.rawResumeText : "";
+  const existing = body.merge ? (await getSeeker()).profile.rawResumeText : "";
   const result = convertLinkedInProfile(body.paste, existing);
 
   if (!result.resumeText.trim()) {

@@ -5,17 +5,18 @@ import type { ApplicationRecord } from "@/lib/srs-models";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(getSeeker().applications);
+  const seeker = await getSeeker();
+  return NextResponse.json(seeker.applications);
 }
 
 export async function POST(request: Request) {
   const body = (await request.json()) as Partial<ApplicationRecord> & { id?: string };
   if (body.id) {
     if (body.status === "Applied" && !body.appliedAt) body.appliedAt = new Date().toISOString();
-    const updated = updateApplication(body.id, body);
+    const updated = await updateApplication(body.id, body);
     return NextResponse.json(updated);
   }
-  const seeker = getSeeker();
+  const seeker = await getSeeker();
   const fit = seeker.fit;
   const app: ApplicationRecord = {
     id: `app-${Date.now()}`,
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     referredBy: body.referredBy,
     referralUrl: body.referralUrl
   };
-  return NextResponse.json(addApplication(app));
+  return NextResponse.json(await addApplication(app));
 }
 
 function bandLabel(score: number): string {

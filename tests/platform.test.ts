@@ -42,8 +42,8 @@ describe("platform deep features", () => {
     expect(userIdFromEmail("user@example.com")).toMatch(/^user-/);
   });
 
-  it("workspace tests use isolated temp file", () => {
-    const path = getWorkspaceFilePath();
+  it("workspace tests use isolated temp file", async () => {
+    const path = await getWorkspaceFilePath();
     expect(path).toContain("resumeproof-test");
     expect(path).not.toContain("data/runtime/workspace.json");
   });
@@ -75,20 +75,20 @@ describe("platform deep features", () => {
     expect(updated).toMatch(/SUMMARY/i);
   });
 
-  it("per-user workspace path is separate from legacy", () => {
+  it("per-user workspace path is separate from legacy", async () => {
     const savedFile = process.env.RESUMEPROOF_WORKSPACE_FILE;
     delete process.env.RESUMEPROOF_WORKSPACE_FILE;
 
     resetWorkspaceCache();
     process.env.RESUMEPROOF_WORKSPACE_USER = "user-test-a";
-    setSeekerProfile(parseResume("a", "NAME: User A\nEMAIL: a@test.com\nSKILLS: Java"));
-    const pathA = getWorkspaceFilePath();
+    await setSeekerProfile(parseResume("a", "NAME: User A\nEMAIL: a@test.com\nSKILLS: Java"));
+    const pathA = await getWorkspaceFilePath();
     expect(fs.existsSync(pathA)).toBe(true);
 
     resetWorkspaceCache();
     process.env.RESUMEPROOF_WORKSPACE_USER = "user-test-b";
-    setSeekerProfile(parseResume("b", "NAME: User B\nEMAIL: b@test.com\nSKILLS: Go"));
-    const pathB = getWorkspaceFilePath();
+    await setSeekerProfile(parseResume("b", "NAME: User B\nEMAIL: b@test.com\nSKILLS: Go"));
+    const pathB = await getWorkspaceFilePath();
     expect(pathA).not.toBe(pathB);
     const contentB = fs.readFileSync(pathB, "utf8");
     expect(contentB).toContain("User B");

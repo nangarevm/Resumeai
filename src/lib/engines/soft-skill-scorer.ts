@@ -18,13 +18,30 @@ const AI_HINTS = [
   "machine learning",
   "artificial intelligence",
   "llm",
+  "large language model",
   "generative ai",
   "deep learning",
   "nlp",
   "computer vision",
   "mlops",
   "pytorch",
-  "tensorflow"
+  "tensorflow",
+  "ai agent",
+  "agentic",
+  "rag",
+  "retrieval augmented generation",
+  "vector database",
+  "embeddings",
+  "prompt engineering",
+  "langchain",
+  "langgraph",
+  "fine-tuning",
+  "gpt",
+  "claude",
+  "gemini",
+  "openai",
+  "anthropic",
+  "copilot"
 ];
 
 export function scoreSoftSkillDimensions(

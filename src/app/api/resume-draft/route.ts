@@ -8,7 +8,7 @@ import type { TailorSuggestion } from "@/lib/srs-models";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const seeker = getSeeker();
+  const seeker = await getSeeker();
   const preview = applyAcceptedSuggestions(seeker.profile.rawResumeText, seeker.suggestions);
   return NextResponse.json({
     source: seeker.profile.rawResumeText,
@@ -24,10 +24,9 @@ export async function POST(request: Request) {
     action?: "preview" | "save" | "rescan";
   };
 
-  const seeker = getSeeker();
-  if (body.suggestions) setSuggestions(body.suggestions);
+  if (body.suggestions) await setSuggestions(body.suggestions);
 
-  const current = getSeeker();
+  const current = await getSeeker();
   const auto = applyAcceptedSuggestions(current.profile.rawResumeText, current.suggestions);
   const draft = polishResumeDraft(typeof body.draft === "string" ? body.draft : auto);
 
@@ -36,15 +35,15 @@ export async function POST(request: Request) {
   }
 
   if (body.action === "save") {
-    setTailoredDraft(draft);
-    snapshot("Tailored resume draft", draft);
+    await setTailoredDraft(draft);
+    await snapshot("Tailored resume draft", draft);
     return NextResponse.json({ draft, saved: true });
   }
 
   if (body.action === "rescan") {
-    setTailoredDraft(draft);
+    await setTailoredDraft(draft);
     const findings = scanVerification(draft, current.vault, current.profile);
-    setFindings(findings);
+    await setFindings(findings);
     return NextResponse.json({ draft, findings });
   }
 

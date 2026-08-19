@@ -16,7 +16,7 @@ export async function bindWorkspaceUser(): Promise<string> {
     return session.user.id;
   }
 
-  const jar = cookies();
+  const jar = await cookies();
   const guest = jar.get("rp_guest")?.value;
   if (guest) {
     setWorkspaceUserId(guest);

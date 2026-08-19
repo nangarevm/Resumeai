@@ -14,7 +14,11 @@ const GROUPS: string[][] = [
   ["ai/ml project", "ai project", "ml project", "machine learning project", "prediction system", "disease prediction"],
   ["git", "github", "gitlab", "version control"],
   ["playwright", "selenium", "cypress", "ui automation", "end-to-end", "e2e", "jbehave", "bdd"],
-  ["jenkins", "github actions", "gitlab ci", "azure devops", "ci/cd", "pipeline"],
+  // Bare "pipeline" deliberately excluded — it's domain-ambiguous (CI/CD pipeline,
+  // data pipeline, RAG pipeline, sales pipeline...) and matching it here made any
+  // requirement mentioning e.g. "RAG pipelines" spuriously match CI/CD evidence.
+  // "ci/cd" alone already covers legitimate "CI/CD pipeline" phrasing.
+  ["jenkins", "github actions", "gitlab ci", "azure devops", "ci/cd"],
   ["postman", "rest api", "api testing", "supertest", "swagger"],
   ["jira", "zephyr", "testrail", "defect management"],
   ["manual testing", "automation testing", "test automation", "qa", "quality assurance"],
@@ -30,7 +34,18 @@ const GROUPS: string[][] = [
   ["solidworks", "cad", "autocad", "3d modeling"],
   ["solar", "photovoltaic", "pv", "pv system", "renewable energy"],
   ["communication", "stakeholder", "presentation", "client communication"],
-  ["leadership", "led a team", "mentored", "people management"]
+  ["leadership", "led a team", "mentored", "people management"],
+  ["llm", "large language model", "gpt", "claude", "gemini", "openai api", "anthropic api", "chatgpt"],
+  ["ai agent", "agentic", "agentic ai", "ai agents", "autonomous agent", "tool calling", "function calling", "mcp", "model context protocol"],
+  ["rag", "retrieval augmented generation", "vector database", "vector db", "embeddings", "pinecone", "weaviate", "chroma", "faiss"],
+  ["prompt engineering", "prompt design", "few-shot prompting", "system prompt"],
+  ["langchain", "langgraph", "llamaindex", "semantic kernel"],
+  ["fine-tuning", "fine tuning", "lora", "rlhf", "instruction tuning"],
+  ["kubernetes", "k8s", "helm", "eks", "gke", "aks"],
+  ["terraform", "infrastructure as code", "iac", "pulumi"],
+  ["graphql", "apollo", "grpc"],
+  ["golang", "go lang"],
+  ["rust", "rustlang"]
 ];
 
 function tokenize(value: string): string[] {

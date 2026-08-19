@@ -5,7 +5,7 @@ import { getSeeker } from "@/lib/workspace-store";
 export const dynamic = "force-dynamic";
 
 export async function POST() {
-  const seeker = getSeeker();
+  const seeker = await getSeeker();
   if (!seeker.activeJob) return NextResponse.json({ error: "Analyze a job first." }, { status: 400 });
   const rewrites = strengthenBullets(seeker.profile, seeker.activeJob, seeker.vault);
   return NextResponse.json({

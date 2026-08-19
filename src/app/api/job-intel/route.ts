@@ -37,11 +37,11 @@ export async function POST(request: Request) {
   const family = resolveRoleFamily(jd.title, jd.domain);
   const liveMarket = await fetchLiveMarketOverlay(family, jd.title);
 
-  const seeker = getSeeker();
+  const seeker = await getSeeker();
   const fit = computeFitReport(seeker.profile, jd, seeker.vault);
-  setActiveJob(jd);
-  setFit(fit);
-  setLastJobInput({ jobUrl: body.jobUrl || "", jdText: body.jdText || "" });
+  await setActiveJob(jd);
+  await setFit(fit);
+  await setLastJobInput({ jobUrl: body.jobUrl || "", jdText: body.jdText || "" });
   return NextResponse.json({
     job: jd,
     fit,

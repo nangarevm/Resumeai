@@ -2,9 +2,21 @@ import type { CandidateProfile, Evidence, EvidenceStrengthName, JobDescription, 
 import { allRequirements, EVIDENCE_STRENGTH } from "../models";
 import { classifyContext } from "./context-engine";
 import { expandSynonyms } from "./synonym-lexicon";
-import { splitSentences } from "../parsers/text-normalizer";
+import { splitList, splitSentences } from "../parsers/text-normalizer";
 
 const SECTION_KEYS = ["PROJECTS", "WORK_EXPERIENCE", "SKILLS", "SUMMARY", "EDUCATION", "CERTIFICATIONS"];
+const LIST_LIKE_SECTIONS = new Set(["SKILLS", "CERTIFICATIONS"]);
+
+/** A flat "Python, Playwright, SQL, Git" skills line is one sentence to splitSentences.
+ *  Break it into individual items so evidence snippets point at the matched skill,
+ *  not the whole line. */
+function candidateSnippets(secKey: string, rawSentence: string): string[] {
+  if (LIST_LIKE_SECTIONS.has(secKey)) {
+    const items = splitList(rawSentence);
+    if (items.length > 1) return items;
+  }
+  return [rawSentence];
+}
 
 export function extractEvidence(candidate: CandidateProfile, jd: JobDescription): Evidence[] {
   return allRequirements(jd).map((req) => findEvidenceForRequirement(candidate, req));
@@ -24,17 +36,19 @@ export function findEvidenceForRequirement(candidate: CandidateProfile, req: Req
     const content = sections[secKey];
     if (!content) continue;
 
-    for (const sentence of splitSentences(content)) {
-      const lower = sentence.toLowerCase();
-      for (const kw of keywords) {
-        if (!kw || !keywordPresent(lower, kw)) continue;
-        const strength = classifyContext(sentence, secKey, kw);
-        if (isStronger(strength, bestStrength)) {
-          bestStrength = strength;
-          bestSnippet = sentence;
-          bestSection = formatSectionName(secKey);
-          bestNote = generateContextNote(req.name, strength, secKey);
-          confidence = calculateConfidence(strength, secKey);
+    for (const rawSentence of splitSentences(content)) {
+      for (const sentence of candidateSnippets(secKey, rawSentence)) {
+        const lower = sentence.toLowerCase();
+        for (const kw of keywords) {
+          if (!kw || !keywordPresent(lower, kw)) continue;
+          const strength = classifyContext(sentence, secKey, kw);
+          if (isStronger(strength, bestStrength)) {
+            bestStrength = strength;
+            bestSnippet = sentence;
+            bestSection = formatSectionName(secKey);
+            bestNote = generateContextNote(req.name, strength, secKey);
+            confidence = calculateConfidence(strength, secKey);
+          }
         }
       }
     }

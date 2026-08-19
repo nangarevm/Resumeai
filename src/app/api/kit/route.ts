@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   await bindWorkspaceUser();
   const body = (await request.json()) as { override?: boolean; draft?: string };
-  const seeker = getSeeker();
+  const seeker = await getSeeker();
   if (!seeker.activeJob) return NextResponse.json({ error: "Analyze a job first." }, { status: 400 });
   if (hasBlockingFindings(seeker.findings) && !body.override) {
     return NextResponse.json(
