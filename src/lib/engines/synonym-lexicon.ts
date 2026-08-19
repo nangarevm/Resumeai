@@ -14,7 +14,11 @@ const GROUPS: string[][] = [
   ["ai/ml project", "ai project", "ml project", "machine learning project", "prediction system", "disease prediction"],
   ["git", "github", "gitlab", "version control"],
   ["playwright", "selenium", "cypress", "ui automation", "end-to-end", "e2e", "jbehave", "bdd"],
-  ["jenkins", "github actions", "gitlab ci", "azure devops", "ci/cd", "pipeline"],
+  // Bare "pipeline" deliberately excluded — it's domain-ambiguous (CI/CD pipeline,
+  // data pipeline, RAG pipeline, sales pipeline...) and matching it here made any
+  // requirement mentioning e.g. "RAG pipelines" spuriously match CI/CD evidence.
+  // "ci/cd" alone already covers legitimate "CI/CD pipeline" phrasing.
+  ["jenkins", "github actions", "gitlab ci", "azure devops", "ci/cd"],
   ["postman", "rest api", "api testing", "supertest", "swagger"],
   ["jira", "zephyr", "testrail", "defect management"],
   ["manual testing", "automation testing", "test automation", "qa", "quality assurance"],
