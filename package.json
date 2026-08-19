@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.119.0",
     "@react-pdf/renderer": "^4.6.1",
     "docx": "^9.7.1",
     "jose": "^6.2.9",

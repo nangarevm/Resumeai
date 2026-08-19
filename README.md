@@ -61,6 +61,10 @@ Then open the app (on this cloud VM the public preview is a tunnel; on your own 
 | Seamless Build optimized CV (tailor→verify→kit) | Done | Fit + Kit steps, `CandidateApp` |
 | Evidence engines, claim checks, GitHub proof, ATS | Done | Agency modal + `/api/*` |
 | API smoke tests | Done | `tests/api.test.ts` |
+| Any-field market coverage (22 role families: healthcare, education, legal, hospitality, sales, trades, logistics, manufacturing, creative, admin, support, HR, + tech/finance/marketing) | Done | `data/market/role-signals.json`, `market-intelligence.ts` |
+| AI/agent-era skill vocabulary (LLM, RAG, AI agents, MCP, LangChain, Kubernetes, Terraform, Go, Rust) | Done | `synonym-lexicon.ts`, `jd-extractor.ts` |
+| Free-form AI cover letter / summary generator (opt-in, clearly labeled, not evidence-checked — see Product rule) | Done | Kit step 6, `/api/ai-generate` (needs `ANTHROPIC_API_KEY`) |
+| Email application directly to a recruiter | Done | Kit step 6 — opens the user's own email client with recipient/subject/cover letter filled in (no SMTP needed; resume is attached manually since browsers can't attach files from JS) |
 
 ## What is left (Phase 2–3 / deferred)
 
@@ -74,10 +78,18 @@ Then open the app (on this cloud VM the public preview is a tunnel; on your own 
 | University SSO, enterprise RBAC, custom domains | Phase 3 |
 | Resume native paginated PDF | Career report PDF done; resume still print CSS |
 | Full 13-section DOCX career report | Markdown + PDF report; resume/cover DOCX separate |
-| LLM summary tailor / grading | Optional Phase D |
+| Server-side email sending (SMTP/API) | "Email to recruiter" currently opens the user's own email client instead |
 | Human Expert Review add-on | Marketplace / ops |
 | WCAG audit | Improvement backlog |
 
 ## Product rule
 
-ResumeProof can rephrase real work. It will not invent schools, employers, certificates, projects, metrics, or tech stacks.
+The default path is evidence-bound: ResumeProof can rephrase real work, but every automatic rewrite, suggestion, and export
+is built only from your Career Vault. It will not invent schools, employers, certificates, projects, metrics, or tech stacks
+on that path.
+
+One explicit exception: the optional "Generate with AI" button in the Application kit step calls an LLM with a free-form
+prompt to draft a cover letter or summary. That text is *not* evidence-checked — it's labeled as an AI draft in the UI,
+shown separately from the evidence-bound cover letter, and the user is told to review it before sending. It exists because
+that's what most competing tools do by default; here it's opt-in and clearly marked as the one place ResumeProof isn't
+vouching for what was written.

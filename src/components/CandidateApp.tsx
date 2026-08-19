@@ -103,6 +103,13 @@ export default function CandidateApp() {
   const [analyzedInputKey, setAnalyzedInputKey] = useState("");
   const [importMode, setImportMode] = useState<ImportMode>("paste");
   const [onboardingDismissed, setOnboardingDismissed] = useState(true);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiCoverLetter, setAiCoverLetter] = useState("");
+  const [aiSummary, setAiSummary] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [recruiterEmail, setRecruiterEmail] = useState("");
+  const [recruiterEmailSubject, setRecruiterEmailSubject] = useState("");
 
   const currentJobInputKey = useMemo(() => jobInputKey(jobUrl, jdText), [jobUrl, jdText]);
   const jobIntelStale = Boolean(job && analyzedInputKey && analyzedInputKey !== currentJobInputKey);
@@ -543,6 +550,41 @@ export default function CandidateApp() {
     a.href = url;
     a.download = kind === "resume" ? "tailored-resume.docx" : "cover-letter.docx";
     a.click();
+  }
+
+  async function generateAiText(kind: "cover_letter" | "summary") {
+    setAiBusy(true);
+    setAiError("");
+    const res = await fetch("/api/ai-generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind, prompt: aiPrompt || undefined })
+    });
+    const data = await res.json();
+    setAiBusy(false);
+    if (!res.ok) {
+      setAiError(data.error || "AI generation failed.");
+      return;
+    }
+    if (kind === "cover_letter") setAiCoverLetter(data.text);
+    else setAiSummary(data.text);
+  }
+
+  function emailToRecruiter() {
+    if (!recruiterEmail.trim()) {
+      setNotice("Add the recruiter's email address first.");
+      return;
+    }
+    const subject = recruiterEmailSubject || `${ws?.profile.name || "Application"} — ${job?.title || "Application"}`;
+    const coverText = aiCoverLetter || kit?.shortCover || kit?.coverLetter || "";
+    const body = [
+      coverText,
+      "",
+      "— Resume attached separately. Download it from the Application kit step (DOCX or ZIP apply pack) and attach it here before sending. —"
+    ].join("\n");
+    const mailto = `mailto:${encodeURIComponent(recruiterEmail.trim())}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+    setNotice("Opening your email app — attach the downloaded resume before sending.");
   }
 
   async function runRewrite() {
@@ -1350,6 +1392,37 @@ export default function CandidateApp() {
                 <button className="btn-ghost" onClick={() => window.print()} style={{ marginLeft: 8 }}>
                   Print / PDF
                 </button>
+
+                <h3>Email to recruiter</h3>
+                <p className="muted">
+                  Opens your own email app with the recipient, subject, and cover letter filled in. We can&apos;t attach files
+                  from the browser — download the resume above (DOCX or Apply pack) and attach it before you hit send.
+                </p>
+                <div className="form-grid">
+                  <div>
+                    <label className="form-label">Recruiter&apos;s email</label>
+                    <input
+                      className="form-control"
+                      type="email"
+                      value={recruiterEmail}
+                      onChange={(e) => setRecruiterEmail(e.target.value)}
+                      placeholder="recruiter@company.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Subject (optional)</label>
+                    <input
+                      className="form-control"
+                      value={recruiterEmailSubject}
+                      onChange={(e) => setRecruiterEmailSubject(e.target.value)}
+                      placeholder={`${ws?.profile.name || "Your name"} — ${job?.title || "Job title"}`}
+                    />
+                  </div>
+                </div>
+                <button className="btn-primary" type="button" onClick={emailToRecruiter} style={{ marginTop: 8 }}>
+                  Open email to send
+                </button>
+
                 <h3>
                   3-line cover <CopyButton text={kit.shortCover} />
                 </h3>
@@ -1370,6 +1443,66 @@ export default function CandidateApp() {
                   Cover letter <CopyButton text={kit.coverLetter} />
                 </h3>
                 <pre className="pre">{kit.coverLetter}</pre>
+
+                <h3>✨ Generate with AI (optional)</h3>
+                <div className="banner">
+                  <strong>AI-generated draft — not evidence-checked</strong>
+                  <p className="muted" style={{ marginTop: 6 }}>
+                    Unlike everything else in ResumeProof, this text is written by AI from a prompt, not assembled only from
+                    your Career Vault. It can phrase things persuasively — read it carefully and remove anything you can&apos;t
+                    back up in an interview before you send it.
+                  </p>
+                </div>
+                <label className="form-label" style={{ marginTop: 8 }}>
+                  Tell the AI what to emphasize (optional)
+                </label>
+                <input
+                  className="form-control"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="e.g. emphasize my leadership and the 200+ endpoint automation project"
+                />
+                <div style={{ marginTop: 8 }}>
+                  <button className="btn-primary" type="button" disabled={aiBusy} onClick={() => generateAiText("cover_letter")}>
+                    {aiBusy ? "Generating…" : "Generate AI cover letter"}
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    type="button"
+                    disabled={aiBusy}
+                    onClick={() => generateAiText("summary")}
+                    style={{ marginLeft: 8 }}
+                  >
+                    {aiBusy ? "Generating…" : "Generate AI summary line"}
+                  </button>
+                </div>
+                {aiError && (
+                  <p className="muted" style={{ color: "#f87171", marginTop: 8 }}>
+                    {aiError}
+                  </p>
+                )}
+                {aiCoverLetter && (
+                  <>
+                    <h4 style={{ marginTop: 12 }}>
+                      AI cover letter draft <CopyButton text={aiCoverLetter} />
+                    </h4>
+                    <textarea
+                      className="form-control"
+                      rows={10}
+                      value={aiCoverLetter}
+                      onChange={(e) => setAiCoverLetter(e.target.value)}
+                    />
+                  </>
+                )}
+                {aiSummary && (
+                  <>
+                    <h4 style={{ marginTop: 12 }}>
+                      AI summary draft <CopyButton text={aiSummary} />
+                    </h4>
+                    <textarea className="form-control" rows={3} value={aiSummary} onChange={(e) => setAiSummary(e.target.value)} />
+                  </>
+                )}
+
                 <h3>
                   Thank-you note (24h) <CopyButton text={kit.thankYouNote} />
                 </h3>
