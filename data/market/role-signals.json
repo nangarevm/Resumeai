@@ -1,0 +1,59 @@
+{
+  "sdet": {
+    "label": "SDET / QA Automation",
+    "titleHints": ["sdet", "qa", "quality", "test engineer", "automation"],
+    "fastGrowing": ["Playwright", "API contract testing", "CI/CD pipelines", "GitHub Actions"],
+    "emerging": ["AI-assisted test generation", "observability in QA", "shift-left security testing"],
+    "increasingDemand": ["Playwright", "TypeScript", "API automation", "microservices testing", "Docker"],
+    "declining": ["manual-only QA roles", "record-and-replay without code", "waterfall test plans"],
+    "aiOpportunities": ["test copilots for regression triage", "LLM-based log analysis in CI"],
+    "adjacentRoles": [
+      { "role": "Backend Engineer (API-heavy)", "overlapSkills": ["API testing", "CI/CD", "Python", "Java"] },
+      { "role": "DevOps / Platform Engineer", "overlapSkills": ["CI/CD", "Jenkins", "Docker", "pipelines"] },
+      { "role": "Performance Engineer", "overlapSkills": ["JMeter", "automation", "API testing"] }
+    ],
+    "unlockSkills": ["Kubernetes basics", "contract testing (Pact)", "observability (Datadog/Grafana)"]
+  },
+  "software_engineer": {
+    "label": "Software Engineer",
+    "titleHints": ["software", "developer", "engineer", "backend", "frontend"],
+    "fastGrowing": ["TypeScript", "cloud-native", "API design", "observability"],
+    "emerging": ["AI pair programming", "platform engineering", "internal developer portals"],
+    "increasingDemand": ["Python", "Go", "Kubernetes", "SQL", "system design"],
+    "declining": ["monolith-only maintenance without cloud exposure"],
+    "aiOpportunities": ["AI feature integration", "RAG pipelines for internal tools"],
+    "adjacentRoles": [
+      { "role": "SDET / Automation Engineer", "overlapSkills": ["Python", "API", "CI/CD", "testing"] },
+      { "role": "Data Engineer", "overlapSkills": ["Python", "SQL", "pipelines"] }
+    ],
+    "unlockSkills": ["system design", "cloud certification (AWS/Azure)", "distributed systems"]
+  },
+  "ml_engineer": {
+    "label": "ML / AI Engineer",
+    "titleHints": ["ml", "machine learning", "ai", "data scientist"],
+    "fastGrowing": ["MLOps", "LLM fine-tuning", "feature stores", "model monitoring"],
+    "emerging": ["RAG", "vector databases", "responsible AI / guardrails"],
+    "increasingDemand": ["Python", "PyTorch", "scikit-learn", "SQL", "experiment tracking"],
+    "declining": ["notebook-only ML without deployment path"],
+    "aiOpportunities": ["applied ML on product data", "LLM evaluation pipelines"],
+    "adjacentRoles": [
+      { "role": "Data Analyst", "overlapSkills": ["Python", "SQL", "statistics"] },
+      { "role": "MLOps Engineer", "overlapSkills": ["Python", "CI/CD", "Docker"] }
+    ],
+    "unlockSkills": ["MLOps (MLflow/Kubeflow)", "cloud ML services", "statistics depth"]
+  },
+  "intern": {
+    "label": "Intern / Early career",
+    "titleHints": ["intern", "trainee", "graduate", "fresher"],
+    "fastGrowing": ["Python", "Git", "cloud basics", "API fundamentals"],
+    "emerging": ["AI literacy", "prompt engineering for productivity"],
+    "increasingDemand": ["projects with public repos", "REST APIs", "SQL", "collaboration tools"],
+    "declining": ["unstructured 'familiar with' skill lists without projects"],
+    "aiOpportunities": ["portfolio projects using open ML APIs"],
+    "adjacentRoles": [
+      { "role": "Junior SDET", "overlapSkills": ["Python", "testing", "Git"] },
+      { "role": "Junior Data Analyst", "overlapSkills": ["Python", "SQL", "Excel"] }
+    ],
+    "unlockSkills": ["one deployed portfolio project", "open-source contribution", "certification in core stack"]
+  }
+}

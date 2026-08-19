@@ -1,0 +1,30 @@
+NAME: Rahul K
+EMAIL: rahul@example.com
+PHONE: +91 9876543211
+PREFERRED ROLE: Data Analyst
+PREFERRED DOMAIN: Data Science
+DREAM COMPANIES: Microsoft, Infosys
+
+SUMMARY:
+Detail-oriented CS undergraduate experienced in Python and database management. Solid theoretical knowledge of Machine Learning algorithms.
+
+EDUCATION:
+- B.Tech in Information Technology, XYZ College of Engineering (2022 - 2026)
+
+TECHNICAL SKILLS:
+- Languages: Python, Java, SQL
+- Core Concepts: Machine Learning algorithms, Data Structures, Relational Databases
+- Version Control: Git
+
+PROJECTS:
+- E-Commerce Web Portal
+  Built a responsive e-commerce web platform using HTML, CSS, JavaScript, and Node.js with MySQL database.
+- Student Management System
+  Developed a Java-based console application for managing student records.
+
+WORK EXPERIENCE:
+- IT Support Intern, NetSolutions (2024)
+  Assisted with network troubleshooting and database maintenance using SQL queries.
+
+CERTIFICATIONS:
+- Python Programming Essentials

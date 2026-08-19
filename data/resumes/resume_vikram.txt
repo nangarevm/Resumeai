@@ -1,0 +1,27 @@
+NAME: Vikram Malhotra
+EMAIL: vikram@example.com
+PHONE: +91 9876543215
+PREFERRED ROLE: Financial Analyst
+PREFERRED DOMAIN: Financial Services
+DREAM COMPANIES: Apex Capital Management, Goldman Sachs, JP Morgan
+
+SUMMARY:
+Results-driven financial analyst with expertise in financial modeling, corporate finance, and DCF valuation models.
+
+EDUCATION:
+- Bachelor of Commerce in Finance, National Institute of Management (2020 - 2024)
+
+TECHNICAL SKILLS:
+- Core: Financial Modeling, Corporate Finance, Excel & Valuation Models
+- Analytical: DCF Valuation, Financial Risk Analysis, Ratio Analysis
+- Tools: Bloomberg Terminal, SQL
+
+PROJECTS:
+- Corporate DCF Valuation & Merger Analysis
+  Developed comprehensive financial modeling templates for discounted cash flow (DCF) valuation of mid-cap tech firms. Achieved precise valuation within 3% of deal price.
+- Portfolio Risk Assessment Engine
+  Engineered a financial risk analysis system in Excel and SQL to evaluate portfolio downside risk.
+
+WORK EXPERIENCE:
+- Junior Financial Analyst, Horizon Investments (2024 - Present)
+  Built corporate finance models and conducted DCF valuation for private equity opportunities.

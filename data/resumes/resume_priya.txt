@@ -1,0 +1,27 @@
+NAME: Priya S
+EMAIL: priya@example.com
+PHONE: +91 9876543212
+PREFERRED ROLE: Software Engineer
+PREFERRED DOMAIN: Web Development
+DREAM COMPANIES: Amazon, TCS
+
+SUMMARY:
+Enthusiastic computer science student with a background in Java development. Interested in learning Python and artificial intelligence applications.
+
+EDUCATION:
+- B.E in Computer Science, Global Engineering College (2022 - 2026)
+
+TECHNICAL SKILLS:
+- Languages: Java, HTML, CSS
+- Concepts: Object-Oriented Programming, Data Structures
+- Exposure: Familiar with machine learning concepts from online tutorials. Interested in learning Python for data analysis.
+
+PROJECTS:
+- Library Management System
+  Created an object-oriented Java application for book issuance and cataloging.
+- Portfolio Website
+  Designed a personal web portfolio using HTML and CSS.
+
+WORK EXPERIENCE:
+- Academic Project Trainee (2025)
+  Worked on Java backend modules and unit test writing.

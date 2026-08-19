@@ -1,0 +1,27 @@
+NAME: Karan Verma
+EMAIL: karan@example.com
+PHONE: +91 9876543217
+PREFERRED ROLE: Renewable Energy Systems Engineer
+PREFERRED DOMAIN: Renewable Energy
+DREAM COMPANIES: Horizon Green Energy, Tata Power Solar, Vestas
+
+SUMMARY:
+Energy Systems Engineer specializing in solar PV engineering, grid integration modeling, and battery energy storage.
+
+EDUCATION:
+- B.E. in Electrical & Renewable Energy Engineering, State Energy University (2021 - 2025)
+
+TECHNICAL SKILLS:
+- Core: Photovoltaic System Design, Grid Integration, Solar Energy Engineering
+- Tools: PVSyst, MATLAB, AutoCAD
+- Concepts: Energy Storage Systems, Microgrid Architecture, Environmental Impact Assessment
+
+PROJECTS:
+- 5MW Commercial Solar PV Plant Design
+  Engineered a 5MW rooftop solar PV plant using PVSyst and Photovoltaic System Design principles. Modeled grid integration and transformer stepping with 98% efficiency.
+- Battery Microgrid Storage System
+  Designed an off-grid energy storage system integrating solar PV panels with lithium-ion storage units.
+
+WORK EXPERIENCE:
+- Solar Field Engineer Trainee, Horizon Green Energy (2025)
+  Spearheaded solar energy engineering site assessments, PVSyst yield simulations, and grid interconnection compliance checks.

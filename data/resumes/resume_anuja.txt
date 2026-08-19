@@ -1,0 +1,30 @@
+NAME: Anuja P
+EMAIL: anuja@example.com
+PHONE: +91 9876543210
+PREFERRED ROLE: AI/ML Intern
+PREFERRED DOMAIN: Artificial Intelligence
+DREAM COMPANIES: Google, Microsoft, Amazon
+
+SUMMARY:
+Passionate Computer Science student with a strong background in Machine Learning and Python programming. Experienced in building end-to-end AI applications.
+
+EDUCATION:
+- B.Tech in Computer Science and Engineering, ABC Institute of Technology (2022 - 2026), CGPA: 9.1/10
+
+TECHNICAL SKILLS:
+- Languages: Python, SQL, C++
+- ML & AI: Machine Learning, Scikit-learn, Data Analysis
+- Tools: Git, VS Code, Jupyter Notebooks
+
+PROJECTS:
+- Disease Prediction System using Machine Learning
+  Developed a disease prediction system using machine learning algorithms in Python. Evaluated multiple classifiers (Random Forest, SVM) on healthcare datasets and achieved 94% accuracy. Deployed the model via a REST API.
+- Customer Churn Analysis
+  Analyzed customer data using Python and SQL to identify churn factors and present insights.
+
+WORK EXPERIENCE:
+- Software Engineering Intern, TechCorp (Summer 2025)
+  Worked on data preprocessing pipelines using Python and SQL. Collaborated with senior engineers using Git for version control.
+
+CERTIFICATIONS:
+- Machine Learning Specialization (Coursera)

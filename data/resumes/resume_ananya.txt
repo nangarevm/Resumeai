@@ -1,0 +1,27 @@
+NAME: Ananya Mehta
+EMAIL: ananya@example.com
+PHONE: +91 9876543216
+PREFERRED ROLE: Mechanical Engineer
+PREFERRED DOMAIN: Mechanical Engineering
+DREAM COMPANIES: Precision Dynamics Systems, Siemens, L&T
+
+SUMMARY:
+Detail-oriented Mechanical Design Engineer skilled in CAD modeling, finite element analysis, and precision fabrication.
+
+EDUCATION:
+- B.Tech in Mechanical Engineering, National Institute of Technology (2021 - 2025)
+
+TECHNICAL SKILLS:
+- CAD Tools: AutoCAD, SolidWorks, CATIA
+- Analysis: Finite Element Analysis (FEA), Thermal Analysis, GD&T
+- Core Concepts: Mechanical Design, Thermodynamics, Manufacturing Processes
+
+PROJECTS:
+- High-Efficiency Gearbox Design
+  Engineered a compact two-stage reduction gearbox using SolidWorks and AutoCAD. Conducted Finite Element Analysis (FEA) to verify structural integrity under peak load.
+- Solar Thermal Collector Frame
+  Designed mechanical support structures using AutoCAD and validated stress distribution.
+
+WORK EXPERIENCE:
+- Mechanical Design Intern, Precision Dynamics Systems (2025)
+  Created mechanical design drawings in AutoCAD and SolidWorks. Conducted stress simulations and GD&T tolerance checks.

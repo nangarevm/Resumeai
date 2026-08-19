@@ -1,0 +1,17 @@
+POSITION: Financial Analyst
+COMPANY: Apex Capital Management
+DOMAIN: Financial Services
+
+MANDATORY REQUIREMENTS:
+- Financial Modeling
+- Corporate Finance
+- Excel & Valuation Models
+
+PREFERRED REQUIREMENTS:
+- DCF Valuation
+- Bloomberg Terminal
+- SQL
+- Financial Risk Analysis
+
+DESCRIPTION:
+Looking for a Financial Analyst to prepare valuation models, conduct corporate financial analysis, and perform financial risk assessments.

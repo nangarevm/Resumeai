@@ -1,0 +1,14 @@
+node_modules
+.next
+.next-dev
+out
+dist
+data/runtime/*.json
+data/users/
+data/runtime/market-cache.json
+*.log
+.DS_Store
+.env
+.env.local
+next-env.d.ts
+*.tsbuildinfo

@@ -1,0 +1,27 @@
+NAME: Amit Patel
+EMAIL: amit@example.com
+PHONE: +91 9876543213
+PREFERRED ROLE: Marketing Executive
+PREFERRED DOMAIN: Marketing & Media
+DREAM COMPANIES: Growth Brand Media, HubSpot, Ogilvy
+
+SUMMARY:
+Digital marketing specialist experienced in search engine optimization (SEO), content strategy, and market research campaigns.
+
+EDUCATION:
+- Bachelor of Business Administration in Marketing, City Business School (2021 - 2025)
+
+TECHNICAL SKILLS:
+- Core: SEO, Content Strategy, Market Research
+- Channels: Social Media Marketing, Email Campaigns, Copywriting
+- Analytics: Google Analytics, SEMrush
+
+PROJECTS:
+- Organic Traffic Growth Campaign
+  Spearheaded a comprehensive SEO and Content Strategy overhaul for an e-commerce brand. Achieved 140% growth in organic traffic within 6 months.
+- Consumer Sentiment Market Research
+  Engineered market research surveys analyzing buyer persona behavior across digital platforms.
+
+WORK EXPERIENCE:
+- Digital Marketing Intern, Growth Brand Media (2024 - 2025)
+  Executed SEO keyword audits, created content strategy blueprints, and monitored campaigns via Google Analytics.
