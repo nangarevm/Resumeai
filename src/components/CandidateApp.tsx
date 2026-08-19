@@ -1674,14 +1674,32 @@ export default function CandidateApp() {
           <section className="card">
             <h3>9. Career Change Mode</h3>
             <p className="muted">Pick a family, then we map vault proof vs honest gaps — not a fake “career switch resume”.</p>
+            <p className="muted" style={{ fontSize: 13 }}>
+              Works for any field, not just these examples — type any target role below (nurse, teacher, electrician, HR,
+              sales, whatever you&apos;re aiming for).
+            </p>
             <div className="chips">
-              {["software engineer", "machine learning engineer", "data analyst", "product manager", "marketing"].map((role) => (
+              {[
+                "software engineer",
+                "data analyst",
+                "registered nurse",
+                "teacher",
+                "sales",
+                "hr recruiter",
+                "electrician",
+                "marketing"
+              ].map((role) => (
                 <button key={role} className="chip" onClick={() => setTargetRole(role)}>
                   {role}
                 </button>
               ))}
             </div>
-            <input className="form-control" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="Target role e.g. product manager" />
+            <input
+              className="form-control"
+              value={targetRole}
+              onChange={(e) => setTargetRole(e.target.value)}
+              placeholder="Target role — any field, e.g. paralegal, warehouse supervisor, graphic designer"
+            />
             <button className="btn-primary" onClick={runChange} style={{ marginTop: 12 }}>
               Map transferable skills
             </button>

@@ -144,9 +144,10 @@ export function computeFitReport(
     });
   }
   if (keywordCoverage >= 50) {
+    const provenExample = coreMatches.slice(0, 2).join(" and ") || "your matched skills";
     scoreMovers.push({
       title: "You can apply with tailoring",
-      detail: "Reorder and emphasize existing Playwright/API/CI evidence — do not invent years or tools."
+      detail: `Reorder and emphasize your existing ${provenExample} evidence — do not invent years or tools.`
     });
   }
 
