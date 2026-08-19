@@ -5,7 +5,7 @@ import type { AgencyWorkspace } from "@/lib/srs-models";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(getAgency());
+  return NextResponse.json(await getAgency());
 }
 
 export async function POST(request: Request) {
@@ -15,11 +15,11 @@ export async function POST(request: Request) {
     incrementUsage?: "analyzesRun" | "candidatesAdded" | "shortlistsExported";
   };
   if (body.incrementUsage) {
-    return NextResponse.json(incrementAgencyUsage(body.incrementUsage));
+    return NextResponse.json(await incrementAgencyUsage(body.incrementUsage));
   }
   if (body.clientId && typeof body.notes === "string") {
-    return NextResponse.json(updateSeatNotes(body.clientId, body.notes));
+    return NextResponse.json(await updateSeatNotes(body.clientId, body.notes));
   }
-  if (body.clientId) return NextResponse.json(attachClientFromPool(body.clientId));
-  return NextResponse.json(updateAgency(body));
+  if (body.clientId) return NextResponse.json(await attachClientFromPool(body.clientId));
+  return NextResponse.json(await updateAgency(body));
 }

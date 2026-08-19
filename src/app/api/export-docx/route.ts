@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const body = (await request.json()) as { kind?: "resume" | "cover"; text?: string };
-  const seeker = getSeeker();
+  const seeker = await getSeeker();
   const fallback = applyAcceptedSuggestions(seeker.profile.rawResumeText, seeker.suggestions);
   const resumeText = body.text || seeker.tailoredDraft || fallback;
 

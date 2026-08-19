@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   await bindWorkspaceUser();
-  const seeker = getSeeker();
+  const seeker = await getSeeker();
   const fit = seeker.fit;
   const job = seeker.activeJob;
   if (!fit || !job) {
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const url = new URL(request.url);
   const format = url.searchParams.get("format") || "md";
 
-  const seeker = getSeeker();
+  const seeker = await getSeeker();
   const fit = seeker.fit;
   const job = seeker.activeJob;
   if (!fit?.optimizer || !job) {

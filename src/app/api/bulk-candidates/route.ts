@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     }
   }
 
-  if (added.length) incrementAgencyUsage("candidatesAdded", added.length);
+  if (added.length) await incrementAgencyUsage("candidatesAdded", added.length);
 
   return NextResponse.json({ added, errors, count: added.length });
 }

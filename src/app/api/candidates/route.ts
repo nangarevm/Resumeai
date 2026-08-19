@@ -48,6 +48,6 @@ export async function POST(request: Request) {
 
   const profile = parseResume(nextCandidateId(), raw);
   addCandidate(profile);
-  incrementAgencyUsage("candidatesAdded");
+  await incrementAgencyUsage("candidatesAdded");
   return NextResponse.json({ success: true, candidateId: profile.id, candidate: profile });
 }

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 /** Read-only client brief for coaches — vault summary + fit, no fabrication. */
 export async function GET() {
-  const seeker = getSeeker();
+  const seeker = await getSeeker();
   const health = vaultCompleteness(seeker.vault);
   const job = seeker.activeJob;
   const fit = seeker.fit;

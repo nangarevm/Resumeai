@@ -4,7 +4,7 @@ import { getSeeker, saveJobToLibrary, deleteSavedJob } from "@/lib/workspace-sto
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const seeker = getSeeker();
+  const seeker = await getSeeker();
   return NextResponse.json({ jobs: seeker.savedJobs || [] });
 }
 
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   if (!body.title || !body.jdText) {
     return NextResponse.json({ error: "title and jdText required" }, { status: 400 });
   }
-  const saved = saveJobToLibrary({
+  const saved = await saveJobToLibrary({
     id: body.id,
     title: body.title,
     companyName: body.companyName || "Company",
@@ -35,6 +35,6 @@ export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
-  deleteSavedJob(id);
+  await deleteSavedJob(id);
   return NextResponse.json({ success: true });
 }

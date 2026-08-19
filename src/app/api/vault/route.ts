@@ -16,9 +16,9 @@ export async function POST(request: Request) {
   };
   if (body.resumeText) {
     const profile = parseResume("seeker", body.resumeText);
-    const seeker = setSeekerProfile(profile);
+    const seeker = await setSeekerProfile(profile);
     if (body.targetRole || body.goals) {
-      seeker.vault = updateVault({
+      seeker.vault = await updateVault({
         targetRole: body.targetRole || seeker.vault.targetRole,
         goals: body.goals || seeker.vault.goals
       });
@@ -26,11 +26,11 @@ export async function POST(request: Request) {
     return NextResponse.json(seeker);
   }
   if (body.vault) {
-    return NextResponse.json({ vault: updateVault(body.vault) });
+    return NextResponse.json({ vault: await updateVault(body.vault) });
   }
   const evidenceBody = body as { evidenceId?: string; verificationStatus?: VerificationStatus };
   if (evidenceBody.evidenceId && evidenceBody.verificationStatus) {
-    return NextResponse.json({ vault: setEvidenceStatus(evidenceBody.evidenceId, evidenceBody.verificationStatus) });
+    return NextResponse.json({ vault: await setEvidenceStatus(evidenceBody.evidenceId, evidenceBody.verificationStatus) });
   }
   return NextResponse.json({ error: "resumeText or vault required" }, { status: 400 });
 }

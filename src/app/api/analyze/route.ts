@@ -13,6 +13,6 @@ export async function GET(request: Request) {
   const jd = getActiveJob();
   if (!jd) return NextResponse.json({ error: "No active job" }, { status: 400 });
   const results = analyzePool(getStore().candidates, jd, safeMode);
-  incrementAgencyUsage("analyzesRun");
+  await incrementAgencyUsage("analyzesRun");
   return NextResponse.json(results);
 }
