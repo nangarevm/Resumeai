@@ -38,6 +38,7 @@ function hintPresent(blob: string, hint: string): boolean {
 }
 
 export function resolveRoleFamily(jobTitle: string, domain?: string): string {
+  const titleOnly = jobTitle.toLowerCase();
   const blob = `${jobTitle} ${domain || ""}`.toLowerCase();
   const market = loadMarket();
 
@@ -45,6 +46,19 @@ export function resolveRoleFamily(jobTitle: string, domain?: string): string {
   // stage guidance, not ml_engineer signals, even though both hints are present.
   if (market.intern?.titleHints.some((h) => hintPresent(blob, h))) return "intern";
 
+  // Match against the title alone first. `domain` is a coarse ~6-bucket guess
+  // (see inferDomain in jd-extractor.ts) whose label can itself contain another
+  // family's hint word — e.g. a Graphic Designer JD mentioning "branding" gets
+  // domain="Marketing", and blob-matching then let the literal word "marketing"
+  // in that domain label beat the precise "graphic designer" title hint. Titles
+  // are far more specific than the domain guess, so they must win first.
+  for (const [key, signals] of Object.entries(market)) {
+    if (key === "intern") continue;
+    if (signals.titleHints.some((h) => hintPresent(titleOnly, h))) return key;
+  }
+
+  // No title hint matched — fall back to the combined title+domain blob so a
+  // vague title can still be steered by the inferred domain.
   for (const [key, signals] of Object.entries(market)) {
     if (key === "intern") continue;
     if (signals.titleHints.some((h) => hintPresent(blob, h))) return key;

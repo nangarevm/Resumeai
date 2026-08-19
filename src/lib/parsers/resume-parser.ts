@@ -121,12 +121,38 @@ function extractCareerPreferences(text: string): CareerPreferences {
   return prefs;
 }
 
+/** Split on comma/bullet, but not inside parentheses — "Adobe Creative Suite
+ *  (Photoshop, Illustrator)" is one skill with a parenthetical example list,
+ *  not two skills split mid-parenthesis. */
+function splitOutsideParens(line: string): string[] {
+  const tokens: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const ch of line) {
+    if (ch === "(") depth++;
+    else if (ch === ")") depth = Math.max(0, depth - 1);
+    if ((ch === "," || ch === "•") && depth === 0) {
+      tokens.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  tokens.push(current);
+  return tokens;
+}
+
 function extractSkillList(skillsText: string): string[] {
   if (!skillsText) return [];
   const skills: string[] = [];
   for (let line of skillsText.split("\n")) {
     if (line.includes(":")) line = line.slice(line.indexOf(":") + 1);
-    for (const token of line.split(/[,•\-]/)) {
+    // Strip a leading bullet marker (each line is already its own item from the
+    // \n split above) before splitting on comma/bullet — splitting on every
+    // bare "-" instead shattered hyphenated skill terms like "e-discovery" or
+    // "co-pilot" into meaningless fragments ("e", "discovery").
+    line = line.replace(/^\s*[-•]\s*/, "");
+    for (const token of splitOutsideParens(line)) {
       const cleaned = token.trim();
       if (cleaned && cleaned.length < 30) skills.push(cleaned);
     }
