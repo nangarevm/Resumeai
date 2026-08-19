@@ -23,6 +23,15 @@ import OptimizerReportPanel from "@/components/OptimizerReportPanel";
 import AuthBar from "@/components/AuthBar";
 import ResumeDraftPreview from "@/components/ResumeDraftPreview";
 
+// Plain-language labels for fit.subScores — the raw object keys (keywordCoverage,
+// evidenceStrength, ...) are meaningful to the code but not to a first-time user.
+const SUBSCORE_INFO: Record<string, { label: string; hint: string }> = {
+  keywordCoverage: { label: "Skill match", hint: "How many of the job's must-have skills you can prove you have." },
+  evidenceStrength: { label: "Proof quality", hint: "How solid that proof is — a real project or task beats a bare skills list." },
+  atsReadiness: { label: "Resume readability", hint: "Whether hiring software can parse your contact info, headings, and layout." },
+  completeness: { label: "Vault completeness", hint: "How much of your Career Vault is filled in and approved for use." }
+};
+
 const STEPS = [
   { id: "vault", n: 1, title: "Career Vault", help: "Your source of truth. Import a resume. We only store what you provided." },
   { id: "job", n: 2, title: "Target job", help: "Paste a JD or a public job URL. We extract required vs preferred skills." },
@@ -997,6 +1006,14 @@ export default function CandidateApp() {
                 </div>
               </div>
             )}
+            <p className="muted" style={{ marginBottom: 12 }}>
+              In plain terms: <strong>{fit.score}/100</strong> is how closely your proven skills match this job. The{" "}
+              <strong>
+                {fit.coreMatches?.length || 0}/{fit.jdInsight?.coreSkillCount || fit.explicitRequirements?.length || "—"}
+              </strong>{" "}
+              is how many of the job&apos;s must-have skills you can actually back up. The band turns both into one honest sentence
+              below.
+            </p>
             <div className="metrics">
               <div className="metric">
                 <span>FIT ESTIMATE</span>
@@ -1061,15 +1078,23 @@ export default function CandidateApp() {
               </p>
             ))}
             <div className="grid-2" style={{ marginTop: 12 }}>
-              {Object.entries(fit.subScores).map(([k, v]) => (
-                <div key={k}>
-                  <div className="muted">{k}</div>
-                  <div className="progress">
-                    <span style={{ width: `${v}%` }} />
+              {Object.entries(fit.subScores).map(([k, v]) => {
+                const info = SUBSCORE_INFO[k] || { label: k, hint: "" };
+                return (
+                  <div key={k}>
+                    <div className="muted">{info.label}</div>
+                    <div className="progress">
+                      <span style={{ width: `${v}%` }} />
+                    </div>
+                    <strong>{v}</strong>
+                    {info.hint && (
+                      <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                        {info.hint}
+                      </p>
+                    )}
                   </div>
-                  <strong>{v}</strong>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <p style={{ marginTop: 12 }}>{fit.explanation}</p>
             <h3>Core skills you prove</h3>
