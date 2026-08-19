@@ -33,7 +33,17 @@ const SKILL_CATALOG: Array<{ label: string; patterns: RegExp[] }> = [
   { label: "AWS", patterns: [/\baws\b/i, /\bamazon web services\b/i] },
   { label: "Azure", patterns: [/\bazure\b/i] },
   { label: "GCP", patterns: [/\bgcp\b/i, /\bgoogle cloud\b/i] },
-  { label: "Machine Learning", patterns: [/\bmachine learning\b/i] }
+  { label: "Machine Learning", patterns: [/\bmachine learning\b/i] },
+  { label: "Kubernetes", patterns: [/\bkubernetes\b/i, /\bk8s\b/i] },
+  { label: "Terraform", patterns: [/\bterraform\b/i, /\binfrastructure as code\b/i] },
+  { label: "GraphQL", patterns: [/\bgraphql\b/i] },
+  { label: "Go", patterns: [/\bgolang\b/i, /\bgo lang\b/i] },
+  { label: "Rust", patterns: [/\brust\b/i] },
+  { label: "LLM", patterns: [/\bllm\b/i, /\blarge language models?\b/i, /\bgenerative ai\b/i] },
+  { label: "AI Agents", patterns: [/\bai agents?\b/i, /\bagentic\b/i, /\btool[- ]calling\b/i, /\bmcp\b/i, /\bmodel context protocol\b/i] },
+  { label: "RAG", patterns: [/\brag\b/i, /\bretrieval augmented generation\b/i, /\bvector (database|db)\b/i, /\bembeddings\b/i] },
+  { label: "Prompt Engineering", patterns: [/\bprompt engineering\b/i] },
+  { label: "LangChain", patterns: [/\blangchain\b/i, /\blanggraph\b/i, /\bllamaindex\b/i] }
 ];
 
 const RESPONSIBILITY_HEADERS =

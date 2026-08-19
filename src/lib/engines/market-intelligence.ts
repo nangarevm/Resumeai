@@ -26,16 +26,45 @@ function loadMarket(): MarketFile {
   return cache;
 }
 
+/** Plain substring matching lets a short hint like "ai" false-positive inside
+ *  "container" or "maintain". Require word boundaries for hints of 3 chars
+ *  or less; longer, more specific phrases are safe to substring-match. */
+function hintPresent(blob: string, hint: string): boolean {
+  if (hint.length <= 3) {
+    const escaped = hint.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`, "i").test(blob);
+  }
+  return blob.includes(hint);
+}
+
 export function resolveRoleFamily(jobTitle: string, domain?: string): string {
   const blob = `${jobTitle} ${domain || ""}`.toLowerCase();
   const market = loadMarket();
+
+  // Career stage takes priority over domain — "AI/ML Intern" should get intern-
+  // stage guidance, not ml_engineer signals, even though both hints are present.
+  if (market.intern?.titleHints.some((h) => hintPresent(blob, h))) return "intern";
+
   for (const [key, signals] of Object.entries(market)) {
-    if (signals.titleHints.some((h) => blob.includes(h))) return key;
+    if (key === "intern") continue;
+    if (signals.titleHints.some((h) => hintPresent(blob, h))) return key;
   }
+  // titleHints missed — try broader regex buckets before giving up. A role that
+  // matches none of these gets the honestly-labeled "general" fallback instead of
+  // being silently mislabeled as software_engineer (which used to hand a finance
+  // or marketing candidate irrelevant advice like "TypeScript is trending").
   if (/intern|trainee|graduate/i.test(blob)) return "intern";
-  if (/ml|machine learning|ai\b/i.test(blob)) return "ml_engineer";
-  if (/qa|sdet|test|quality/i.test(blob)) return "sdet";
-  return "software_engineer";
+  if (/data analyst|business analyst|\bbi analyst\b/i.test(blob)) return "data_analyst";
+  if (/\bml\b|machine learning|\bai\b/i.test(blob)) return "ml_engineer";
+  if (/devops|platform engineer|site reliability|\bsre\b/i.test(blob)) return "devops";
+  if (/backend|back-end|api engineer|server-side/i.test(blob)) return "backend_engineer";
+  if (/qa|sdet|\btest\b|quality/i.test(blob)) return "sdet";
+  // Deliberately not a bare \bengineer\b catch-all — "Mechanical Engineer",
+  // "Civil Engineer", etc. have nothing to do with software market signals,
+  // so an unqualified "engineer" title falls through to the honest "general"
+  // bucket instead of confidently-wrong software advice.
+  if (/software|developer/i.test(blob)) return "software_engineer";
+  return "general";
 }
 
 export function getMarketSignals(jobTitle: string, domain?: string): RoleMarketSignals {
