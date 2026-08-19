@@ -43,7 +43,39 @@ const SKILL_CATALOG: Array<{ label: string; patterns: RegExp[] }> = [
   { label: "AI Agents", patterns: [/\bai agents?\b/i, /\bagentic\b/i, /\btool[- ]calling\b/i, /\bmcp\b/i, /\bmodel context protocol\b/i] },
   { label: "RAG", patterns: [/\brag\b/i, /\bretrieval augmented generation\b/i, /\bvector (database|db)\b/i, /\bembeddings\b/i] },
   { label: "Prompt Engineering", patterns: [/\bprompt engineering\b/i] },
-  { label: "LangChain", patterns: [/\blangchain\b/i, /\blanggraph\b/i, /\bllamaindex\b/i] }
+  { label: "LangChain", patterns: [/\blangchain\b/i, /\blanggraph\b/i, /\bllamaindex\b/i] },
+  // Non-tech fields — so a JD in any industry gets real requirements detected,
+  // not just software/QA. Kept as specific phrases/certifications to avoid
+  // false positives on generic words.
+  { label: "Patient Care", patterns: [/\bpatient care\b/i, /\bvital signs\b/i, /\bphlebotomy\b/i] },
+  { label: "EHR/EMR Systems", patterns: [/\behr\b/i, /\bemr\b/i, /\belectronic health records\b/i, /\bepic\b/i, /\bcerner\b/i] },
+  { label: "Nursing Certification", patterns: [/\bbls certification\b/i, /\bacls certification\b/i, /\brn license\b/i, /\bcna\b/i] },
+  { label: "Curriculum Development", patterns: [/\bcurriculum development\b/i, /\blesson planning\b/i] },
+  { label: "Classroom Management", patterns: [/\bclassroom management\b/i, /\bstudent assessment\b/i] },
+  { label: "Legal Research", patterns: [/\blegal research\b/i, /\blitigation support\b/i] },
+  { label: "Contract Review", patterns: [/\bcontract review\b/i, /\blegal drafting\b/i] },
+  { label: "Paralegal", patterns: [/\bparalegal\b/i] },
+  { label: "Guest Service", patterns: [/\bguest service\b/i, /\bfront desk\b/i, /\bhotel operations\b/i] },
+  { label: "Food Safety", patterns: [/\bfood safety\b/i, /\bservsafe\b/i] },
+  { label: "POS Systems", patterns: [/\bpos system\b/i, /\bpoint of sale\b/i] },
+  { label: "CRM / Salesforce", patterns: [/\bcrm\b/i, /\bsalesforce\b/i, /\bhubspot\b/i] },
+  { label: "Lead Generation", patterns: [/\blead generation\b/i, /\bcold calling\b/i] },
+  { label: "Account Management", patterns: [/\baccount management\b/i, /\bquota attainment\b/i] },
+  { label: "Electrical/Plumbing/HVAC", patterns: [/\belectrical wiring\b/i, /\bplumbing\b/i, /\bhvac\b/i, /\bwelding\b/i] },
+  { label: "OSHA Safety Certification", patterns: [/\bosha\b/i, /\bblueprint reading\b/i] },
+  { label: "Supply Chain", patterns: [/\bsupply chain\b/i, /\blogistics coordination\b/i] },
+  { label: "Warehouse Operations", patterns: [/\bwarehouse operations\b/i, /\bforklift certification\b/i, /\bwms\b/i] },
+  { label: "Quality Control", patterns: [/\bquality control\b/i, /\bquality assurance \(manufacturing\)\b/i] },
+  { label: "Lean/Six Sigma", patterns: [/\blean manufacturing\b/i, /\bsix sigma\b/i] },
+  { label: "Production Line Operations", patterns: [/\bproduction line\b/i, /\bassembly line\b/i, /\bcnc machining\b/i] },
+  { label: "Graphic Design", patterns: [/\bgraphic design\b/i, /\badobe creative suite\b/i, /\bphotoshop\b/i, /\billustrator\b/i] },
+  { label: "Video Editing", patterns: [/\bvideo editing\b/i, /\bpremiere pro\b/i] },
+  { label: "Microsoft Office", patterns: [/\bmicrosoft office\b/i, /\bgoogle workspace\b/i] },
+  { label: "Data Entry", patterns: [/\bdata entry\b/i] },
+  { label: "Call Center / Help Desk", patterns: [/\bcall center\b/i, /\bhelp desk\b/i, /\bticketing system\b/i, /\bzendesk\b/i] },
+  { label: "Customer Satisfaction", patterns: [/\bcustomer satisfaction\b/i, /\bcsat\b/i, /\bconflict resolution\b/i] },
+  { label: "Recruiting / Talent Acquisition", patterns: [/\brecruiting\b/i, /\btalent acquisition\b/i, /\bonboarding\b/i] },
+  { label: "HRIS", patterns: [/\bhris\b/i, /\bworkday\b/i, /\bbamboohr\b/i, /\bpayroll\b/i] }
 ];
 
 const RESPONSIBILITY_HEADERS =

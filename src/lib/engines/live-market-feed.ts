@@ -29,6 +29,18 @@ const ROLE_SEARCH_QUERIES: Record<string, string[]> = {
   marketing: ["marketing analytics", "seo tools", "martech"],
   renewable_energy: ["solar pv", "energy storage", "grid analytics"],
   intern: ["python portfolio", "git github", "rest api"],
+  healthcare: ["telehealth", "ehr integration", "healthcare api"],
+  education: ["edtech", "lms platform", "elearning"],
+  legal: ["legal tech", "contract automation", "compliance software"],
+  hospitality: ["hospitality tech", "restaurant pos", "hotel booking"],
+  sales: ["sales crm", "sales enablement", "revenue operations"],
+  skilled_trades: ["field service software", "construction management software", "trade certification"],
+  logistics: ["supply chain software", "warehouse management", "fleet tracking"],
+  manufacturing: ["manufacturing execution system", "industrial iot", "quality management software"],
+  creative_design: ["design tools", "creative workflow", "content management"],
+  administrative: ["office productivity", "workflow automation", "scheduling software"],
+  customer_service: ["helpdesk software", "customer support platform", "live chat"],
+  human_resources: ["hr tech", "applicant tracking system", "people analytics"],
   general: ["career development", "workplace ai tools", "professional certification"]
 };
 
@@ -137,7 +149,10 @@ export async function fetchLiveMarketOverlay(roleFamily: string, jobTitle?: stri
     };
   }
 
-  const queries = ROLE_SEARCH_QUERIES[roleFamily] || ROLE_SEARCH_QUERIES.software_engineer;
+  // Fall back to the generic "general" query set, not software_engineer's tech
+  // terms — searching npm/GitHub for "typescript, react" is actively misleading
+  // for a role this function doesn't have specific search terms for.
+  const queries = ROLE_SEARCH_QUERIES[roleFamily] || ROLE_SEARCH_QUERIES.general;
   const titleQuery = jobTitle?.split(/\s+/).slice(0, 2).join(" ");
   const searchQueries = titleQuery ? [titleQuery, ...queries.slice(0, 2)] : queries;
 

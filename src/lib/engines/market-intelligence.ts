@@ -58,7 +58,9 @@ export function resolveRoleFamily(jobTitle: string, domain?: string): string {
   if (/\bml\b|machine learning|\bai\b/i.test(blob)) return "ml_engineer";
   if (/devops|platform engineer|site reliability|\bsre\b/i.test(blob)) return "devops";
   if (/backend|back-end|api engineer|server-side/i.test(blob)) return "backend_engineer";
-  if (/qa|sdet|\btest\b|quality/i.test(blob)) return "sdet";
+  // Bare "quality" deliberately excluded here too — "Quality Control Inspector"
+  // (manufacturing) and "Quality Manager" are not software QA roles.
+  if (/\bqa\b|sdet|\btest\b|quality assurance/i.test(blob)) return "sdet";
   // Deliberately not a bare \bengineer\b catch-all — "Mechanical Engineer",
   // "Civil Engineer", etc. have nothing to do with software market signals,
   // so an unqualified "engineer" title falls through to the honest "general"

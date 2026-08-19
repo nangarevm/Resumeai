@@ -45,7 +45,23 @@ const GROUPS: string[][] = [
   ["terraform", "infrastructure as code", "iac", "pulumi"],
   ["graphql", "apollo", "grpc"],
   ["golang", "go lang"],
-  ["rust", "rustlang"]
+  ["rust", "rustlang"],
+  // Non-tech fields — added so evidence matching works for any job market, not
+  // just software/finance/marketing. Each group sticks to terms specific enough
+  // to that field to avoid the cross-domain contamination bare "pipeline" caused.
+  ["patient care", "ehr", "emr", "electronic health records", "epic", "cerner", "clinical documentation", "vital signs", "phlebotomy", "medical terminology"],
+  ["bls certification", "acls certification", "cpr certification"],
+  ["curriculum development", "lesson planning", "classroom management", "instructional design", "student assessment", "differentiated instruction", "iep", "learning management system", "lms"],
+  ["contract review", "legal research", "litigation support", "paralegal", "legal drafting", "westlaw", "lexisnexis", "e-discovery", "case management software"],
+  ["guest service", "pos system", "point of sale", "food safety", "servsafe", "housekeeping", "front desk", "hotel operations", "reservation system"],
+  ["crm", "salesforce", "hubspot crm", "cold calling", "lead generation", "account management", "quota attainment", "b2b sales", "retail sales", "merchandising", "upselling"],
+  ["electrical wiring", "plumbing", "hvac", "welding", "osha", "blueprint reading", "carpentry", "construction management", "machinist"],
+  ["supply chain", "inventory management", "warehouse operations", "logistics coordination", "forklift certification", "shipping and receiving", "wms", "route optimization"],
+  ["quality control", "lean manufacturing", "six sigma", "production line", "assembly line", "cnc machining", "manufacturing operations", "predictive maintenance"],
+  ["graphic design", "adobe creative suite", "photoshop", "illustrator", "indesign", "premiere pro", "video editing", "branding", "content creation", "figma"],
+  ["microsoft office", "google workspace", "office administration", "executive assistant", "calendar management", "travel coordination"],
+  ["customer support", "call center", "help desk", "ticketing system", "zendesk", "freshdesk", "customer satisfaction", "csat", "conflict resolution"],
+  ["recruiting", "talent acquisition", "onboarding", "hris", "workday", "bamboohr", "employee relations", "payroll", "benefits administration", "shrm"]
 ];
 
 function tokenize(value: string): string[] {
@@ -63,13 +79,16 @@ export function expandSynonyms(term: string, extra: string[] = []): string[] {
   if (compact) out.add(compact);
 
   const significantTokens = tokenize(lower).filter((t) => /[a-z]/i.test(t));
-  const isShortTerm = significantTokens.length <= 2;
 
   for (const group of GROUPS) {
     const longHit = group.some((alias) => alias.length >= 4 && lower.includes(alias));
     const exactHit = group.includes(lower);
-    const shortReqHit = isShortTerm && group.some((alias) => significantTokens.includes(alias));
-    if (longHit || exactHit || shortReqHit) {
+    // Token-exact match (not substring) — safe regardless of how long the
+    // surrounding phrase is, since tokenize() already gives real word boundaries.
+    // This is what lets a short acronym like "EHR" or "RN" match even buried
+    // inside a long requirement like "EHR/EMR system proficiency (Epic preferred)".
+    const tokenHit = group.some((alias) => significantTokens.includes(alias));
+    if (longHit || exactHit || tokenHit) {
       group.forEach((alias) => out.add(alias));
     }
   }
