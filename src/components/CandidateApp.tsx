@@ -40,6 +40,7 @@ import SkillsOptimizationPanel from "@/components/SkillsOptimizationPanel";
 import { categorizeSkills, applyCategorizedSkillsToResume } from "@/lib/engines/skills-optimizer";
 import BulletFormulaPanel from "@/components/BulletFormulaPanel";
 import { checkBulletFormulas } from "@/lib/engines/bullet-formula-check";
+import { BUCKET_ORDER, type InterviewBucket } from "@/lib/engines/interview-categorizer";
 import ProjectIntelligencePanel from "@/components/ProjectIntelligencePanel";
 import { rankProjectsByRelevance } from "@/lib/engines/project-intelligence";
 import AchievementBuilderPanel from "@/components/AchievementBuilderPanel";
@@ -151,6 +152,7 @@ export default function CandidateApp() {
   const [apps, setApps] = useState<ApplicationRecord[]>([]);
   const [prep, setPrep] = useState<{
     questions: Array<{ category: string; question: string }>;
+    questionsByBucket?: Partial<Record<InterviewBucket, Array<{ category: string; question: string }>>>;
     stories: Array<{ evidenceId: string; situation: string; task: string; action: string; result: string }>;
     missingPrep: string[];
     thankYouNote?: string;
@@ -2321,14 +2323,30 @@ export default function CandidateApp() {
                 <p className="muted">R: {s.result}</p>
               </article>
             ))}
-            {prep?.questions?.map((q, i) => (
-              <article className="card" key={i}>
-                <p>
-                  <strong>{q.category}:</strong> {q.question}
-                </p>
-                <CopyButton text={q.question} label="Copy question" />
-              </article>
-            ))}
+            {prep?.questionsByBucket
+              ? BUCKET_ORDER.map((bucket) => {
+                  const list = prep.questionsByBucket?.[bucket as InterviewBucket];
+                  if (!list || list.length === 0) return null;
+                  return (
+                    <div key={bucket} style={{ marginTop: 12 }}>
+                      <h4>{bucket} questions</h4>
+                      {list.map((q, i) => (
+                        <article className="card" key={i}>
+                          <p>{q.question}</p>
+                          <CopyButton text={q.question} label="Copy question" />
+                        </article>
+                      ))}
+                    </div>
+                  );
+                })
+              : prep?.questions?.map((q, i) => (
+                  <article className="card" key={i}>
+                    <p>
+                      <strong>{q.category}:</strong> {q.question}
+                    </p>
+                    <CopyButton text={q.question} label="Copy question" />
+                  </article>
+                ))}
             {prep && (
               <div className="practice">
                 <label className="form-label">Practice answer (stays on this device)</label>
