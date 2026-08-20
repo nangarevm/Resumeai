@@ -409,6 +409,23 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 }
 .row-del:hover { border-color: var(--accent-red); background: rgba(248, 81, 73, 0.14); }
 .row-add { margin-top: 2px; font-size: 11px; padding: 5px 12px; }
+.row-move {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: rgba(88, 166, 255, 0.06);
+  color: var(--accent-blue);
+  font-size: 10px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+.row-move:hover:not(:disabled) { border-color: var(--accent-blue); background: rgba(88, 166, 255, 0.14); }
+.row-move:disabled { opacity: 0.3; cursor: default; }
+.resume-seg-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.resume-seg-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-right: auto; }
 
 .nba-banner {
   display: flex;
