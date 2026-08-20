@@ -10,6 +10,6 @@ export async function POST() {
   const rewrites = strengthenBullets(seeker.profile, seeker.activeJob, seeker.vault);
   return NextResponse.json({
     rewrites,
-    notice: "Evidence-bound rewrites only — same facts, stronger order. No LLM, no invented metrics."
+    notice: "Rewrites based on your verified experience only — same facts, stronger order. Nothing invented."
   });
 }

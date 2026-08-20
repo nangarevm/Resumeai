@@ -739,7 +739,7 @@ export default function AgencyApp() {
                     <p className="muted">{layer.summary}</p>
                   </div>
                 ))}
-                <h4>Evidence-bound draft</h4>
+                <h4>Draft based on verified experience</h4>
                 <pre className="pre">{optimizer.optimizedResume.slice(0, 2000)}</pre>
               </div>
             )}

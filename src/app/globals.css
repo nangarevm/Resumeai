@@ -352,6 +352,35 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .row-del:hover { border-color: var(--accent-red); background: rgba(248, 81, 73, 0.14); }
 .row-add { margin-top: 2px; font-size: 11px; padding: 5px 12px; }
 
+.nba-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(88, 166, 255, 0.14), rgba(163, 113, 247, 0.1));
+  border: 1px solid rgba(88, 166, 255, 0.3);
+}
+.nba-icon { font-size: 24px; flex-shrink: 0; }
+.nba-text { flex: 1; min-width: 0; }
+.nba-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-blue); }
+.nba-title { font-size: 15px; font-weight: 700; margin-top: 2px; }
+.nba-detail { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
+.nba-cta { flex-shrink: 0; white-space: nowrap; }
+
+.readiness { margin-bottom: 4px; }
+.readiness-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.readiness-label { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: var(--text-secondary); text-transform: uppercase; }
+.readiness-percent { font-size: 13px; font-weight: 700; }
+.readiness-bar { max-width: 320px; }
+.readiness-caption { margin-top: 4px; font-size: 12px; }
+
+.autosave-status { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 4px; }
+.autosave-saved { color: var(--accent-green); }
+.autosave-error { color: var(--accent-red); }
+.autosave-saving { color: var(--accent-yellow); }
+
 .wizard { margin-top: 12px; }
 .wizard-progress { margin-bottom: 12px; }
 .wizard-step { display: flex; flex-direction: column; gap: 4px; }

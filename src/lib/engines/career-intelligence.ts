@@ -174,7 +174,7 @@ function buildWhyCompetitive(fit: FitReport, jd: JobDescription, gapPlan: SkillG
   if (strongCount) lines.push(`Leads with ${strongCount} core JD skills already proved in your vault.`);
   if (fit.subScores.atsReadiness >= 60) lines.push("Resume structure is ATS-parseable — contact and headings pass checks.");
   if (fit.coreGaps.length <= 3) lines.push("Gap count is manageable — tailor and apply without inventing experience.");
-  lines.push(`Targeted to ${jd.title} at ${jd.companyName} using evidence-bound keywords only.`);
+  lines.push(`Targeted to ${jd.title} at ${jd.companyName} using keywords from your verified experience only.`);
   lines.push("No fabricated employers, metrics, or tools — verification gate before export.");
   return lines;
 }

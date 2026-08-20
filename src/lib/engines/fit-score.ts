@@ -155,7 +155,7 @@ export function computeFitReport(
     score,
     label,
     disclaimer:
-      "ResumeProof Fit Score is this product's estimate from your evidence and core skills in this job. Duty-line bullets are not scored individually. It is not a universal ATS score.",
+      "An evidence-based estimate of how well your verified experience matches this job. Duty-line bullets are not scored individually. It is not an ATS score.",
     subScores,
     matches,
     transferable,

@@ -25,6 +25,10 @@ import ResumeSectionEditor from "@/components/ResumeSectionEditor";
 import GuidedProfileWizard from "@/components/GuidedProfileWizard";
 import ResumeTemplatePreview from "@/components/ResumeTemplatePreview";
 import { RESUME_TEMPLATES, TEMPLATE_COLORS, TEMPLATE_SKELETONS, type TemplateCategory } from "@/lib/resume-render";
+import NextBestAction from "@/components/NextBestAction";
+import ReadinessScore, { type ReadinessStep } from "@/components/ReadinessScore";
+import AutosaveStatus, { type AutosaveState } from "@/components/AutosaveStatus";
+import { computeNextBestAction } from "@/lib/next-best-action";
 
 // Plain-language labels for fit.subScores — the raw object keys (keywordCoverage,
 // evidenceStrength, ...) are meaningful to the code but not to a first-time user.
@@ -64,6 +68,12 @@ const GOAL_OPTIONS = [
 
 function jobInputKey(jobUrl: string, jdText: string) {
   return `${jobUrl.trim()}\n---\n${jdText.trim()}`;
+}
+
+function confidenceLabel(pct: number): "High" | "Medium" | "Low" {
+  if (pct >= 80) return "High";
+  if (pct >= 50) return "Medium";
+  return "Low";
 }
 
 function resumeImportStats(text: string) {
@@ -119,6 +129,7 @@ export default function CandidateApp() {
   const [importMode, setImportMode] = useState<ImportMode>("paste");
   const [goalChoice, setGoalChoice] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("ats-classic-black");
+  const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle");
   const [templateCategory, setTemplateCategory] = useState("All");
   const [templateColorFilter, setTemplateColorFilter] = useState("All");
   const [onboardingDismissed, setOnboardingDismissed] = useState(true);
@@ -209,15 +220,22 @@ export default function CandidateApp() {
     [ws, job, fit, suggestions, findings, kit, apps, prep, change, selectedTemplate]
   );
 
+  function flashAutosave(ok: boolean) {
+    setAutosaveState(ok ? "saved" : "error");
+    setTimeout(() => setAutosaveState((s) => (s === "idle" ? s : "idle")), 3000);
+  }
+
   async function importVault() {
     setBusy(true);
-    await fetch("/api/vault", {
+    setAutosaveState("saving");
+    const res = await fetch("/api/vault", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ resumeText, targetRole, goals })
     });
     await refresh();
     setBusy(false);
+    flashAutosave(res.ok);
     setNotice("Career Vault saved. Nothing was invented — only parsed from your text.");
     setStep("job");
   }
@@ -323,12 +341,15 @@ export default function CandidateApp() {
   }
 
   async function saveResumeDraft(text: string) {
-    const data = await fetch("/api/resume-draft", {
+    setAutosaveState("saving");
+    const res = await fetch("/api/resume-draft", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ draft: text, suggestions, action: "save" })
-    }).then((r) => r.json());
+    });
+    const data = await res.json();
     setDraft(data.draft || text);
+    flashAutosave(res.ok);
     setNotice("Tailored resume draft saved as a version snapshot.");
   }
 
@@ -624,7 +645,7 @@ export default function CandidateApp() {
     const data = await fetch("/api/rewrite", { method: "POST" }).then((r) => r.json());
     setBusy(false);
     setRewrites(data.rewrites || []);
-    setNotice(data.notice || "Evidence-bound rewrites ready — review before accepting.");
+    setNotice(data.notice || "Rewrites based on your verified experience are ready — review before accepting.");
   }
 
   async function runInterview() {
@@ -716,6 +737,27 @@ export default function CandidateApp() {
     !onboardingDismissed && (step === "vault" || step === "job" || step === "fit") && progress < 55;
   const current = STEPS.find((s) => s.id === step)!;
 
+  const openFindings = findings.filter((f) => f.resolution === "open").length;
+  const pendingSuggestions = suggestions.filter((s) => s.status === "pending" && !s.blocked).length;
+  const readinessSteps: ReadinessStep[] = [
+    { label: "Career profile", done: done.vault },
+    { label: "Target job", done: done.job },
+    { label: "Fit analysis", done: done.fit },
+    { label: "Resume tailoring", done: done.tailor },
+    { label: "Verification", done: done.tailor && openFindings === 0 },
+    { label: "Application kit", done: done.kit }
+  ];
+  const nextBestAction = computeNextBestAction({
+    hasProfile: Boolean(ws?.profile.rawResumeText?.trim()),
+    hasJob: Boolean(job),
+    hasFit: Boolean(fit),
+    topGap: fit?.coreGaps?.[0] || null,
+    pendingSuggestions,
+    openFindings,
+    hasKit: Boolean(kit),
+    followUp: followUpDue.length ? { company: followUpDue[0].company, jobTitle: followUpDue[0].jobTitle } : null
+  });
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -742,12 +784,12 @@ export default function CandidateApp() {
             <div className="label">Step {current.n} of {STEPS.length}</div>
             <h2>{current.title}</h2>
             <p className="muted">{current.help}</p>
-            <div className="progress" style={{ marginTop: 10, maxWidth: 280 }}>
-              <span style={{ width: `${progress}%` }} />
+            <div style={{ marginTop: 10, maxWidth: 320 }}>
+              <ReadinessScore steps={readinessSteps} />
             </div>
-            <p className="muted">Journey {progress}% complete</p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <AutosaveStatus state={autosaveState} />
             <AuthBar />
             <button className="btn-ghost" onClick={loadDemo}>
               Load sample resume
@@ -760,6 +802,8 @@ export default function CandidateApp() {
             </button>
           </div>
         </header>
+
+        <NextBestAction action={nextBestAction} onGo={setStep} />
 
         {notice && (
           <div className="banner">
@@ -1302,7 +1346,8 @@ export default function CandidateApp() {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                   <span>
-                    {s.blocked ? "⛔ Blocked" : `Confidence ${s.confidence}%`} · evidence {s.evidenceIds.join(", ") || "none"}
+                    {s.blocked ? "🔴 Cannot add — no supporting evidence" : `${confidenceLabel(s.confidence)} confidence`}
+                    {!s.blocked && s.evidenceIds.length > 0 && ` · based on ${s.evidenceIds.length} vault item${s.evidenceIds.length > 1 ? "s" : ""}`}
                   </span>
                   <span className={`badge ${s.blocked ? "no" : s.status === "accepted" ? "ok" : s.status === "rejected" ? "mid" : "mid"}`}>
                     {s.blocked ? "blocked" : s.status}
@@ -1358,7 +1403,7 @@ export default function CandidateApp() {
               </article>
             ))}
             <h3>Tailored resume preview</h3>
-            <p className="muted">Accept suggestions above, then edit the full draft. Try evidence-bound rewrites (no LLM, no new facts).</p>
+            <p className="muted">Accept suggestions above, then edit the full draft. Try rewrites based on your verified experience (no LLM, no new facts).</p>
             <button className="chip" type="button" disabled={busy} onClick={runRewrite}>
               Suggest bullet rewrites
             </button>
@@ -1474,7 +1519,7 @@ export default function CandidateApp() {
             <h3>6. Application kit</h3>
             {!kit && (
               <>
-                <p className="muted">Build your evidence-bound kit: tailored resume, cover letter, recruiter email, and exports.</p>
+                <p className="muted">Build your application kit: tailored resume, cover letter, recruiter email, and exports — all based on your verified experience.</p>
                 <button className="btn-primary" disabled={busy} onClick={buildOptimizedCv}>
                   Build optimized CV & kit
                 </button>
@@ -1485,7 +1530,7 @@ export default function CandidateApp() {
             )}
             {kit && (
               <>
-                <p className="muted">Copy beats download in India/WhatsApp-first hiring. Every block is evidence-bound.</p>
+                <p className="muted">Copy beats download in India/WhatsApp-first hiring. Every block is based on your verified experience.</p>
                 <button className="btn-primary" onClick={copyWhatsAppBundle}>
                   Copy WhatsApp apply bundle
                 </button>
@@ -1669,7 +1714,7 @@ export default function CandidateApp() {
           <section className="card">
             <h3>7. Templates</h3>
             <p className="muted">
-              {RESUME_TEMPLATES.length} templates — same evidence-bound content, different look. ATS-recommended templates stay
+              {RESUME_TEMPLATES.length} templates — same content based on your verified experience, different look. ATS-recommended templates stay
               single-column with no color blocks or icons; that&apos;s deliberate, not a missing feature, since some ATS parsers
               choke on decoration. Filter by style or color to find one fast.
             </p>

@@ -6,7 +6,7 @@ export default function OptimizerReportPanel({ report }: { report: CareerOptimiz
   return (
     <div className="optimizer-report" style={{ marginTop: 20 }}>
       <h3>AI Career & CV Optimizer</h3>
-      <p className="muted">Evidence-bound analysis — market signals are curated guides, not invented skills.</p>
+      <p className="muted">Based on your verified experience — market signals are curated guides, not invented skills.</p>
       <p className="muted" style={{ fontSize: 13 }}>
         <strong>JD Match</strong> below is your Fit Score from above, repeated here for reference. <strong>Career Opportunity</strong>{" "}
         is a wider view — it also weighs market demand for this role and skills you could transfer in, so it can read higher or
@@ -29,7 +29,7 @@ export default function OptimizerReportPanel({ report }: { report: CareerOptimiz
       </div>
 
       <details open className="opt-section">
-        <summary>JD Match breakdown (spec-aligned)</summary>
+        <summary>How your resume matches this job</summary>
         <div className="grid-2" style={{ marginTop: 8 }}>
           {(
             [

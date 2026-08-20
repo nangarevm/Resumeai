@@ -47,7 +47,7 @@ describe("SRS v2 candidate engines", () => {
     const profile = parseResume("1", RESUME);
     const jd = parseJD("j", JD);
     const fit = computeFitReport(profile, jd, buildCareerVault(profile));
-    expect(fit.disclaimer).toMatch(/not a universal ATS score/i);
+    expect(fit.disclaimer).toMatch(/not an ATS score/i);
     expect(fit.subScores.keywordCoverage).toBeGreaterThan(0);
     expect(fit.parserPreview).toMatch(/Anuja/);
     expect(fit.nextActions.length).toBeGreaterThan(0);
