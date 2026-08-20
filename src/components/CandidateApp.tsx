@@ -36,6 +36,8 @@ import { computeResumeHealth } from "@/lib/engines/resume-health";
 import RecruiterViewPanel from "@/components/RecruiterViewPanel";
 import { computeRecruiterView } from "@/lib/engines/recruiter-view";
 import { detectGenericPhrases, stripGenericPhrase } from "@/lib/engines/generic-phrase-detector";
+import SkillsOptimizationPanel from "@/components/SkillsOptimizationPanel";
+import { categorizeSkills, applyCategorizedSkillsToResume } from "@/lib/engines/skills-optimizer";
 import { isHeaderLine } from "@/lib/resume-line-editor";
 import LoadingProgress from "@/components/LoadingProgress";
 import EmptyState from "@/components/EmptyState";
@@ -494,6 +496,24 @@ export default function CandidateApp() {
     setNotice(`"${skill}" added to your Career Vault based on your confirmation — re-run Fit Score to see the updated match.`);
   }
 
+  async function applyCategorizedSkills() {
+    const base = ws?.profile.rawResumeText || resumeText;
+    if (!base || !ws) return;
+    const updatedText = applyCategorizedSkillsToResume(base, ws.profile.extractedSkills);
+    setResumeText(updatedText);
+    setBusy(true);
+    setAutosaveState("saving");
+    const res = await fetch("/api/vault", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resumeText: updatedText, targetRole, goals })
+    });
+    await refresh();
+    setBusy(false);
+    flashAutosave(res.ok);
+    setNotice("SKILLS section reorganized into categories — same skills, no additions or removals.");
+  }
+
   async function onUpload(file: File) {
     const form = new FormData();
     form.append("file", file);
@@ -866,6 +886,7 @@ export default function CandidateApp() {
     () => (ws ? computeRecruiterView(ws.profile, ws.vault, job || undefined) : null),
     [ws, job]
   );
+  const skillGroups = useMemo(() => (ws ? categorizeSkills(ws.profile.extractedSkills) : []), [ws]);
   const showOnboardingBanner =
     !onboardingDismissed && (step === "vault" || step === "job" || step === "fit") && progress < 55;
   const current = STEPS.find((s) => s.id === step)!;
@@ -1186,6 +1207,7 @@ export default function CandidateApp() {
                   missing={vaultHealth.missing}
                 />
                 {resumeHealth && <ResumeHealthDashboard health={resumeHealth} />}
+                <SkillsOptimizationPanel groups={skillGroups} busy={busy} onApply={applyCategorizedSkills} />
                 {ws.vault.evidence.slice(0, 16).map((e) => (
                   <div key={e.id} className="chain-item vault-item">
                     <div className="vault-item-main">
