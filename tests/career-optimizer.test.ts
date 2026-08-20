@@ -81,4 +81,55 @@ describe("career optimizer engines", () => {
     expect(dims.leadershipMatch).toBeGreaterThan(40);
     expect(dims.communicationMatch).toBeGreaterThan(40);
   });
+
+  it("domain match rewards vault evidence for the JD's domain over an unmatched one", () => {
+    const profile = parseResume(
+      "t",
+      `${RESUME}\nWORK EXPERIENCE\nAcme | SDET | 2022-Present\n- Built automation for logistics and cold-chain shipment tracking`
+    );
+    const vault = buildCareerVault(profile);
+    const jdWithDomain = parseJD("j", `${JD}\nDOMAIN: Logistics`);
+    const fitWithDomain = computeFitReport(profile, jdWithDomain, vault);
+    expect(fitWithDomain.optimizer!.jdMatch.domainMatch).toBeGreaterThan(60);
+    expect(fitWithDomain.optimizer!.jdMatch.dimensionNotes?.domain).toMatch(/logistics/i);
+
+    // JD with no explicit DOMAIN: line falls back to an inferred domain (e.g.
+    // "Quality Assurance" for an SDET posting) that this vault has no
+    // evidence for — should score low, not be treated as a match.
+    const jdNoDomain = parseJD("j", JD);
+    const fitNoDomain = computeFitReport(profile, jdNoDomain, vault);
+    expect(fitNoDomain.optimizer!.jdMatch.domainMatch).toBeLessThan(fitWithDomain.optimizer!.jdMatch.domainMatch);
+  });
+
+  it("seniority match scores highest when JD and resume titles align", () => {
+    const seniorProfile = parseResume("t", `${RESUME}\nWORK EXPERIENCE\nAcme | Senior SDET | 2022-Present\n- Led automation strategy`);
+    const jdSenior = parseJD("j", `${JD}\nEXPERIENCE LEVEL: Senior`);
+    const vault = buildCareerVault(seniorProfile);
+    const fit = computeFitReport(seniorProfile, jdSenior, vault);
+    expect(fit.optimizer!.jdMatch.seniorityMatch).toBeGreaterThanOrEqual(90);
+  });
+
+  it("achievement match reflects measurable results already in the vault", () => {
+    const profile = parseResume("t", RESUME); // has "reducing regression time 40%"
+    const jd = parseJD("j", JD);
+    const vault = buildCareerVault(profile);
+    const fit = computeFitReport(profile, jd, vault);
+    expect(fit.optimizer!.jdMatch.achievementMatch).toBeGreaterThan(30);
+  });
+
+  it("exposes per-requirement evidence for a resume-vs-JD comparison table", () => {
+    const profile = parseResume("t", RESUME);
+    const jd = parseJD("j", JD);
+    const vault = buildCareerVault(profile);
+    const fit = computeFitReport(profile, jd, vault);
+    const evidence = fit.optimizer!.requirementEvidence;
+    expect(evidence).toBeDefined();
+    expect(evidence!.length).toBeGreaterThan(0);
+    expect(evidence!.some((e) => e.requirementName.toLowerCase().includes("python"))).toBe(true);
+    for (const e of evidence!) {
+      expect(e).toHaveProperty("strength");
+      expect(e).toHaveProperty("snippet");
+      expect(e).toHaveProperty("sourceSection");
+    }
+  });
 });

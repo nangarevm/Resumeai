@@ -1,4 +1,4 @@
-import type { CandidateProfile, JobDescription } from "./models";
+import type { CandidateProfile, Evidence, JobDescription } from "./models";
 
 export type EvidenceType =
   | "work"
@@ -99,6 +99,9 @@ export interface JdMatchBreakdown {
   responsibilityTotalCount?: number;
   atsKeywordMatch: number;
   educationCertMatch: number;
+  domainMatch: number;
+  seniorityMatch: number;
+  achievementMatch: number;
   leadershipMatch?: number;
   communicationMatch?: number;
   aiRelevanceMatch?: number;
@@ -106,6 +109,9 @@ export interface JdMatchBreakdown {
     leadership: string;
     communication: string;
     aiRelevance: string;
+    domain: string;
+    seniority: string;
+    achievement: string;
   };
 }
 
@@ -157,6 +163,7 @@ export interface CareerOptimizerReport {
   summarySuggestion?: string;
   responsibilityHighlights?: ResponsibilityHighlight[];
   responsibilityGaps?: string[];
+  requirementEvidence?: Evidence[];
 }
 
 export interface TailorSuggestion {

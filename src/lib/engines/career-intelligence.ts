@@ -12,6 +12,83 @@ import { scoreSoftSkillDimensions } from "./soft-skill-scorer";
 import { suggestSummaryLine } from "./summary-suggestion";
 import { getCachedLiveOverlay, mergeLiveWithStatic } from "./live-market-feed";
 
+const SENIORITY_TIERS: Record<string, number> = {
+  intern: 0,
+  trainee: 0,
+  junior: 1,
+  associate: 1,
+  entry: 1,
+  "entry-level": 1,
+  mid: 2,
+  "mid-level": 2,
+  senior: 3,
+  lead: 4,
+  principal: 5,
+  staff: 5,
+  architect: 5,
+  director: 6,
+  "head of": 6,
+  vp: 7,
+  cto: 7,
+  ceo: 7
+};
+
+function detectSeniorityTier(text: string): number | null {
+  const lower = text.toLowerCase();
+  let best: number | null = null;
+  for (const [word, tier] of Object.entries(SENIORITY_TIERS)) {
+    if (new RegExp(`\\b${word}\\b`).test(lower)) best = best === null ? tier : Math.max(best, tier);
+  }
+  return best;
+}
+
+/** How well the JD's stated (or title-implied) seniority lines up with the
+ *  candidate's own recent title — never penalizes when either side doesn't
+ *  say, since silence isn't evidence of a mismatch. */
+function computeSeniorityMatch(jd: JobDescription, profile: CandidateProfile): { score: number; note: string } {
+  const jdTier = detectSeniorityTier(`${jd.seniority || ""} ${jd.title || ""}`);
+  const resumeTier = detectSeniorityTier(profile.rawResumeText.split("\n").slice(0, 15).join(" "));
+  if (jdTier === null) return { score: 65, note: "JD does not state a seniority level — neutral baseline." };
+  if (resumeTier === null) return { score: 55, note: "Could not detect a seniority level from your resume's recent titles." };
+  const diff = Math.abs(jdTier - resumeTier);
+  if (diff === 0) return { score: 95, note: "Your most recent title matches the JD's seniority level." };
+  if (diff === 1) return { score: 75, note: "Your seniority is one level away from what the JD states." };
+  if (diff === 2) return { score: 50, note: "Your seniority is a couple of levels away from what the JD states." };
+  return { score: 30, note: "Your seniority is far from what the JD states." };
+}
+
+/** Whether the JD's stated domain shows up in the candidate's own approved
+ *  vault content (real evidence) versus only in their stated preferences
+ *  (aspirational, still honestly labeled as such). */
+function computeDomainMatch(jd: JobDescription, vaultBlob: string, profile: CandidateProfile): { score: number; note: string } {
+  const domain = (jd.domain || "").trim().toLowerCase();
+  if (!domain) return { score: 65, note: "JD does not state a domain — neutral baseline." };
+  const domainWords = domain.split(/[\s,/&-]+/).filter((w) => w.length > 2);
+  const hits = domainWords.filter((w) => vaultBlob.includes(w));
+  if (hits.length === 0) {
+    const preferred = profile.preferences.preferredDomains.some((d) => d.toLowerCase().includes(domain) || domain.includes(d.toLowerCase()));
+    return preferred
+      ? { score: 55, note: `"${jd.domain}" is a domain you've said you're targeting, but not yet backed by vault evidence.` }
+      : { score: 35, note: `No vault evidence found for the "${jd.domain}" domain.` };
+  }
+  const score = Math.min(100, 60 + Math.round((hits.length / domainWords.length) * 40));
+  return { score, note: `Vault evidence references the "${jd.domain}" domain.` };
+}
+
+/** Measurable-impact evidence in the vault — achievement-type items plus
+ *  any approved item that already carries a number. Never invents a metric;
+ *  just checks whether the candidate has any to draw on. */
+function computeAchievementMatch(vault: CareerVault): { score: number; note: string } {
+  const approved = approvedEvidence(vault);
+  const achievementCount = approved.filter((e) => e.type === "achievement").length;
+  const metricBearing = approved.filter((e) => /\d+\s*%|\b\d+\+?\s*(users?|apps?|applications?|projects?|customers?|releases?|downloads?)\b/i.test(e.content)).length;
+  const signal = achievementCount * 2 + metricBearing;
+  if (signal === 0) return { score: 30, note: "No measurable achievements or metrics found in your approved vault items." };
+  if (signal <= 2) return { score: 55, note: "A little measurable impact in your vault — a few more numbers would help." };
+  if (signal <= 4) return { score: 75, note: "Solid measurable impact represented in your vault." };
+  return { score: 90, note: "Strong measurable impact — several quantified results in your vault." };
+}
+
 export function buildCareerOptimizerReport(
   profile: CandidateProfile,
   jd: JobDescription,
@@ -45,6 +122,12 @@ export function buildCareerOptimizerReport(
           ? 45
           : 65;
 
+  const approved = approvedEvidence(vault);
+  const vaultBlob = approved.map((e) => e.content).join(" ").toLowerCase();
+  const domainMatch = computeDomainMatch(jd, vaultBlob, profile);
+  const seniorityMatch = computeSeniorityMatch(jd, profile);
+  const achievementMatch = computeAchievementMatch(vault);
+
   const jdMatch: JdMatchBreakdown = {
     overall: fit.score,
     skillsMatch: fit.subScores.keywordCoverage,
@@ -55,18 +138,21 @@ export function buildCareerOptimizerReport(
     responsibilityTotalCount: respResult.totalCount,
     atsKeywordMatch: ats.score,
     educationCertMatch: eduCertMatch,
+    domainMatch: domainMatch.score,
+    seniorityMatch: seniorityMatch.score,
+    achievementMatch: achievementMatch.score,
     leadershipMatch: softSkills.leadershipMatch,
     communicationMatch: softSkills.communicationMatch,
     aiRelevanceMatch: softSkills.aiRelevanceMatch,
     dimensionNotes: {
       leadership: softSkills.leadershipNote,
       communication: softSkills.communicationNote,
-      aiRelevance: softSkills.aiRelevanceNote
+      aiRelevance: softSkills.aiRelevanceNote,
+      domain: domainMatch.note,
+      seniority: seniorityMatch.note,
+      achievement: achievementMatch.note
     }
   };
-
-  const approved = approvedEvidence(vault);
-  const vaultBlob = approved.map((e) => e.content).join(" ").toLowerCase();
   const signals = mergeLiveWithStatic(getMarketSignals(jd.title, jd.domain), getCachedLiveOverlay(resolveRoleFamily(jd.title, jd.domain)));
   const market = marketIntelligenceForCandidate(jd.title, vaultBlob, jd.domain);
 
@@ -113,7 +199,8 @@ export function buildCareerOptimizerReport(
     nextBestActions: fit.nextActions,
     summarySuggestion,
     responsibilityHighlights: respResult.highlights,
-    responsibilityGaps: respResult.gaps
+    responsibilityGaps: respResult.gaps,
+    requirementEvidence: evidence
   };
 }
 
