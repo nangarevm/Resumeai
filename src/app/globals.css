@@ -595,7 +595,16 @@ a.sidebar-foot:hover { color: var(--text-primary); }
   font-size: 13px;
   line-height: 1.55;
 }
-.resume-tpl .tpl-header { margin-bottom: 14px; }
+.resume-tpl .tpl-header { margin-bottom: 14px; display: flex; align-items: center; gap: 16px; }
+.resume-tpl .tpl-header-text { flex: 1; min-width: 0; }
+.resume-tpl .tpl-photo {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
+}
 .resume-tpl .tpl-header h1 { font-size: 24px; margin-bottom: 4px; color: #111; }
 .resume-tpl .tpl-contact { font-size: 11.5px; color: #555; }
 .resume-tpl .tpl-contact-item:not(:last-child)::after { content: "·"; margin: 0 6px; color: #bbb; }
@@ -673,6 +682,7 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .tpl-modern-band .tpl-header { background: var(--tpl-accent); color: #fff; padding: 26px 40px 20px; margin-bottom: 0; }
 .tpl-modern-band .tpl-header h1 { color: #fff; }
 .tpl-modern-band .tpl-contact { color: #fff; opacity: 0.85; }
+.tpl-modern-band .tpl-photo { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6); }
 .tpl-modern-band .tpl-section { padding: 0 40px; }
 .tpl-modern-band .tpl-section:last-child { padding-bottom: 30px; }
 .tpl-modern-band .tpl-section h2 { color: var(--tpl-accent); border-bottom-color: var(--tpl-accent-soft); }
@@ -686,6 +696,7 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .tpl-two-tone-header { padding: 0; overflow: hidden; }
 .tpl-two-tone-header .tpl-header { background: var(--tpl-accent); color: #fff; padding: 22px 40px 0; margin-bottom: 0; }
 .tpl-two-tone-header .tpl-header h1 { color: #fff; }
+.tpl-two-tone-header .tpl-photo { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6); margin-bottom: 12px; }
 .tpl-two-tone-header .tpl-contact { background: var(--tpl-accent-soft); color: var(--tpl-accent); padding: 8px 40px; margin: 0 -40px; font-weight: 600; }
 .tpl-two-tone-header .tpl-section { padding: 0 40px; }
 .tpl-two-tone-header .tpl-section:last-child { padding-bottom: 30px; }
@@ -710,7 +721,8 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 
 /* ===== Executive ===== */
 .tpl-executive-serif { font-family: Georgia, "Times New Roman", serif; }
-.tpl-executive-serif .tpl-header { text-align: center; border-bottom: 2px solid var(--tpl-accent); padding-bottom: 12px; }
+.tpl-executive-serif .tpl-header { text-align: center; border-bottom: 2px solid var(--tpl-accent); padding-bottom: 12px; flex-direction: column; }
+.tpl-executive-serif .tpl-photo { margin-bottom: 8px; }
 .tpl-executive-serif .tpl-header h1 { letter-spacing: 0.05em; text-transform: uppercase; font-size: 22px; color: var(--tpl-accent); }
 .tpl-executive-serif .tpl-section h2 { text-align: center; letter-spacing: 0.15em; border-bottom: none; color: var(--tpl-accent); }
 .tpl-executive-serif .tpl-skill-tag { background: transparent; border: 1px solid var(--tpl-accent); color: var(--tpl-accent); border-radius: 0; }
@@ -730,6 +742,7 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .tpl-technical-dark { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
 .tpl-technical-dark .tpl-header { background: #0d1117; color: #f0f6fc; margin: -36px -40px 16px; padding: 22px 40px; border-radius: 10px 10px 0 0; }
 .tpl-technical-dark .tpl-header h1 { color: var(--tpl-accent); font-size: 20px; }
+.tpl-technical-dark .tpl-photo { box-shadow: 0 0 0 2px var(--tpl-accent); }
 .tpl-technical-dark .tpl-contact { color: #8b949e; }
 .tpl-technical-dark .tpl-section h2 { color: var(--tpl-accent); border-bottom-color: #d8dee4; }
 .tpl-technical-dark .tpl-skill-tag { background: #0d1117; color: var(--tpl-accent); border-radius: 4px; font-family: inherit; }
@@ -772,6 +785,7 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .tpl-editorial-spacious .tpl-skill-tag { background: transparent; color: var(--tpl-accent); padding: 3px 0; }
 
 .tpl-graduate-banner .tpl-header { background: var(--tpl-accent-soft); margin: -36px -40px 16px; padding: 24px 40px 18px; border-radius: 10px 10px 0 0; }
+.tpl-graduate-banner .tpl-photo { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8); }
 .tpl-graduate-banner .tpl-header h1 { color: var(--tpl-accent); }
 .tpl-graduate-banner .tpl-section h2 { color: var(--tpl-accent); border-bottom-color: var(--tpl-accent-soft); }
 .tpl-graduate-banner .tpl-skill-tag { background: var(--tpl-accent-soft); color: var(--tpl-accent); }

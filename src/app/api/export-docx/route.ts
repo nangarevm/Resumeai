@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   }
 
   const buf = body.templateId
-    ? await resumeTextToTemplatedDocxBuffer(resumeText, body.templateId)
+    ? await resumeTextToTemplatedDocxBuffer(resumeText, body.templateId, seeker.profile.photoDataUrl)
     : await resumeTextToDocxBuffer(resumeText, `${seeker.profile.name} — Resume`);
   return new NextResponse(new Uint8Array(buf), {
     headers: {

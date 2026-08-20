@@ -1,4 +1,4 @@
-import { AlignmentType, BorderStyle, Document, HeadingLevel, Packer, Paragraph, ShadingType, TextRun } from "docx";
+import { AlignmentType, BorderStyle, Document, HeadingLevel, ImageRun, Packer, Paragraph, ShadingType, TextRun } from "docx";
 import { findTemplate, parseResumeForRender } from "../resume-render";
 
 export async function resumeTextToDocxBuffer(text: string, title = "Resume"): Promise<Buffer> {
@@ -173,7 +173,21 @@ function nameParagraphs(name: string, contact: string, profile: DocxStyleProfile
   ];
 }
 
-export async function resumeTextToTemplatedDocxBuffer(text: string, templateId: string): Promise<Buffer> {
+/** docx's ImageRun only accepts jpg/png/gif/bmp raster data — a webp upload
+ *  still renders fine in the browser preview/print, but is silently skipped
+ *  here rather than embedding bytes docx can't actually decode. */
+function photoParagraph(photoDataUrl: string): Paragraph | null {
+  const match = /^data:image\/(jpeg|jpg|png);base64,(.+)$/i.exec(photoDataUrl);
+  if (!match) return null;
+  const type = match[1].toLowerCase() === "jpeg" ? "jpg" : (match[1].toLowerCase() as "jpg" | "png");
+  const data = Buffer.from(match[2], "base64");
+  return new Paragraph({
+    children: [new ImageRun({ type, data, transformation: { width: 80, height: 80 } })],
+    spacing: { after: 120 }
+  });
+}
+
+export async function resumeTextToTemplatedDocxBuffer(text: string, templateId: string, photoDataUrl?: string | null): Promise<Buffer> {
   const template = findTemplate(templateId);
   const profile = STYLE_PROFILES[template.skeletonId] || STYLE_PROFILES["ats-classic"];
   const resume = parseResumeForRender(text);
@@ -184,7 +198,8 @@ export async function resumeTextToTemplatedDocxBuffer(text: string, templateId: 
     .filter(Boolean)
     .join("   ·   ");
 
-  const children: Paragraph[] = [...nameParagraphs(resume.meta.name || "Your Name", contact, profile, accent, accentSoft)];
+  const photo = photoDataUrl ? photoParagraph(photoDataUrl) : null;
+  const children: Paragraph[] = [...(photo ? [photo] : []), ...nameParagraphs(resume.meta.name || "Your Name", contact, profile, accent, accentSoft)];
 
   if (resume.summary) {
     children.push(headerParagraph("Summary", profile, accent));

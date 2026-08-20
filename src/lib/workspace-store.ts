@@ -217,6 +217,15 @@ export async function setSeekerProfile(profile: CandidateProfile, reason = "Resu
   return ws.seeker;
 }
 
+/** Photo-only update — deliberately bypasses setSeekerProfile so swapping a
+ *  headshot doesn't rebuild the vault or push a new resume-text version. */
+export async function setSeekerPhoto(photoDataUrl: string | null): Promise<SeekerWorkspace> {
+  const ws = await load();
+  ws.seeker.profile = { ...ws.seeker.profile, photoDataUrl: photoDataUrl ?? undefined };
+  await save(ws);
+  return ws.seeker;
+}
+
 export async function updateVault(patch: Partial<CareerVault>): Promise<CareerVault> {
   const ws = await load();
   ws.seeker.vault = { ...ws.seeker.vault, ...patch, updatedAt: new Date().toISOString() };

@@ -11,7 +11,15 @@ import { findTemplate, parseResumeForRender, type ParsedResume } from "@/lib/res
 // and is labeled as one in the UI rather than presented as exact.
 const PAGE_HEIGHT_PX = 960;
 
-export default function ResumeTemplatePreview({ text, templateId }: { text: string; templateId: string }) {
+export default function ResumeTemplatePreview({
+  text,
+  templateId,
+  photoDataUrl
+}: {
+  text: string;
+  templateId: string;
+  photoDataUrl?: string | null;
+}) {
   const resume: ParsedResume = parseResumeForRender(text);
   const template = findTemplate(templateId);
   const contactItems = [resume.meta.location, resume.meta.phone, resume.meta.email, resume.meta.linkedin, resume.meta.github, resume.meta.portfolio].filter(
@@ -42,16 +50,22 @@ export default function ResumeTemplatePreview({ text, templateId }: { text: stri
           aria-label={`Resume preview, ${template.name} template`}
         >
           <header className="tpl-header">
-            <h1>{resume.meta.name || "Your Name"}</h1>
-            {contactItems.length > 0 && (
-              <p className="tpl-contact">
-                {contactItems.map((item, i) => (
-                  <span className="tpl-contact-item" key={`${item}-${i}`}>
-                    {item}
-                  </span>
-                ))}
-              </p>
+            {photoDataUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- data: URI, not a static asset Next can optimize
+              <img className="tpl-photo" src={photoDataUrl} alt={resume.meta.name ? `Photo of ${resume.meta.name}` : "Candidate photo"} />
             )}
+            <div className="tpl-header-text">
+              <h1>{resume.meta.name || "Your Name"}</h1>
+              {contactItems.length > 0 && (
+                <p className="tpl-contact">
+                  {contactItems.map((item, i) => (
+                    <span className="tpl-contact-item" key={`${item}-${i}`}>
+                      {item}
+                    </span>
+                  ))}
+                </p>
+              )}
+            </div>
           </header>
 
           {resume.summary && (

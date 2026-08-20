@@ -131,6 +131,29 @@ describe("resumeTextToTemplatedDocxBuffer", () => {
     expect(buf.length).toBeGreaterThan(500);
   });
 
+  it("embeds a photo (PNG) as an ImageRun without corrupting the docx", async () => {
+    // 1x1 transparent PNG, smallest valid PNG payload.
+    const tinyPng =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+    const withPhoto = await resumeTextToTemplatedDocxBuffer(SAMPLE, "modern-band-blue", tinyPng);
+    const withoutPhoto = await resumeTextToTemplatedDocxBuffer(SAMPLE, "modern-band-blue");
+    expect(withPhoto.slice(0, 2).toString("ascii")).toBe("PK");
+    expect(withPhoto.length).toBeGreaterThan(withoutPhoto.length);
+  });
+
+  it("skips a photo docx can't embed (e.g. webp) instead of throwing or corrupting output", async () => {
+    const webp = "data:image/webp;base64,UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==";
+    const buf = await resumeTextToTemplatedDocxBuffer(SAMPLE, "modern-band-blue", webp);
+    expect(buf.slice(0, 2).toString("ascii")).toBe("PK");
+    expect(buf.length).toBeGreaterThan(1000);
+  });
+
+  it("ignores a null/undefined photo the same as omitting it", async () => {
+    const buf = await resumeTextToTemplatedDocxBuffer(SAMPLE, "modern-band-blue", null);
+    expect(buf.slice(0, 2).toString("ascii")).toBe("PK");
+    expect(buf.length).toBeGreaterThan(1000);
+  });
+
   it(
     "generates a valid, non-empty .docx for every one of the 166 templates, across every stream/experience shape",
     async () => {

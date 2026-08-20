@@ -44,6 +44,7 @@ import { BUCKET_ORDER, type InterviewBucket } from "@/lib/engines/interview-cate
 import VersionHistoryPanel from "@/components/VersionHistoryPanel";
 import NamedResumesPanel from "@/components/NamedResumesPanel";
 import SharePanel from "@/components/SharePanel";
+import PhotoUploadPanel from "@/components/PhotoUploadPanel";
 import ProjectIntelligencePanel from "@/components/ProjectIntelligencePanel";
 import { rankProjectsByRelevance } from "@/lib/engines/project-intelligence";
 import AchievementBuilderPanel from "@/components/AchievementBuilderPanel";
@@ -705,6 +706,29 @@ export default function CandidateApp() {
         setNotice("File parsed. Review the text, then save the vault.");
       }
     } else setNotice(data.error || "Could not read that file.");
+  }
+
+  async function uploadPhoto(file: File) {
+    setBusy(true);
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch("/api/photo", { method: "POST", body: form });
+    const data = await res.json().catch(() => ({ error: "Could not upload that photo." }));
+    if (res.ok) {
+      await refresh();
+      setNotice("Photo added — it'll show on templates that support one.");
+    } else {
+      setNotice(data.error || "Could not upload that photo.");
+    }
+    setBusy(false);
+  }
+
+  async function removePhoto() {
+    setBusy(true);
+    await fetch("/api/photo", { method: "DELETE" });
+    await refresh();
+    setBusy(false);
+    setNotice("Photo removed.");
   }
 
   async function analyzeJob() {
@@ -1419,6 +1443,12 @@ export default function CandidateApp() {
                   busy={busy}
                   onCreate={createShareLink}
                   onRevoke={revokeShareLink}
+                />
+                <PhotoUploadPanel
+                  photoDataUrl={ws.profile.photoDataUrl}
+                  busy={busy}
+                  onUpload={uploadPhoto}
+                  onRemove={removePhoto}
                 />
                 {ws.vault.evidence.slice(0, 16).map((e) => (
                   <div key={e.id} className="chain-item vault-item">
@@ -2355,7 +2385,11 @@ export default function CandidateApp() {
                 Export DOCX in this style
               </button>
             </div>
-            <ResumeTemplatePreview text={draft || resumePreview || resumeText} templateId={selectedTemplate} />
+            <ResumeTemplatePreview
+              text={draft || resumePreview || resumeText}
+              templateId={selectedTemplate}
+              photoDataUrl={ws?.profile.photoDataUrl}
+            />
           </section>
         )}
 
