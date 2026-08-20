@@ -29,6 +29,7 @@ import NextBestAction from "@/components/NextBestAction";
 import ReadinessScore, { type ReadinessStep } from "@/components/ReadinessScore";
 import AutosaveStatus, { type AutosaveState } from "@/components/AutosaveStatus";
 import { computeNextBestAction } from "@/lib/next-best-action";
+import { extractVerifiableClaims, INTEGRITY_KIND_LABELS } from "@/lib/engines/integrity-check";
 import LoadingProgress from "@/components/LoadingProgress";
 import EmptyState from "@/components/EmptyState";
 import HealthCard from "@/components/HealthCard";
@@ -137,6 +138,9 @@ export default function CandidateApp() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [override, setOverride] = useState(false);
+  const [integrityResolutions, setIntegrityResolutions] = useState<Record<string, "confirmed" | "edited" | "removed">>({});
+  const [editingIntegrityClaim, setEditingIntegrityClaim] = useState<string | null>(null);
+  const [integrityEditValue, setIntegrityEditValue] = useState("");
   const [answerDraft, setAnswerDraft] = useState("");
   const [linkedinPaste, setLinkedinPaste] = useState("");
   const [linkedinWarnings, setLinkedinWarnings] = useState<string[]>([]);
@@ -188,6 +192,8 @@ export default function CandidateApp() {
     if (!ws?.profile.rawResumeText) return "";
     return applyAcceptedSuggestions(ws.profile.rawResumeText, suggestions);
   }, [ws?.profile.rawResumeText, suggestions]);
+
+  const integrityClaims = useMemo(() => extractVerifiableClaims(draft || resumePreview), [draft, resumePreview]);
 
   const progress = useMemo(() => {
     const flags = [ws?.vault.evidence.length, job, fit, suggestions.some((s) => s.status !== "pending"), findings.length, kit, apps.length, prep, change];
@@ -401,6 +407,34 @@ export default function CandidateApp() {
     setDraft(data.draft || text);
     setFindings(data.findings || []);
     setNotice(data.findings?.length ? "Re-scanned your edited draft." : "Draft looks clean against the vault.");
+  }
+
+  function resolveIntegrityClaim(claimText: string, action: "confirmed" | "removed") {
+    setIntegrityResolutions((prev) => ({ ...prev, [claimText]: action }));
+    if (action === "removed") {
+      const base = draft || resumePreview;
+      const next = base
+        .split("\n")
+        .filter((l) => l.trim() !== claimText)
+        .join("\n");
+      setDraft(next);
+    }
+  }
+
+  function startEditIntegrityClaim(claimText: string) {
+    setEditingIntegrityClaim(claimText);
+    setIntegrityEditValue(claimText);
+  }
+
+  function saveIntegrityEdit(originalText: string) {
+    const base = draft || resumePreview;
+    const next = base
+      .split("\n")
+      .map((l) => (l.trim() === originalText ? integrityEditValue : l))
+      .join("\n");
+    setDraft(next);
+    setIntegrityResolutions((prev) => ({ ...prev, [integrityEditValue.trim()]: "edited" }));
+    setEditingIntegrityClaim(null);
   }
 
   async function onUpload(file: File) {
@@ -1549,6 +1583,70 @@ export default function CandidateApp() {
                 </div>
               </article>
             ))}
+
+            <h3>Resume Integrity Check</h3>
+            <p className="muted">
+              Before you export, quickly confirm these claims are still accurate — the kind of specific numbers and named
+              tools a recruiter is most likely to ask about in an interview. Nothing is changed until you choose.
+            </p>
+            {integrityClaims.length === 0 ? (
+              <p className="muted">No specific counts, metrics, or named integrations found to double-check.</p>
+            ) : (
+              <>
+                <p className="muted">
+                  {Object.keys(integrityResolutions).filter((k) => integrityClaims.some((c) => c.text === k)).length} of{" "}
+                  {integrityClaims.length} reviewed
+                </p>
+                {integrityClaims.map((c) => {
+                  const resolution = integrityResolutions[c.text];
+                  return (
+                    <article className={`chain-item ${resolution === "removed" ? "" : resolution ? "green" : "yellow"}`} key={c.text}>
+                      <span className="badge mid">{INTEGRITY_KIND_LABELS[c.kind]}</span> {c.text}
+                      {resolution && (
+                        <p className="muted" style={{ marginTop: 6 }}>
+                          {resolution === "confirmed" && "✅ Confirmed accurate"}
+                          {resolution === "removed" && "❌ Removed from the draft"}
+                          {resolution === "edited" && "✏️ Edited"}
+                        </p>
+                      )}
+                      {editingIntegrityClaim === c.text ? (
+                        <div style={{ marginTop: 8 }}>
+                          <textarea
+                            className="form-control"
+                            rows={2}
+                            value={integrityEditValue}
+                            onChange={(e) => setIntegrityEditValue(e.target.value)}
+                          />
+                          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                            <button className="chip" type="button" onClick={() => saveIntegrityEdit(c.text)}>
+                              Save
+                            </button>
+                            <button className="chip" type="button" onClick={() => setEditingIntegrityClaim(null)}>
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        !resolution && (
+                          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                            <button className="chip" type="button" onClick={() => resolveIntegrityClaim(c.text, "confirmed")}>
+                              ✅ Confirm
+                            </button>
+                            <button className="chip" type="button" onClick={() => startEditIntegrityClaim(c.text)}>
+                              ✏️ Edit
+                            </button>
+                            <button className="chip" type="button" onClick={() => resolveIntegrityClaim(c.text, "removed")}>
+                              ❌ Remove
+                            </button>
+                          </div>
+                        )
+                      )}
+                    </article>
+                  );
+                })}
+              </>
+            )}
+
             <h3>Edit export resume</h3>
             <p className="muted">Edit, add, or remove a line here, then re-scan before you export or build the kit.</p>
             <ResumeSectionEditor text={draft || resumePreview} onChange={setDraft} />
