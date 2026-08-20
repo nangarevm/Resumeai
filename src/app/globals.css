@@ -352,6 +352,32 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .row-del:hover { border-color: var(--accent-red); background: rgba(248, 81, 73, 0.14); }
 .row-add { margin-top: 2px; font-size: 11px; padding: 5px 12px; }
 
+.wizard { margin-top: 12px; }
+.wizard-progress { margin-bottom: 12px; }
+.wizard-step { display: flex; flex-direction: column; gap: 4px; }
+.wizard-entry {
+  padding: 10px 0;
+}
+.wizard-entry + .wizard-entry { border-top: 1px solid var(--border-color); margin-top: 10px; padding-top: 14px; }
+
+.goal-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+.goal-chip {
+  border-radius: 12px; border: 1px solid var(--border-color);
+  background: rgba(255,255,255,0.03); padding: 12px 14px; font-size: 13px; font-weight: 600;
+  text-align: left; flex: 1 1 200px; min-width: 160px;
+}
+.goal-chip:hover { border-color: var(--accent-blue); }
+.goal-chip.active { border-color: var(--accent-blue); background: rgba(88,166,255,0.14); }
+.entry-path-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 10px 0 4px; }
+.entry-path {
+  border-radius: 14px; border: 1px solid var(--border-color);
+  background: rgba(255,255,255,0.03); padding: 16px; text-align: left;
+}
+.entry-path:hover { border-color: var(--accent-blue); }
+.entry-path.active { border-color: var(--accent-blue); background: rgba(88,166,255,0.1); }
+.entry-path strong { display: block; margin-bottom: 4px; font-size: 14px; }
+.entry-path span { font-size: 12px; color: var(--text-secondary); }
+
 .vault-item {
   display: flex;
   align-items: center;

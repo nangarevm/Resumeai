@@ -22,6 +22,7 @@ import CopyButton from "@/components/CopyButton";
 import OptimizerReportPanel from "@/components/OptimizerReportPanel";
 import AuthBar from "@/components/AuthBar";
 import ResumeSectionEditor from "@/components/ResumeSectionEditor";
+import GuidedProfileWizard from "@/components/GuidedProfileWizard";
 
 // Plain-language labels for fit.subScores — the raw object keys (keywordCoverage,
 // evidenceStrength, ...) are meaningful to the code but not to a first-time user.
@@ -45,7 +46,18 @@ const STEPS = [
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
-type ImportMode = "paste" | "file" | "linkedin" | "sample";
+type ImportMode = "guided" | "paste" | "file" | "linkedin" | "sample";
+
+const GOAL_OPTIONS = [
+  "Get a new job",
+  "Switch careers",
+  "Get promoted",
+  "Apply for internships",
+  "Apply for remote jobs",
+  "Create an academic CV",
+  "Create a general professional CV",
+  "I'm not sure"
+] as const;
 
 function jobInputKey(jobUrl: string, jdText: string) {
   return `${jobUrl.trim()}\n---\n${jdText.trim()}`;
@@ -102,7 +114,9 @@ export default function CandidateApp() {
   const [jobFetchSource, setJobFetchSource] = useState("");
   const [analyzedInputKey, setAnalyzedInputKey] = useState("");
   const [importMode, setImportMode] = useState<ImportMode>("paste");
+  const [goalChoice, setGoalChoice] = useState("");
   const [onboardingDismissed, setOnboardingDismissed] = useState(true);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(true);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiCoverLetter, setAiCoverLetter] = useState("");
   const [aiSummary, setAiSummary] = useState("");
@@ -154,8 +168,10 @@ export default function CandidateApp() {
     refresh();
     try {
       setOnboardingDismissed(localStorage.getItem("resumeproof-onboarding-dismissed") === "1");
+      setWelcomeDismissed(localStorage.getItem("resumeproof-welcome-dismissed") === "1");
     } catch {
       setOnboardingDismissed(false);
+      setWelcomeDismissed(false);
     }
   }, []);
 
@@ -229,6 +245,15 @@ export default function CandidateApp() {
     setOnboardingDismissed(true);
     try {
       localStorage.setItem("resumeproof-onboarding-dismissed", "1");
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function dismissWelcome() {
+    setWelcomeDismissed(true);
+    try {
+      localStorage.setItem("resumeproof-welcome-dismissed", "1");
     } catch {
       /* ignore */
     }
@@ -752,9 +777,68 @@ export default function CandidateApp() {
             <h3>1. Import your resume</h3>
             <p className="muted">Your vault is the source of truth — we only store what you paste or upload. Nothing is invented.</p>
 
+            {!welcomeDismissed && (
+              <div className="import-panel" style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <strong>Let&apos;s build a CV that helps you get noticed.</strong>
+                  <button type="button" className="banner-dismiss" onClick={dismissWelcome} aria-label="Dismiss welcome">
+                    ×
+                  </button>
+                </div>
+                <p className="muted" style={{ marginTop: 4 }}>What are you trying to achieve?</p>
+                <div className="goal-chips">
+                  {GOAL_OPTIONS.map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      className={`goal-chip ${goalChoice === g ? "active" : ""}`}
+                      onClick={() => {
+                        setGoalChoice(g);
+                        if (g !== "I'm not sure") setGoals(g);
+                      }}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+                {goalChoice === "I'm not sure" && (
+                  <p className="muted" style={{ marginTop: 6 }}>
+                    No problem — most people here are aiming for &ldquo;Get a new job.&rdquo; Pick that for now; you can change it any time,
+                    and nothing below depends on getting this exactly right.
+                  </p>
+                )}
+                <p className="muted" style={{ marginTop: 10 }}>Do you already have a resume?</p>
+                <div className="entry-path-grid">
+                  <button
+                    type="button"
+                    className={`entry-path ${importMode !== "guided" ? "active" : ""}`}
+                    onClick={() => {
+                      setImportMode("paste");
+                      dismissWelcome();
+                    }}
+                  >
+                    <strong>Yes — I have one</strong>
+                    <span>Paste text, upload a file, or paste your LinkedIn profile.</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`entry-path ${importMode === "guided" ? "active" : ""}`}
+                    onClick={() => {
+                      setImportMode("guided");
+                      dismissWelcome();
+                    }}
+                  >
+                    <strong>No — build it step by step</strong>
+                    <span>Answer a few short questions; we&apos;ll write the resume text for you.</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="import-tabs" role="tablist" aria-label="Import method">
               {(
                 [
+                  ["guided", "Build step-by-step"],
                   ["paste", "Paste text"],
                   ["file", "Upload file"],
                   ["linkedin", "LinkedIn paste"],
@@ -773,6 +857,20 @@ export default function CandidateApp() {
                 </button>
               ))}
             </div>
+
+            {importMode === "guided" && (
+              <div className="import-panel">
+                <GuidedProfileWizard
+                  onComplete={(text, meta) => {
+                    setResumeText(text);
+                    if (meta.targetRole) setTargetRole(meta.targetRole);
+                    if (meta.goals) setGoals(meta.goals);
+                    setImportMode("paste");
+                    setNotice("Resume text built from your answers — review it below, then save.");
+                  }}
+                />
+              </div>
+            )}
 
             {importMode === "sample" && (
               <div className="import-panel">
@@ -817,51 +915,55 @@ export default function CandidateApp() {
               </div>
             )}
 
-            <div className="form-grid" style={{ marginTop: 12 }}>
-              <div>
-                <label className="form-label">Target role (optional)</label>
-                <input className="form-control" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="e.g. AI/ML Intern" />
-              </div>
-              <div className="span-3">
-                <label className="form-label">Career goals</label>
-                <input className="form-control" value={goals} onChange={(e) => setGoals(e.target.value)} placeholder="e.g. First internship in applied ML" />
-              </div>
-              <div className="span-3">
-                <div className="form-label-row">
-                  <label className="form-label">Resume text</label>
-                  {resumeStats.chars > 0 && (
-                    <span className="resume-stats">
-                      {resumeStats.lines} lines · {resumeStats.chars.toLocaleString()} chars
-                      {resumeStats.sections.length > 0 && ` · ${resumeStats.sections.length} section hints`}
-                    </span>
-                  )}
-                </div>
-                <textarea
-                  className="form-control resume-editor"
-                  rows={16}
-                  value={resumeText}
-                  onChange={(e) => setResumeText(e.target.value)}
-                  placeholder={"NAME: Your Name\nEMAIL: you@example.com\nPHONE: +1 555 0100\n\nSUMMARY\n...\n\nWORK EXPERIENCE\nCompany | Role | Dates\n- Bullet with evidence\n\nSKILLS\nPython, SQL, ..."}
-                />
-                {resumeStats.chars > 0 && !vaultReadyToSave && (
-                  <p className="hint warn">Add more resume content (at least ~80 characters) before saving.</p>
-                )}
-                {resumeStats.chars > 0 && (
-                  <div className="checklist-inline">
-                    <span className={resumeStats.hasName ? "ok" : "miss"}>Name</span>
-                    <span className={resumeStats.hasEmail ? "ok" : "miss"}>Email</span>
-                    <span className={resumeStats.hasPhone ? "ok" : "miss"}>Phone</span>
-                    <span className={resumeStats.sections.length >= 2 ? "ok" : "miss"}>Sections</span>
+            {importMode !== "guided" && (
+              <>
+                <div className="form-grid" style={{ marginTop: 12 }}>
+                  <div>
+                    <label className="form-label">Target role (optional)</label>
+                    <input className="form-control" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="e.g. AI/ML Intern" />
                   </div>
-                )}
-              </div>
-            </div>
-            <div className="vault-actions">
-              <button className="btn-primary" disabled={busy || !vaultReadyToSave} onClick={importVault}>
-                Save Career Vault
-              </button>
-              {!vaultReadyToSave && <p className="muted">Paste or upload your resume to continue.</p>}
-            </div>
+                  <div className="span-3">
+                    <label className="form-label">Career goals</label>
+                    <input className="form-control" value={goals} onChange={(e) => setGoals(e.target.value)} placeholder="e.g. First internship in applied ML" />
+                  </div>
+                  <div className="span-3">
+                    <div className="form-label-row">
+                      <label className="form-label">Resume text</label>
+                      {resumeStats.chars > 0 && (
+                        <span className="resume-stats">
+                          {resumeStats.lines} lines · {resumeStats.chars.toLocaleString()} chars
+                          {resumeStats.sections.length > 0 && ` · ${resumeStats.sections.length} section hints`}
+                        </span>
+                      )}
+                    </div>
+                    <textarea
+                      className="form-control resume-editor"
+                      rows={16}
+                      value={resumeText}
+                      onChange={(e) => setResumeText(e.target.value)}
+                      placeholder={"NAME: Your Name\nEMAIL: you@example.com\nPHONE: +1 555 0100\n\nSUMMARY\n...\n\nWORK EXPERIENCE\nCompany | Role | Dates\n- Bullet with evidence\n\nSKILLS\nPython, SQL, ..."}
+                    />
+                    {resumeStats.chars > 0 && !vaultReadyToSave && (
+                      <p className="hint warn">Add more resume content (at least ~80 characters) before saving.</p>
+                    )}
+                    {resumeStats.chars > 0 && (
+                      <div className="checklist-inline">
+                        <span className={resumeStats.hasName ? "ok" : "miss"}>Name</span>
+                        <span className={resumeStats.hasEmail ? "ok" : "miss"}>Email</span>
+                        <span className={resumeStats.hasPhone ? "ok" : "miss"}>Phone</span>
+                        <span className={resumeStats.sections.length >= 2 ? "ok" : "miss"}>Sections</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="vault-actions">
+                  <button className="btn-primary" disabled={busy || !vaultReadyToSave} onClick={importVault}>
+                    Save Career Vault
+                  </button>
+                  {!vaultReadyToSave && <p className="muted">Paste or upload your resume to continue.</p>}
+                </div>
+              </>
+            )}
             {ws && vaultHealth && (
               <div style={{ marginTop: 16 }}>
                 <h3>

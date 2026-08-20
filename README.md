@@ -65,6 +65,8 @@ Then open the app (on this cloud VM the public preview is a tunnel; on your own 
 | AI/agent-era skill vocabulary (LLM, RAG, AI agents, MCP, LangChain, Kubernetes, Terraform, Go, Rust) | Done | `synonym-lexicon.ts`, `jd-extractor.ts` |
 | Free-form AI cover letter / summary generator (opt-in, clearly labeled, not evidence-checked — see Product rule) | Done | Kit step 6, `/api/ai-generate` (needs `ANTHROPIC_API_KEY`) |
 | Email application directly to a recruiter | Done | Kit step 6 — opens the user's own email client with recipient/subject/cover letter filled in (no SMTP needed; resume is attached manually since browsers can't attach files from JS) |
+| Structured resume editor (add/edit/delete lines, not just one raw textarea) | Done | Tailor + Verify steps, `ResumeSectionEditor` |
+| Guided step-by-step profile builder (Welcome → goal → About You → Experience → Education → Skills → Projects → Certifications, fresher vs. experienced ordering, deterministic bullet-writing, never-invent AI follow-ups) | Done | Career Vault step, `GuidedProfileWizard`, `lib/wizard/guided-profile.ts` |
 
 ## What is left (Phase 2–3 / deferred)
 
@@ -81,6 +83,10 @@ Then open the app (on this cloud VM the public preview is a tunnel; on your own 
 | Server-side email sending (SMTP/API) | "Email to recruiter" currently opens the user's own email client instead |
 | Human Expert Review add-on | Marketplace / ops |
 | WCAG audit | Improvement backlog |
+| Visual CV templates (ATS Professional / Modern / Executive / Minimal / Graduate / Technical) | Export is text/DOCX/PDF-via-print today; no template gallery or visual layout engine yet |
+| 3-pane live CV editor (controls / editor / live preview) | Editing today is the structured `ResumeSectionEditor`, not a WYSIWYG live-preview layout |
+| Multi-CV versioning (duplicate a CV, tailor per job, manage named versions) | Job Library saves JDs; there's no "CV 1 / CV 2 / CV 3" version manager yet |
+| CV upload → structured "here's what we found" confirmation screen | Upload/paste already extracts text via `/api/parse`; there's no field-by-field extraction-confirmation UI on top of it |
 
 ## Product rule
 
