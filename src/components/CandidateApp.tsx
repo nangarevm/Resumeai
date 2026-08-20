@@ -882,6 +882,12 @@ export default function CandidateApp() {
       "## LinkedIn note",
       kit.linkedinNote,
       "",
+      "## LinkedIn headline",
+      kit.linkedinHeadline,
+      "",
+      "## LinkedIn About section",
+      kit.linkedinAbout,
+      "",
       "## WhatsApp note",
       kit.whatsappNote,
       "",
@@ -1978,6 +1984,14 @@ export default function CandidateApp() {
                 <ApplicationKitCard icon="🔗" title="LinkedIn note" description="A short connection or InMail message.">
                   <CopyButton text={kit.linkedinNote} />
                   <pre className="pre">{kit.linkedinNote}</pre>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="📝" title="LinkedIn headline" description="Paste into your LinkedIn profile headline field.">
+                  <CopyButton text={kit.linkedinHeadline} />
+                  <pre className="pre">{kit.linkedinHeadline}</pre>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="👤" title="LinkedIn About section" description="A LinkedIn-appropriate version of your summary — same facts, no app jargon.">
+                  <CopyButton text={kit.linkedinAbout} />
+                  <pre className="pre">{kit.linkedinAbout}</pre>
                 </ApplicationKitCard>
 
                 <ApplicationKitCard icon="✨" title="Generate with AI (optional)" description="AI-written draft — read carefully before sending.">

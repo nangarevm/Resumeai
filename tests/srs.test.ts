@@ -113,6 +113,16 @@ SKILLS
     expect(kit.referrerChecklist.length).toBeGreaterThan(2);
   });
 
+  it("application kit includes a LinkedIn headline and About section with no app-internal jargon", () => {
+    const profile = parseResume("1", RESUME);
+    const jd = parseJD("j", JD);
+    const kit = buildApplicationKit(profile, jd, buildCareerVault(profile), []);
+    expect(kit.linkedinHeadline).toContain(jd.title);
+    expect(kit.linkedinAbout.length).toBeGreaterThan(20);
+    expect(kit.linkedinAbout.toLowerCase()).not.toContain("career vault");
+    expect(kit.linkedinHeadline.toLowerCase()).not.toContain("career vault");
+  });
+
   it("job parser infers intern seniority from the title", () => {
     const jd = parseJD("j", JD);
     expect(jd.seniority).toBe("Intern");

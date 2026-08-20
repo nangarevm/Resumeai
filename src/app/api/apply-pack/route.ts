@@ -38,6 +38,8 @@ export async function POST(request: Request) {
   zip.file("cover-letter-3-line.txt", kit.shortCover);
   zip.file("cover-letter-full.txt", kit.coverLetter);
   zip.file("linkedin-note.txt", kit.linkedinNote);
+  zip.file("linkedin-headline.txt", kit.linkedinHeadline);
+  zip.file("linkedin-about.txt", kit.linkedinAbout);
   zip.file("recruiter-email.txt", kit.recruiterEmail);
   zip.file("whatsapp-note.txt", kit.whatsappNote);
   zip.file("referral-note.txt", kit.referralNote);

@@ -210,6 +210,8 @@ export interface ApplicationKit {
   shortCover: string;
   recruiterEmail: string;
   linkedinNote: string;
+  linkedinHeadline: string;
+  linkedinAbout: string;
   whatsappNote: string;
   thankYouNote: string;
   referralNote: string;
