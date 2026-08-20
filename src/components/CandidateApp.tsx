@@ -30,6 +30,8 @@ import ReadinessScore, { type ReadinessStep } from "@/components/ReadinessScore"
 import AutosaveStatus, { type AutosaveState } from "@/components/AutosaveStatus";
 import { computeNextBestAction } from "@/lib/next-best-action";
 import { extractVerifiableClaims, INTEGRITY_KIND_LABELS } from "@/lib/engines/integrity-check";
+import MissingKeywordPanel, { type KeywordResolution } from "@/components/MissingKeywordPanel";
+import { isHeaderLine } from "@/lib/resume-line-editor";
 import LoadingProgress from "@/components/LoadingProgress";
 import EmptyState from "@/components/EmptyState";
 import HealthCard from "@/components/HealthCard";
@@ -141,6 +143,7 @@ export default function CandidateApp() {
   const [integrityResolutions, setIntegrityResolutions] = useState<Record<string, "confirmed" | "edited" | "removed">>({});
   const [editingIntegrityClaim, setEditingIntegrityClaim] = useState<string | null>(null);
   const [integrityEditValue, setIntegrityEditValue] = useState("");
+  const [keywordResolutions, setKeywordResolutions] = useState<Record<string, KeywordResolution>>({});
   const [answerDraft, setAnswerDraft] = useState("");
   const [linkedinPaste, setLinkedinPaste] = useState("");
   const [linkedinWarnings, setLinkedinWarnings] = useState<string[]>([]);
@@ -435,6 +438,40 @@ export default function CandidateApp() {
     setDraft(next);
     setIntegrityResolutions((prev) => ({ ...prev, [integrityEditValue.trim()]: "edited" }));
     setEditingIntegrityClaim(null);
+  }
+
+  async function confirmMissingKeyword(skill: string, mode: "add" | "mention" | "decline") {
+    if (mode === "decline") {
+      setKeywordResolutions((prev) => ({ ...prev, [skill]: "declined" }));
+      return;
+    }
+    const base = ws?.profile.rawResumeText || resumeText;
+    if (!base) return;
+    const entry = mode === "add" ? skill : `${skill} (some exposure)`;
+    const lines = base.split("\n");
+    const skillsIdx = lines.findIndex((l) => /^(SKILLS|TECHNICAL SKILLS|KEY SKILLS):?$/i.test(l.trim()));
+    let next: string[];
+    if (skillsIdx === -1) {
+      next = [...lines, "", "SKILLS", entry];
+    } else {
+      let insertAt = skillsIdx + 1;
+      while (insertAt < lines.length && lines[insertAt].trim() && !isHeaderLine(lines[insertAt])) insertAt++;
+      next = [...lines.slice(0, insertAt), entry, ...lines.slice(insertAt)];
+    }
+    const updatedText = next.join("\n");
+    setResumeText(updatedText);
+    setBusy(true);
+    setAutosaveState("saving");
+    const res = await fetch("/api/vault", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resumeText: updatedText, targetRole, goals })
+    });
+    await refresh();
+    setBusy(false);
+    flashAutosave(res.ok);
+    setKeywordResolutions((prev) => ({ ...prev, [skill]: mode === "add" ? "added" : "mentioned" }));
+    setNotice(`"${skill}" added to your Career Vault based on your confirmation — re-run Fit Score to see the updated match.`);
   }
 
   async function onUpload(file: File) {
@@ -1340,6 +1377,17 @@ export default function CandidateApp() {
               </div>
             )}
             {fit.optimizer && <OptimizerReportPanel report={fit.optimizer} />}
+            {fit.optimizer && (
+              <details className="opt-section" style={{ marginTop: 12 }}>
+                <summary>Missing / weak keywords — confirm before adding</summary>
+                <MissingKeywordPanel
+                  gaps={fit.optimizer.skillGapPlan.filter((g) => g.level !== "strong")}
+                  resolutions={keywordResolutions}
+                  busy={busy}
+                  onConfirm={confirmMissingKeyword}
+                />
+              </details>
+            )}
             <div className="chips" style={{ marginTop: 16 }}>
               <button className="btn-primary" type="button" disabled={busy} onClick={buildOptimizedCv}>
                 Build optimized CV (tailor → verify → kit)
