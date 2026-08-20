@@ -31,6 +31,7 @@ import AutosaveStatus, { type AutosaveState } from "@/components/AutosaveStatus"
 import { computeNextBestAction } from "@/lib/next-best-action";
 import LoadingProgress from "@/components/LoadingProgress";
 import EmptyState from "@/components/EmptyState";
+import HealthCard from "@/components/HealthCard";
 
 // Plain-language labels for fit.subScores — the raw object keys (keywordCoverage,
 // evidenceStrength, ...) are meaningful to the code but not to a first-time user.
@@ -1080,16 +1081,13 @@ export default function CandidateApp() {
             )}
             {ws && vaultHealth && (
               <div style={{ marginTop: 16 }}>
-                <h3>
-                  Vault completeness {vaultHealth.percent}% ({vaultHealth.approvedCount} approved / {vaultHealth.total} items)
-                </h3>
-                <div className="progress" style={{ maxWidth: 360, margin: "8px 0 12px" }}>
-                  <span style={{ width: `${vaultHealth.percent}%` }} />
-                </div>
-                <p className="muted">
-                  Families present: {vaultHealth.present.join(", ") || "none"}. Missing: {vaultHealth.missing.join(", ") || "none"}.
-                  Archive outdated items. Generation uses approved evidence only — we never invent replacements.
-                </p>
+                <HealthCard
+                  percent={vaultHealth.percent}
+                  approvedCount={vaultHealth.approvedCount}
+                  total={vaultHealth.total}
+                  present={vaultHealth.present}
+                  missing={vaultHealth.missing}
+                />
                 {ws.vault.evidence.slice(0, 16).map((e) => (
                   <div key={e.id} className="chain-item vault-item">
                     <div className="vault-item-main">
