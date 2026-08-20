@@ -623,6 +623,28 @@ a.sidebar-foot:hover { color: var(--text-primary); }
   color: #333;
 }
 
+/* Estimated page-break markers — screen-only preview aid, never printed. */
+.tpl-page-break {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed rgba(88, 166, 255, 0.6);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.tpl-page-break span {
+  background: var(--bg-dark, #090d16);
+  color: var(--accent-blue, #58a6ff);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  transform: translateY(-50%);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
 /* ===== ATS-safe skeletons (grayscale ink shades only) ===== */
 .tpl-ats-classic { font-family: Arial, Helvetica, sans-serif; }
 .tpl-ats-classic .tpl-header h1 { color: var(--tpl-accent); font-size: 20px; }
@@ -756,7 +778,7 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 
 @media print {
   .sidebar, .banner, .btn-primary, .btn-ghost, .chip, .nav-btn, .mode-pills, .template-gallery, .template-actions,
-  .hamburger-btn, .mobile-sticky-cta, .sidebar-backdrop, .loading-progress { display: none !important; }
+  .hamburger-btn, .mobile-sticky-cta, .sidebar-backdrop, .loading-progress, .tpl-page-break, .tpl-page-estimate { display: none !important; }
   .app-shell { display: block; background: #fff; color: #111; }
   .main { padding: 0; }
   .card { box-shadow: none; border-color: #ddd; background: #fff; color: #111; }
