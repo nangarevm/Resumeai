@@ -1324,17 +1324,20 @@ export default function CandidateApp() {
               </div>
             )}
             {fit.applyReadiness && (
-              <div className={`banner ${fit.applyReadiness.level === "apply_now" ? "" : ""}`}>
+              <div
+                className={`banner banner-${
+                  fit.applyReadiness.level === "apply_now" ? "green" : fit.applyReadiness.level === "fix_basics" ? "red" : "yellow"
+                }`}
+              >
                 <div>
                   <strong>
-                    Apply readiness:{" "}
                     {fit.applyReadiness.level === "apply_now"
-                      ? "Ready to tailor & apply"
+                      ? "🟢 Strong Fit — Apply"
                       : fit.applyReadiness.level === "tailor_first"
-                        ? "Tailor first"
+                        ? "🟡 Possible Fit — Tailor First"
                         : fit.applyReadiness.level === "stretch_role"
-                          ? "Possible stretch role"
-                          : "Fix basics first"}
+                          ? "🟡 Stretch Fit — Needs Improvement"
+                          : "🔴 Not Aligned Yet — Fix Basics First"}
                   </strong>
                   <p className="muted" style={{ marginTop: 6 }}>
                     {fit.applyReadiness.headline}
