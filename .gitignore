@@ -6,6 +6,7 @@ dist
 data/runtime/*.json
 data/users/
 data/runtime/market-cache.json
+data/accounts/
 *.log
 .DS_Store
 .env

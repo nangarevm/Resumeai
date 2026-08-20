@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createMagicToken, magicLinkUrl } from "@/lib/auth/magic-link";
+import { sendEmail } from "@/lib/auth/email";
 
 export const dynamic = "force-dynamic";
 
@@ -12,21 +13,15 @@ export async function POST(request: Request) {
 
   const token = await createMagicToken(email);
   const link = magicLinkUrl(token, new URL(request.url).origin);
-  const isDev = process.env.NODE_ENV !== "production" || !process.env.SMTP_HOST;
-
-  if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-    return NextResponse.json(
-      {
-        error:
-          "SMTP is configured but email delivery is not enabled in this build. Use the dev link below or GitHub OAuth."
-      },
-      { status: 501 }
-    );
-  }
+  const { sent } = await sendEmail({
+    to: email,
+    subject: "Your ResumeProof sign-in link",
+    text: `Sign in to ResumeProof: ${link}\n\nThis link expires in 15 minutes. If you didn't request it, you can ignore this email.`
+  });
 
   return NextResponse.json({
     ok: true,
-    message: isDev ? "Dev mode: use the link below (no SMTP configured)." : "Magic link generated.",
-    devLink: isDev ? link : undefined
+    message: sent ? "Magic link sent — check your email." : "Dev mode: use the link below (no SMTP configured).",
+    devLink: sent ? undefined : link
   });
 }
