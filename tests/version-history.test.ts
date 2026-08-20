@@ -32,13 +32,13 @@ describe("resume version history", () => {
     });
   });
 
-  it("caps version history at 30 entries", async () => {
+  it("caps auto-history at 20 entries (pinned resumes are capped separately — see named-resumes.test.ts)", async () => {
     await withIsolatedUser("ver-test-cap", async () => {
       for (let i = 0; i < 35; i++) {
         await snapshot(`save ${i}`, `SUMMARY\nDraft ${i}`);
       }
       const seeker = await getSeeker();
-      expect(seeker.versions.length).toBe(30);
+      expect(seeker.versions.length).toBe(20);
       expect(seeker.versions[0].reason).toBe("save 34");
     });
   });

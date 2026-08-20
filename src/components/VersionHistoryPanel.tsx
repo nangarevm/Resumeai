@@ -18,16 +18,19 @@ export default function VersionHistoryPanel({
   onRestore: (id: string) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  // Named/pinned resumes have their own panel (NamedResumesPanel) — this
+  // one is strictly the automatic save-history trail.
+  const autoVersions = versions.filter((v) => !v.pinned);
 
-  if (versions.length === 0) return null;
+  if (autoVersions.length === 0) return null;
 
   return (
     <div className="health-card" style={{ marginTop: 16 }}>
       <p className="muted" style={{ marginTop: 0 }}>
-        Every save is kept here — up to the last {versions.length < 30 ? versions.length : 30}. Restoring saves your
-        current resume as a new version first, so nothing is ever lost.
+        Every save is kept here — up to the last {autoVersions.length < 20 ? autoVersions.length : 20}. Restoring
+        saves your current resume as a new version first, so nothing is ever lost.
       </p>
-      {versions.map((v, i) => {
+      {autoVersions.map((v, i) => {
         const isOpen = expanded === v.id;
         return (
           <article className={`chain-item ${i === 0 ? "green" : ""}`} key={v.id}>

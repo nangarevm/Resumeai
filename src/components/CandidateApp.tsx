@@ -42,6 +42,7 @@ import BulletFormulaPanel from "@/components/BulletFormulaPanel";
 import { checkBulletFormulas } from "@/lib/engines/bullet-formula-check";
 import { BUCKET_ORDER, type InterviewBucket } from "@/lib/engines/interview-categorizer";
 import VersionHistoryPanel from "@/components/VersionHistoryPanel";
+import NamedResumesPanel from "@/components/NamedResumesPanel";
 import ProjectIntelligencePanel from "@/components/ProjectIntelligencePanel";
 import { rankProjectsByRelevance } from "@/lib/engines/project-intelligence";
 import AchievementBuilderPanel from "@/components/AchievementBuilderPanel";
@@ -596,6 +597,55 @@ export default function CandidateApp() {
     setBusy(false);
     flashAutosave(res.ok);
     setNotice(res.ok ? "Restored — your previous resume was saved as its own version first." : "Could not restore that version.");
+  }
+
+  async function saveNamedResume(name: string) {
+    setBusy(true);
+    const res = await fetch("/api/versions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "pin", name })
+    });
+    await refresh();
+    setBusy(false);
+    const data = await res.json().catch(() => ({}));
+    setNotice(res.ok ? `Saved as "${name}" — switch back to it anytime.` : data.error || "Could not save that resume.");
+  }
+
+  async function switchNamedResume(versionId: string) {
+    setBusy(true);
+    setAutosaveState("saving");
+    const res = await fetch("/api/versions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ versionId })
+    });
+    await refresh();
+    setBusy(false);
+    flashAutosave(res.ok);
+    setNotice(res.ok ? "Switched resumes — your previous one is saved and unchanged." : "Could not switch to that resume.");
+  }
+
+  async function renameNamedResume(versionId: string, name: string) {
+    const res = await fetch("/api/versions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "rename", versionId, name })
+    });
+    await refresh();
+    setNotice(res.ok ? "Renamed." : "Could not rename that resume.");
+  }
+
+  async function deleteNamedResume(versionId: string) {
+    setBusy(true);
+    const res = await fetch("/api/versions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", versionId })
+    });
+    await refresh();
+    setBusy(false);
+    setNotice(res.ok ? "Deleted." : "Could not delete that resume.");
   }
 
   async function onUpload(file: File) {
@@ -1320,6 +1370,14 @@ export default function CandidateApp() {
                 />
                 {resumeHealth && <ResumeHealthDashboard health={resumeHealth} />}
                 <SkillsOptimizationPanel groups={skillGroups} busy={busy} onApply={applyCategorizedSkills} />
+                <NamedResumesPanel
+                  versions={ws.versions || []}
+                  busy={busy}
+                  onSave={saveNamedResume}
+                  onSwitch={switchNamedResume}
+                  onRename={renameNamedResume}
+                  onDelete={deleteNamedResume}
+                />
                 <VersionHistoryPanel versions={ws.versions || []} busy={busy} onRestore={restoreVersion} />
                 {ws.vault.evidence.slice(0, 16).map((e) => (
                   <div key={e.id} className="chain-item vault-item">

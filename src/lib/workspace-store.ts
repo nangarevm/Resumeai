@@ -186,8 +186,21 @@ export async function getAgency(): Promise<AgencyWorkspace> {
 // Every save snapshots the full resume text (not lightweight metadata like
 // applications[] or savedJobs[]), so this list is capped the same way
 // savedJobs already is — old snapshots beyond a reasonable history depth
-// are low-stakes to drop, unlike application-tracking records.
-const MAX_VERSIONS = 30;
+// are low-stakes to drop, unlike application-tracking records. Pinned
+// (named) resumes are capped separately and more generously — a user who
+// deliberately names and keeps a handful of resumes shouldn't have one
+// silently evicted by a later flurry of ordinary auto-saves.
+const MAX_AUTO_VERSIONS = 20;
+const MAX_PINNED_VERSIONS = 10;
+
+function capVersions(versions: ResumeVersion[]): ResumeVersion[] {
+  // versions is always newest-first (every write unshifts), so slicing
+  // each group to its cap and filtering back against the original array
+  // caps both counts independently while preserving relative order.
+  const pinnedIds = new Set(versions.filter((v) => v.pinned).slice(0, MAX_PINNED_VERSIONS).map((v) => v.id));
+  const autoIds = new Set(versions.filter((v) => !v.pinned).slice(0, MAX_AUTO_VERSIONS).map((v) => v.id));
+  return versions.filter((v) => (v.pinned ? pinnedIds.has(v.id) : autoIds.has(v.id)));
+}
 
 export async function setSeekerProfile(profile: CandidateProfile, reason = "Resume import / edit"): Promise<SeekerWorkspace> {
   const ws = await load();
@@ -199,7 +212,7 @@ export async function setSeekerProfile(profile: CandidateProfile, reason = "Resu
     snapshot: profile.rawResumeText,
     createdAt: new Date().toISOString()
   });
-  ws.seeker.versions = ws.seeker.versions.slice(0, MAX_VERSIONS);
+  ws.seeker.versions = capVersions(ws.seeker.versions);
   await save(ws);
   return ws.seeker;
 }
@@ -302,18 +315,48 @@ export async function setSuggestions(list: TailorSuggestion[]): Promise<void> {
   await save(ws);
 }
 
-export async function snapshot(reason: string, snapshotText: string): Promise<ResumeVersion> {
+export async function snapshot(reason: string, snapshotText: string, pinned = false): Promise<ResumeVersion> {
   const version: ResumeVersion = {
     id: uniqueId("ver"),
     reason,
     snapshot: snapshotText,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    ...(pinned ? { pinned: true as const } : {})
   };
   const ws = await load();
   ws.seeker.versions.unshift(version);
-  ws.seeker.versions = ws.seeker.versions.slice(0, MAX_VERSIONS);
+  ws.seeker.versions = capVersions(ws.seeker.versions);
   await save(ws);
   return version;
+}
+
+/** Saves the CURRENT resume as a named, pinned resume — the "multiple
+ *  resumes" feature. Reuses the same snapshot machinery as auto-history,
+ *  just flagged pinned so it's exempt from the auto-history cap and
+ *  surfaced separately in the UI. */
+export async function pinCurrentResume(name: string): Promise<ResumeVersion> {
+  const ws = await load();
+  return snapshot(name, ws.seeker.profile.rawResumeText, true);
+}
+
+export type VersionActionError = "not_found";
+
+export async function renamePinnedVersion(versionId: string, newName: string): Promise<ResumeVersion | VersionActionError> {
+  const ws = await load();
+  const version = ws.seeker.versions.find((v) => v.id === versionId && v.pinned);
+  if (!version) return "not_found";
+  version.reason = newName;
+  await save(ws);
+  return version;
+}
+
+export async function deletePinnedVersion(versionId: string): Promise<boolean> {
+  const ws = await load();
+  const before = ws.seeker.versions.length;
+  ws.seeker.versions = ws.seeker.versions.filter((v) => !(v.id === versionId && v.pinned));
+  if (ws.seeker.versions.length === before) return false;
+  await save(ws);
+  return true;
 }
 
 export type RestoreVersionError = "not_found";
@@ -327,7 +370,8 @@ export async function restoreVersion(versionId: string): Promise<SeekerWorkspace
   const version = ws.seeker.versions.find((v) => v.id === versionId);
   if (!version) return "not_found";
   const profile = parseResume(ws.seeker.profile.id, version.snapshot);
-  return setSeekerProfile(profile, `Restored from ${new Date(version.createdAt).toLocaleString()}`);
+  const reason = version.pinned ? `Switched to "${version.reason}"` : `Restored from ${new Date(version.createdAt).toLocaleString()}`;
+  return setSeekerProfile(profile, reason);
 }
 
 export async function setFindings(list: VerificationFinding[]): Promise<void> {

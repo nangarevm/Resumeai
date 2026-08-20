@@ -41,6 +41,12 @@ export interface ResumeVersion {
   reason: string;
   snapshot: string;
   createdAt: string;
+  /** A pinned version is a deliberately-named resume (e.g. "Frontend
+   *  resume") the user wants to keep and switch between, distinct from
+   *  the automatic save-history snapshots — pinned entries are exempt
+   *  from the auto-history cap so a later flurry of edits can't quietly
+   *  evict a resume the user explicitly saved. */
+  pinned?: boolean;
 }
 
 export interface FitSubScores {
