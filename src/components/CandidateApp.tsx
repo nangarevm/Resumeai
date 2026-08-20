@@ -21,7 +21,7 @@ import { buildWhatsAppBundle } from "@/lib/export/whatsapp-bundle";
 import CopyButton from "@/components/CopyButton";
 import OptimizerReportPanel from "@/components/OptimizerReportPanel";
 import AuthBar from "@/components/AuthBar";
-import ResumeDraftPreview from "@/components/ResumeDraftPreview";
+import ResumeSectionEditor from "@/components/ResumeSectionEditor";
 
 // Plain-language labels for fit.subScores — the raw object keys (keywordCoverage,
 // evidenceStrength, ...) are meaningful to the code but not to a first-time user.
@@ -875,10 +875,13 @@ export default function CandidateApp() {
                   Archive outdated items. Generation uses approved evidence only — we never invent replacements.
                 </p>
                 {ws.vault.evidence.slice(0, 16).map((e) => (
-                  <div key={e.id} className="chain-item" style={{ marginBottom: 8 }}>
-                    <span className={`badge ${e.verificationStatus === "approved" ? "ok" : "mid"}`}>{e.type}</span> {e.content.slice(0, 140)}
-                    <div className="muted">
-                      {e.source} · {e.verificationStatus}
+                  <div key={e.id} className="chain-item vault-item">
+                    <div className="vault-item-main">
+                      <span className={`badge ${e.verificationStatus === "approved" ? "ok" : "mid"}`}>{e.type}</span>{" "}
+                      <span className="vault-item-text">{e.content.slice(0, 140)}</span>
+                      <div className="muted">
+                        {e.source} · {e.verificationStatus}
+                      </div>
                     </div>
                     <button className="chip" onClick={() => setEvidence(e.id, e.verificationStatus === "archived" ? "approved" : "archived")}>
                       {e.verificationStatus === "archived" ? "Restore" : "Archive"}
@@ -1275,9 +1278,10 @@ export default function CandidateApp() {
               </article>
             ))}
             <h3>Edit tailored draft</h3>
-            <p className="muted">Accept suggestions above, then edit the full draft. Try evidence-bound rewrites (no LLM, no new facts).</p>
-            <ResumeDraftPreview text={draft || resumePreview} />
-            <textarea className="form-control resume-draft-editor" rows={12} value={draft || resumePreview} onChange={(e) => setDraft(e.target.value)} />
+            <p className="muted">
+              Edit any line, add a line to a section, or remove one — every change stays in this draft, nothing is invented.
+            </p>
+            <ResumeSectionEditor text={draft || resumePreview} onChange={setDraft} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
               <button className="chip" type="button" onClick={() => setDraft(resumePreview)}>
                 Reset from accepted suggestions
@@ -1325,9 +1329,8 @@ export default function CandidateApp() {
               </article>
             ))}
             <h3>Edit export resume</h3>
-            <p className="muted">Fix lines here, re-scan, then export or build the application kit.</p>
-            <ResumeDraftPreview text={draft || resumePreview} />
-            <textarea className="form-control resume-draft-editor" rows={14} value={draft || resumePreview} onChange={(e) => setDraft(e.target.value)} />
+            <p className="muted">Edit, add, or remove a line here, then re-scan before you export or build the kit.</p>
+            <ResumeSectionEditor text={draft || resumePreview} onChange={setDraft} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
               <button className="chip" type="button" disabled={busy} onClick={() => rescanDraft(draft || resumePreview)}>
                 Re-scan draft
@@ -1423,117 +1426,129 @@ export default function CandidateApp() {
                   Open email to send
                 </button>
 
-                <h3>
-                  3-line cover <CopyButton text={kit.shortCover} />
-                </h3>
-                <pre className="pre">{kit.shortCover}</pre>
-                <h3>
-                  WhatsApp note <CopyButton text={kit.whatsappNote} />
-                </h3>
-                <pre className="pre">{kit.whatsappNote}</pre>
-                <h3>
-                  LinkedIn note <CopyButton text={kit.linkedinNote} />
-                </h3>
-                <pre className="pre">{kit.linkedinNote}</pre>
-                <h3>
-                  Recruiter email <CopyButton text={kit.recruiterEmail} />
-                </h3>
-                <pre className="pre">{kit.recruiterEmail}</pre>
-                <h3>
-                  Cover letter <CopyButton text={kit.coverLetter} />
-                </h3>
-                <pre className="pre">{kit.coverLetter}</pre>
+                <details className="opt-section kit-section" open>
+                  <summary>Recruiter email</summary>
+                  <CopyButton text={kit.recruiterEmail} />
+                  <pre className="pre">{kit.recruiterEmail}</pre>
+                </details>
+                <details className="opt-section kit-section" open>
+                  <summary>Cover letter</summary>
+                  <CopyButton text={kit.coverLetter} />
+                  <pre className="pre">{kit.coverLetter}</pre>
+                </details>
+                <details className="opt-section kit-section">
+                  <summary>3-line cover</summary>
+                  <CopyButton text={kit.shortCover} />
+                  <pre className="pre">{kit.shortCover}</pre>
+                </details>
+                <details className="opt-section kit-section">
+                  <summary>WhatsApp note</summary>
+                  <CopyButton text={kit.whatsappNote} />
+                  <pre className="pre">{kit.whatsappNote}</pre>
+                </details>
+                <details className="opt-section kit-section">
+                  <summary>LinkedIn note</summary>
+                  <CopyButton text={kit.linkedinNote} />
+                  <pre className="pre">{kit.linkedinNote}</pre>
+                </details>
 
-                <h3>✨ Generate with AI (optional)</h3>
-                <div className="banner">
-                  <strong>AI-generated draft — not evidence-checked</strong>
-                  <p className="muted" style={{ marginTop: 6 }}>
-                    Unlike everything else in ResumeProof, this text is written by AI from a prompt, not assembled only from
-                    your Career Vault. It can phrase things persuasively — read it carefully and remove anything you can&apos;t
-                    back up in an interview before you send it.
-                  </p>
-                </div>
-                <label className="form-label" style={{ marginTop: 8 }}>
-                  Tell the AI what to emphasize (optional)
-                </label>
-                <input
-                  className="form-control"
-                  value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder="e.g. emphasize my leadership and the 200+ endpoint automation project"
-                />
-                <div style={{ marginTop: 8 }}>
-                  <button className="btn-primary" type="button" disabled={aiBusy} onClick={() => generateAiText("cover_letter")}>
-                    {aiBusy ? "Generating…" : "Generate AI cover letter"}
-                  </button>
-                  <button
-                    className="btn-ghost"
-                    type="button"
-                    disabled={aiBusy}
-                    onClick={() => generateAiText("summary")}
-                    style={{ marginLeft: 8 }}
-                  >
-                    {aiBusy ? "Generating…" : "Generate AI summary line"}
-                  </button>
-                </div>
-                {aiError && (
-                  <p className="muted" style={{ color: "#f87171", marginTop: 8 }}>
-                    {aiError}
-                  </p>
-                )}
-                {aiCoverLetter && (
-                  <>
-                    <h4 style={{ marginTop: 12 }}>
-                      AI cover letter draft <CopyButton text={aiCoverLetter} />
-                    </h4>
-                    <textarea
-                      className="form-control"
-                      rows={10}
-                      value={aiCoverLetter}
-                      onChange={(e) => setAiCoverLetter(e.target.value)}
-                    />
-                  </>
-                )}
-                {aiSummary && (
-                  <>
-                    <h4 style={{ marginTop: 12 }}>
-                      AI summary draft <CopyButton text={aiSummary} />
-                    </h4>
-                    <textarea className="form-control" rows={3} value={aiSummary} onChange={(e) => setAiSummary(e.target.value)} />
-                  </>
-                )}
+                <details className="opt-section kit-section">
+                  <summary>✨ Generate with AI (optional)</summary>
+                  <div className="banner">
+                    <strong>AI-generated draft — not evidence-checked</strong>
+                    <p className="muted" style={{ marginTop: 6 }}>
+                      Unlike everything else in ResumeProof, this text is written by AI from a prompt, not assembled only from
+                      your Career Vault. It can phrase things persuasively — read it carefully and remove anything you can&apos;t
+                      back up in an interview before you send it.
+                    </p>
+                  </div>
+                  <label className="form-label" style={{ marginTop: 8 }}>
+                    Tell the AI what to emphasize (optional)
+                  </label>
+                  <input
+                    className="form-control"
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="e.g. emphasize my leadership and the 200+ endpoint automation project"
+                  />
+                  <div style={{ marginTop: 8 }}>
+                    <button className="btn-primary" type="button" disabled={aiBusy} onClick={() => generateAiText("cover_letter")}>
+                      {aiBusy ? "Generating…" : "Generate AI cover letter"}
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      type="button"
+                      disabled={aiBusy}
+                      onClick={() => generateAiText("summary")}
+                      style={{ marginLeft: 8 }}
+                    >
+                      {aiBusy ? "Generating…" : "Generate AI summary line"}
+                    </button>
+                  </div>
+                  {aiError && (
+                    <p className="muted" style={{ color: "#f87171", marginTop: 8 }}>
+                      {aiError}
+                    </p>
+                  )}
+                  {aiCoverLetter && (
+                    <>
+                      <h4 style={{ marginTop: 12 }}>
+                        AI cover letter draft <CopyButton text={aiCoverLetter} />
+                      </h4>
+                      <textarea
+                        className="form-control"
+                        rows={10}
+                        value={aiCoverLetter}
+                        onChange={(e) => setAiCoverLetter(e.target.value)}
+                      />
+                    </>
+                  )}
+                  {aiSummary && (
+                    <>
+                      <h4 style={{ marginTop: 12 }}>
+                        AI summary draft <CopyButton text={aiSummary} />
+                      </h4>
+                      <textarea className="form-control" rows={3} value={aiSummary} onChange={(e) => setAiSummary(e.target.value)} />
+                    </>
+                  )}
+                </details>
 
-                <h3>
-                  Thank-you note (24h) <CopyButton text={kit.thankYouNote} />
-                </h3>
-                <pre className="pre">{kit.thankYouNote}</pre>
-                <h3>
-                  Referral ask <CopyButton text={kit.referralNote} />
-                </h3>
-                <pre className="pre">{kit.referralNote}</pre>
-                <h3>Referrer checklist</h3>
-                {kit.referrerChecklist?.map((c) => (
-                  <p key={c}>☐ {c}</p>
-                ))}
-                <div className="form-grid" style={{ marginTop: 12 }}>
-                  <div>
-                    <label className="form-label">Referred by (optional)</label>
-                    <input className="form-control" value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder="Employee name" />
+                <details className="opt-section kit-section">
+                  <summary>Thank-you note (24h)</summary>
+                  <CopyButton text={kit.thankYouNote} />
+                  <pre className="pre">{kit.thankYouNote}</pre>
+                </details>
+                <details className="opt-section kit-section">
+                  <summary>Referral ask + checklist</summary>
+                  <CopyButton text={kit.referralNote} />
+                  <pre className="pre">{kit.referralNote}</pre>
+                  <h4 style={{ marginTop: 10 }}>Referrer checklist</h4>
+                  {kit.referrerChecklist?.map((c) => (
+                    <p key={c}>☐ {c}</p>
+                  ))}
+                  <div className="form-grid" style={{ marginTop: 12 }}>
+                    <div>
+                      <label className="form-label">Referred by (optional)</label>
+                      <input className="form-control" value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder="Employee name" />
+                    </div>
+                    <div>
+                      <label className="form-label">Referral / job link</label>
+                      <input className="form-control" value={referralUrl} onChange={(e) => setReferralUrl(e.target.value)} placeholder="https://..." />
+                    </div>
                   </div>
-                  <div>
-                    <label className="form-label">Referral / job link</label>
-                    <input className="form-control" value={referralUrl} onChange={(e) => setReferralUrl(e.target.value)} placeholder="https://..." />
-                  </div>
-                </div>
-                <h3>Checklist</h3>
-                {kit.checklist.map((c) => (
-                  <p key={c}>☐ {c}</p>
-                ))}
-                <h3>
-                  Tailored resume <CopyButton text={kit.tailoredResume} label="Copy resume" />
-                </h3>
-                <pre className="pre">{kit.tailoredResume}</pre>
-                <button className="btn-primary" onClick={() => saveApp()}>
+                </details>
+                <details className="opt-section kit-section">
+                  <summary>Checklist</summary>
+                  {kit.checklist.map((c) => (
+                    <p key={c}>☐ {c}</p>
+                  ))}
+                </details>
+                <details className="opt-section kit-section" open>
+                  <summary>Tailored resume</summary>
+                  <CopyButton text={kit.tailoredResume} label="Copy resume" />
+                  <pre className="pre">{kit.tailoredResume}</pre>
+                </details>
+                <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => saveApp()}>
                   Save to application tracker
                 </button>
               </>
