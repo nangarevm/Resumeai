@@ -11,6 +11,7 @@ import { scoreResponsibilityMatch } from "./responsibility-matcher";
 import { scoreSoftSkillDimensions } from "./soft-skill-scorer";
 import { suggestSummaryLine } from "./summary-suggestion";
 import { getCachedLiveOverlay, mergeLiveWithStatic } from "./live-market-feed";
+import { computeAchievementMatch } from "./achievement-score";
 
 const SENIORITY_TIERS: Record<string, number> = {
   intern: 0,
@@ -73,20 +74,6 @@ function computeDomainMatch(jd: JobDescription, vaultBlob: string, profile: Cand
   }
   const score = Math.min(100, 60 + Math.round((hits.length / domainWords.length) * 40));
   return { score, note: `Vault evidence references the "${jd.domain}" domain.` };
-}
-
-/** Measurable-impact evidence in the vault — achievement-type items plus
- *  any approved item that already carries a number. Never invents a metric;
- *  just checks whether the candidate has any to draw on. */
-function computeAchievementMatch(vault: CareerVault): { score: number; note: string } {
-  const approved = approvedEvidence(vault);
-  const achievementCount = approved.filter((e) => e.type === "achievement").length;
-  const metricBearing = approved.filter((e) => /\d+\s*%|\b\d+\+?\s*(users?|apps?|applications?|projects?|customers?|releases?|downloads?)\b/i.test(e.content)).length;
-  const signal = achievementCount * 2 + metricBearing;
-  if (signal === 0) return { score: 30, note: "No measurable achievements or metrics found in your approved vault items." };
-  if (signal <= 2) return { score: 55, note: "A little measurable impact in your vault — a few more numbers would help." };
-  if (signal <= 4) return { score: 75, note: "Solid measurable impact represented in your vault." };
-  return { score: 90, note: "Strong measurable impact — several quantified results in your vault." };
 }
 
 export function buildCareerOptimizerReport(

@@ -31,6 +31,8 @@ import AutosaveStatus, { type AutosaveState } from "@/components/AutosaveStatus"
 import { computeNextBestAction } from "@/lib/next-best-action";
 import { extractVerifiableClaims, INTEGRITY_KIND_LABELS } from "@/lib/engines/integrity-check";
 import MissingKeywordPanel, { type KeywordResolution } from "@/components/MissingKeywordPanel";
+import ResumeHealthDashboard from "@/components/ResumeHealthDashboard";
+import { computeResumeHealth } from "@/lib/engines/resume-health";
 import { isHeaderLine } from "@/lib/resume-line-editor";
 import LoadingProgress from "@/components/LoadingProgress";
 import EmptyState from "@/components/EmptyState";
@@ -841,6 +843,7 @@ export default function CandidateApp() {
     return days >= 3;
   });
   const vaultHealth = ws ? vaultCompleteness(ws.vault) : null;
+  const resumeHealth = useMemo(() => (ws ? computeResumeHealth(ws.profile, ws.vault, fit) : null), [ws, fit]);
   const showOnboardingBanner =
     !onboardingDismissed && (step === "vault" || step === "job" || step === "fit") && progress < 55;
   const current = STEPS.find((s) => s.id === step)!;
@@ -1160,6 +1163,7 @@ export default function CandidateApp() {
                   present={vaultHealth.present}
                   missing={vaultHealth.missing}
                 />
+                {resumeHealth && <ResumeHealthDashboard health={resumeHealth} />}
                 {ws.vault.evidence.slice(0, 16).map((e) => (
                   <div key={e.id} className="chain-item vault-item">
                     <div className="vault-item-main">
