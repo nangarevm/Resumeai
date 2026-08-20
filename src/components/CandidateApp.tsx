@@ -35,6 +35,7 @@ import ResumeHealthDashboard from "@/components/ResumeHealthDashboard";
 import { computeResumeHealth } from "@/lib/engines/resume-health";
 import RecruiterViewPanel from "@/components/RecruiterViewPanel";
 import { computeRecruiterView } from "@/lib/engines/recruiter-view";
+import { detectGenericPhrases, stripGenericPhrase } from "@/lib/engines/generic-phrase-detector";
 import { isHeaderLine } from "@/lib/resume-line-editor";
 import LoadingProgress from "@/components/LoadingProgress";
 import EmptyState from "@/components/EmptyState";
@@ -147,6 +148,7 @@ export default function CandidateApp() {
   const [integrityResolutions, setIntegrityResolutions] = useState<Record<string, "confirmed" | "edited" | "removed">>({});
   const [editingIntegrityClaim, setEditingIntegrityClaim] = useState<string | null>(null);
   const [integrityEditValue, setIntegrityEditValue] = useState("");
+  const [genericPhraseResolutions, setGenericPhraseResolutions] = useState<Record<string, "kept" | "removed">>({});
   const [keywordResolutions, setKeywordResolutions] = useState<Record<string, KeywordResolution>>({});
   const [answerDraft, setAnswerDraft] = useState("");
   const [linkedinPaste, setLinkedinPaste] = useState("");
@@ -201,6 +203,7 @@ export default function CandidateApp() {
   }, [ws?.profile.rawResumeText, suggestions]);
 
   const integrityClaims = useMemo(() => extractVerifiableClaims(draft || resumePreview), [draft, resumePreview]);
+  const genericPhrases = useMemo(() => detectGenericPhrases(draft || resumePreview), [draft, resumePreview]);
 
   const progress = useMemo(() => {
     const flags = [ws?.vault.evidence.length, job, fit, suggestions.some((s) => s.status !== "pending"), findings.length, kit, apps.length, prep, change];
@@ -442,6 +445,19 @@ export default function CandidateApp() {
     setDraft(next);
     setIntegrityResolutions((prev) => ({ ...prev, [integrityEditValue.trim()]: "edited" }));
     setEditingIntegrityClaim(null);
+  }
+
+  function resolveGenericPhrase(finding: { phrase: string; line: string }, action: "kept" | "removed") {
+    const key = `${finding.phrase}::${finding.line}`;
+    setGenericPhraseResolutions((prev) => ({ ...prev, [key]: action }));
+    if (action === "removed") {
+      const base = draft || resumePreview;
+      const next = base
+        .split("\n")
+        .map((l) => (l.trim() === finding.line ? stripGenericPhrase(l, finding.phrase) : l))
+        .join("\n");
+      setDraft(next);
+    }
   }
 
   async function confirmMissingKeyword(skill: string, mode: "add" | "mention" | "decline") {
@@ -1712,6 +1728,44 @@ export default function CandidateApp() {
                   );
                 })}
               </>
+            )}
+
+            <h3>Generic Language Check</h3>
+            <p className="muted">
+              Resume clichés don&apos;t prove anything a recruiter can act on. These lines use generic phrasing — consider
+              replacing them with a specific, evidenced result instead.
+            </p>
+            {genericPhrases.length === 0 ? (
+              <p className="muted">No generic filler phrases found.</p>
+            ) : (
+              genericPhrases.map((f) => {
+                const key = `${f.phrase}::${f.line}`;
+                const resolution = genericPhraseResolutions[key];
+                return (
+                  <article className={`chain-item ${resolution === "removed" ? "green" : resolution ? "" : "yellow"}`} key={key}>
+                    <span className="badge mid">&ldquo;{f.phrase}&rdquo;</span> {f.line}
+                    <p className="muted" style={{ marginTop: 6 }}>
+                      {f.note}
+                    </p>
+                    {resolution && (
+                      <p className="muted" style={{ marginTop: 6 }}>
+                        {resolution === "kept" && "Kept as-is"}
+                        {resolution === "removed" && "✅ Phrase removed from the draft"}
+                      </p>
+                    )}
+                    {!resolution && (
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <button className="chip" type="button" onClick={() => resolveGenericPhrase(f, "removed")}>
+                          Remove phrase
+                        </button>
+                        <button className="chip" type="button" onClick={() => resolveGenericPhrase(f, "kept")}>
+                          Keep as-is
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                );
+              })
             )}
 
             <h3>Edit export resume</h3>
