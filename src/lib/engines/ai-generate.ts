@@ -1,7 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { CandidateProfile, JobDescription } from "../models";
 
-const MODEL = "claude-opus-5";
+// Cover letters / summaries / bullet rewrites are well-scoped writing tasks,
+// not open-ended reasoning — Sonnet matches Opus quality here at roughly
+// 40% of the per-token cost (both input and output), so it's the better
+// default for a cost-sensitive, high-volume feature like this one.
+const MODEL = "claude-sonnet-5";
 
 export type AiGenerateKind = "cover_letter" | "summary" | "bullet_rewrite" | "custom";
 
@@ -37,15 +41,41 @@ function buildSystemPrompt(kind: AiGenerateKind): string {
   }
 }
 
-function buildUserPrompt(req: AiGenerateRequest): string {
-  const { profile, job, userPrompt } = req;
-  const parts = [
-    `CANDIDATE NAME: ${profile.name}`,
-    `RESUME:\n${profile.rawResumeText}`,
-    job ? `\nTARGET JOB:\nTitle: ${job.title}\nCompany: ${job.companyName}\n${job.rawText}` : "",
-    userPrompt ? `\nINSTRUCTION FROM CANDIDATE: ${userPrompt}` : ""
-  ];
-  return parts.filter(Boolean).join("\n");
+/** Job postings routinely carry 300-600+ tokens of boilerplate (benefits,
+ *  EEO statements, application instructions) that add cost without adding
+ *  signal for writing a cover letter. Requirements/responsibilities are
+ *  already parsed out elsewhere in the app — reuse that structured data
+ *  instead of paying to re-read the raw posting on every call. */
+export function buildJobContext(job: JobDescription): string {
+  const mandatory = job.mandatoryRequirements.slice(0, 8).map((r) => r.name);
+  const preferred = job.preferredRequirements.slice(0, 5).map((r) => r.name);
+  const responsibilities = (job.responsibilities || []).slice(0, 5);
+  return [
+    `Title: ${job.title}`,
+    `Company: ${job.companyName}`,
+    job.seniority ? `Seniority: ${job.seniority}` : "",
+    mandatory.length ? `Must-have requirements: ${mandatory.join(", ")}` : "",
+    preferred.length ? `Preferred requirements: ${preferred.join(", ")}` : "",
+    responsibilities.length ? `Key responsibilities:\n${responsibilities.map((r) => `- ${r}`).join("\n")}` : ""
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** The candidate/job context is identical across every generation in a
+ *  session (cover letter, summary, or a regenerate with a tweaked
+ *  instruction) — split it into its own cacheable block so repeat calls
+ *  in the same session re-read it at a fraction of the input price
+ *  instead of paying full price for the resume text every time. */
+export function buildContextBlock(req: AiGenerateRequest): string {
+  const { profile, job } = req;
+  return [`CANDIDATE NAME: ${profile.name}`, `RESUME:\n${profile.rawResumeText}`, job ? `\nTARGET JOB:\n${buildJobContext(job)}` : ""]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildTaskBlock(req: AiGenerateRequest): string {
+  return req.userPrompt ? `INSTRUCTION FROM CANDIDATE: ${req.userPrompt}` : "Write the requested content based on the context above.";
 }
 
 /**
@@ -66,7 +96,15 @@ export async function generateWithAI(req: AiGenerateRequest): Promise<AiGenerate
     model: MODEL,
     max_tokens: 1024,
     system: buildSystemPrompt(req.kind),
-    messages: [{ role: "user", content: buildUserPrompt(req) }]
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: buildContextBlock(req), cache_control: { type: "ephemeral" } },
+          { type: "text", text: buildTaskBlock(req) }
+        ]
+      }
+    ]
   });
 
   const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
