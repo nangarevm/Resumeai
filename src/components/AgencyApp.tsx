@@ -34,6 +34,7 @@ export default function AgencyApp() {
   const [compareB, setCompareB] = useState("");
   const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [discovery, setDiscovery] = useState<Array<{ id: string; name: string; email: string; skills: string[]; snippet: string }>>([]);
   const [discoveryQuery, setDiscoveryQuery] = useState("");
@@ -254,7 +255,8 @@ export default function AgencyApp() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      {mobileNavOpen && <div className="sidebar-backdrop" onClick={() => setMobileNavOpen(false)} />}
+      <aside className={`sidebar ${mobileNavOpen ? "sidebar-open" : ""}`}>
         <Link href="/" className="brand" style={{ textDecoration: "none", color: "inherit" }}>
           <div className="logo" style={{ background: color }}>
             {agency?.logoText || "RP"}
@@ -265,7 +267,14 @@ export default function AgencyApp() {
           </div>
         </Link>
         {navItems.map((item) => (
-          <button key={item.id} className={`nav-btn ${tab === item.id ? "active" : ""}`} onClick={() => setTab(item.id)}>
+          <button
+            key={item.id}
+            className={`nav-btn ${tab === item.id ? "active" : ""}`}
+            onClick={() => {
+              setTab(item.id);
+              setMobileNavOpen(false);
+            }}
+          >
             {item.icon} {item.label}
           </button>
         ))}
@@ -276,10 +285,21 @@ export default function AgencyApp() {
 
       <main className="main">
         <header className="topbar">
-          <div>
-            <div className="label">{agency?.tier} desk</div>
-            <h2>{agency?.name}</h2>
-            <p className="muted">Rank people from evidence snippets. Do not treat scores as a hiring decision.</p>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <button
+              type="button"
+              className="hamburger-btn"
+              onClick={() => setMobileNavOpen((v) => !v)}
+              aria-label="Toggle navigation"
+              aria-expanded={mobileNavOpen}
+            >
+              ☰
+            </button>
+            <div>
+              <div className="label">{agency?.tier} desk</div>
+              <h2>{agency?.name}</h2>
+              <p className="muted">Rank people from evidence snippets. Do not treat scores as a hiring decision.</p>
+            </div>
           </div>
           <div className="mode-pills">
             {(["STRICT", "BALANCED", "BEST_MATCH"] as EvaluationModeName[]).map((m) => (
