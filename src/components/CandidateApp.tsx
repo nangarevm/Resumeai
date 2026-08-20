@@ -33,6 +33,8 @@ import { extractVerifiableClaims, INTEGRITY_KIND_LABELS } from "@/lib/engines/in
 import MissingKeywordPanel, { type KeywordResolution } from "@/components/MissingKeywordPanel";
 import ResumeHealthDashboard from "@/components/ResumeHealthDashboard";
 import { computeResumeHealth } from "@/lib/engines/resume-health";
+import RecruiterViewPanel from "@/components/RecruiterViewPanel";
+import { computeRecruiterView } from "@/lib/engines/recruiter-view";
 import { isHeaderLine } from "@/lib/resume-line-editor";
 import LoadingProgress from "@/components/LoadingProgress";
 import EmptyState from "@/components/EmptyState";
@@ -844,6 +846,10 @@ export default function CandidateApp() {
   });
   const vaultHealth = ws ? vaultCompleteness(ws.vault) : null;
   const resumeHealth = useMemo(() => (ws ? computeResumeHealth(ws.profile, ws.vault, fit) : null), [ws, fit]);
+  const recruiterView = useMemo(
+    () => (ws ? computeRecruiterView(ws.profile, ws.vault, job || undefined) : null),
+    [ws, job]
+  );
   const showOnboardingBanner =
     !onboardingDismissed && (step === "vault" || step === "job" || step === "fit") && progress < 55;
   const current = STEPS.find((s) => s.id === step)!;
@@ -1390,6 +1396,12 @@ export default function CandidateApp() {
                   busy={busy}
                   onConfirm={confirmMissingKeyword}
                 />
+              </details>
+            )}
+            {recruiterView && (
+              <details className="opt-section" style={{ marginTop: 12 }}>
+                <summary>Recruiter View — the 10-second test</summary>
+                <RecruiterViewPanel view={recruiterView} />
               </details>
             )}
             <div className="chips" style={{ marginTop: 16 }}>
