@@ -1318,32 +1318,35 @@ export default function CandidateApp() {
                 {a.detail}
               </p>
             ))}
-            <h3>What actually moves this score</h3>
-            {(fit.scoreMovers || []).map((m) => (
-              <p key={m.title}>
-                <strong>{m.title}.</strong> {m.detail}
-              </p>
-            ))}
-            <div className="grid-2" style={{ marginTop: 12 }}>
-              {Object.entries(fit.subScores).map(([k, v]) => {
-                const info = SUBSCORE_INFO[k] || { label: k, hint: "" };
-                return (
-                  <div key={k}>
-                    <div className="muted">{info.label}</div>
-                    <div className="progress">
-                      <span style={{ width: `${v}%` }} />
+            <details className="opt-section" style={{ marginTop: 12 }}>
+              <summary>See how this score was calculated</summary>
+              <h3>What actually moves this score</h3>
+              {(fit.scoreMovers || []).map((m) => (
+                <p key={m.title}>
+                  <strong>{m.title}.</strong> {m.detail}
+                </p>
+              ))}
+              <div className="grid-2" style={{ marginTop: 12 }}>
+                {Object.entries(fit.subScores).map(([k, v]) => {
+                  const info = SUBSCORE_INFO[k] || { label: k, hint: "" };
+                  return (
+                    <div key={k}>
+                      <div className="muted">{info.label}</div>
+                      <div className="progress">
+                        <span style={{ width: `${v}%` }} />
+                      </div>
+                      <strong>{v}</strong>
+                      {info.hint && (
+                        <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                          {info.hint}
+                        </p>
+                      )}
                     </div>
-                    <strong>{v}</strong>
-                    {info.hint && (
-                      <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-                        {info.hint}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <p style={{ marginTop: 12 }}>{fit.explanation}</p>
+                  );
+                })}
+              </div>
+              <p style={{ marginTop: 12 }}>{fit.explanation}</p>
+            </details>
             <h3>Core skills you prove</h3>
             {(fit.coreMatches || fit.matches || []).slice(0, 16).map((m) => (
               <span className="tag" key={m}>
@@ -1367,8 +1370,10 @@ export default function CandidateApp() {
                 <pre className="pre">{job.responsibilities.slice(0, 8).join("\n")}</pre>
               </details>
             )}
-            <h3>Parser preview</h3>
-            <pre className="pre">{fit.parserPreview}</pre>
+            <details style={{ marginTop: 12 }}>
+              <summary className="muted" style={{ cursor: "pointer" }}>Technical parser preview (advanced)</summary>
+              <pre className="pre">{fit.parserPreview}</pre>
+            </details>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
               <button className="btn-primary" onClick={runTailor}>
                 {fit.applyReadiness?.level === "apply_now" ? "Tailor resume & apply" : "Create tailoring suggestions"}
