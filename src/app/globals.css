@@ -791,8 +791,9 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .tpl-graduate-banner .tpl-skill-tag { background: var(--tpl-accent-soft); color: var(--tpl-accent); }
 
 @media print {
-  .sidebar, .banner, .btn-primary, .btn-ghost, .chip, .nav-btn, .mode-pills, .template-gallery, .template-actions,
+  .sidebar, .banner, .nba-banner, .template-filters, .btn-primary, .btn-ghost, .chip, .nav-btn, .mode-pills, .template-gallery, .template-actions,
   .hamburger-btn, .mobile-sticky-cta, .sidebar-backdrop, .loading-progress, .tpl-page-break, .tpl-page-estimate { display: none !important; }
+  html, body { background: #fff; }
   .app-shell { display: block; background: #fff; color: #111; }
   .main { padding: 0; }
   .card { box-shadow: none; border-color: #ddd; background: #fff; color: #111; }
