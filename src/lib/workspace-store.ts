@@ -21,6 +21,14 @@ function sanitizeUserId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
 }
 
+/** Date.now() alone collides when two snapshots land in the same
+ *  millisecond (a real risk — a fast test proved it, and a double-save or
+ *  a tight autosave debounce could hit it in production too), which broke
+ *  restoreVersion's id lookup by silently matching the wrong entry. */
+function uniqueId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 async function resolveActiveUserId(): Promise<string> {
   if (process.env.RESUMEPROOF_WORKSPACE_USER) return process.env.RESUMEPROOF_WORKSPACE_USER;
   try {
@@ -175,16 +183,23 @@ export async function getAgency(): Promise<AgencyWorkspace> {
   return (await load()).agency;
 }
 
-export async function setSeekerProfile(profile: CandidateProfile): Promise<SeekerWorkspace> {
+// Every save snapshots the full resume text (not lightweight metadata like
+// applications[] or savedJobs[]), so this list is capped the same way
+// savedJobs already is — old snapshots beyond a reasonable history depth
+// are low-stakes to drop, unlike application-tracking records.
+const MAX_VERSIONS = 30;
+
+export async function setSeekerProfile(profile: CandidateProfile, reason = "Resume import / edit"): Promise<SeekerWorkspace> {
   const ws = await load();
   ws.seeker.profile = profile;
   ws.seeker.vault = buildCareerVault(profile, ws.seeker.vault.targetRole, ws.seeker.vault.goals);
   ws.seeker.versions.unshift({
-    id: `ver-${Date.now()}`,
-    reason: "Resume import / edit",
+    id: uniqueId("ver"),
+    reason,
     snapshot: profile.rawResumeText,
     createdAt: new Date().toISOString()
   });
+  ws.seeker.versions = ws.seeker.versions.slice(0, MAX_VERSIONS);
   await save(ws);
   return ws.seeker;
 }
@@ -289,15 +304,30 @@ export async function setSuggestions(list: TailorSuggestion[]): Promise<void> {
 
 export async function snapshot(reason: string, snapshotText: string): Promise<ResumeVersion> {
   const version: ResumeVersion = {
-    id: `ver-${Date.now()}`,
+    id: uniqueId("ver"),
     reason,
     snapshot: snapshotText,
     createdAt: new Date().toISOString()
   };
   const ws = await load();
   ws.seeker.versions.unshift(version);
+  ws.seeker.versions = ws.seeker.versions.slice(0, MAX_VERSIONS);
   await save(ws);
   return version;
+}
+
+export type RestoreVersionError = "not_found";
+
+/** Restoring never deletes the version being restored FROM — the current
+ *  state before the restore was already snapshotted at its own last save,
+ *  and setSeekerProfile snapshots again on the way in, so the full chain
+ *  stays reachable in versions[] (up to MAX_VERSIONS deep). */
+export async function restoreVersion(versionId: string): Promise<SeekerWorkspace | RestoreVersionError> {
+  const ws = await load();
+  const version = ws.seeker.versions.find((v) => v.id === versionId);
+  if (!version) return "not_found";
+  const profile = parseResume(ws.seeker.profile.id, version.snapshot);
+  return setSeekerProfile(profile, `Restored from ${new Date(version.createdAt).toLocaleString()}`);
 }
 
 export async function setFindings(list: VerificationFinding[]): Promise<void> {

@@ -41,6 +41,7 @@ import { categorizeSkills, applyCategorizedSkillsToResume } from "@/lib/engines/
 import BulletFormulaPanel from "@/components/BulletFormulaPanel";
 import { checkBulletFormulas } from "@/lib/engines/bullet-formula-check";
 import { BUCKET_ORDER, type InterviewBucket } from "@/lib/engines/interview-categorizer";
+import VersionHistoryPanel from "@/components/VersionHistoryPanel";
 import ProjectIntelligencePanel from "@/components/ProjectIntelligencePanel";
 import { rankProjectsByRelevance } from "@/lib/engines/project-intelligence";
 import AchievementBuilderPanel from "@/components/AchievementBuilderPanel";
@@ -559,6 +560,20 @@ export default function CandidateApp() {
     setBusy(false);
     flashAutosave(res.ok);
     setNotice("SKILLS section reorganized into categories — same skills, no additions or removals.");
+  }
+
+  async function restoreVersion(versionId: string) {
+    setBusy(true);
+    setAutosaveState("saving");
+    const res = await fetch("/api/versions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ versionId })
+    });
+    await refresh();
+    setBusy(false);
+    flashAutosave(res.ok);
+    setNotice(res.ok ? "Restored — your previous resume was saved as its own version first." : "Could not restore that version.");
   }
 
   async function onUpload(file: File) {
@@ -1267,6 +1282,7 @@ export default function CandidateApp() {
                 />
                 {resumeHealth && <ResumeHealthDashboard health={resumeHealth} />}
                 <SkillsOptimizationPanel groups={skillGroups} busy={busy} onApply={applyCategorizedSkills} />
+                <VersionHistoryPanel versions={ws.versions || []} busy={busy} onRestore={restoreVersion} />
                 {ws.vault.evidence.slice(0, 16).map((e) => (
                   <div key={e.id} className="chain-item vault-item">
                     <div className="vault-item-main">
