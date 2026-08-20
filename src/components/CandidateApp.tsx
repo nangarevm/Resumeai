@@ -29,6 +29,8 @@ import NextBestAction from "@/components/NextBestAction";
 import ReadinessScore, { type ReadinessStep } from "@/components/ReadinessScore";
 import AutosaveStatus, { type AutosaveState } from "@/components/AutosaveStatus";
 import { computeNextBestAction } from "@/lib/next-best-action";
+import LoadingProgress from "@/components/LoadingProgress";
+import EmptyState from "@/components/EmptyState";
 
 // Plain-language labels for fit.subScores — the raw object keys (keywordCoverage,
 // evidenceStrength, ...) are meaningful to the code but not to a first-time user.
@@ -37,6 +39,17 @@ const SUBSCORE_INFO: Record<string, { label: string; hint: string }> = {
   evidenceStrength: { label: "Proof quality", hint: "How solid that proof is — a real project or task beats a bare skills list." },
   atsReadiness: { label: "Resume readability", hint: "Whether hiring software can parse your contact info, headings, and layout." },
   completeness: { label: "Vault completeness", hint: "How much of your Career Vault is filled in and approved for use." }
+};
+
+const BUSY_LABELS: Partial<Record<string, string>> = {
+  vault: "Saving your Career Vault…",
+  job: "Analyzing the job description…",
+  fit: "Working on your Fit Score and CV…",
+  tailor: "Updating your tailored suggestions…",
+  verify: "Scanning your draft for unsupported claims…",
+  kit: "Building your Application Kit…",
+  interview: "Preparing interview questions…",
+  change: "Building your career change plan…"
 };
 
 const STEPS = [
@@ -853,6 +866,7 @@ export default function CandidateApp() {
         </header>
 
         <NextBestAction action={nextBestAction} onGo={setStep} />
+        {busy && <LoadingProgress label={BUSY_LABELS[step] || "Working…"} />}
 
         {notice && (
           <div className="banner">
@@ -1821,6 +1835,18 @@ export default function CandidateApp() {
               return (
                 <>
                   <p className="template-count">{filtered.length} matching templates</p>
+                  {filtered.length === 0 && (
+                    <EmptyState
+                      icon="🔍"
+                      title="No templates match this combination"
+                      detail="ATS-recommended styles stay plain on purpose and don't come in color. Try a different style, or clear the color filter."
+                      ctaLabel="Clear filters"
+                      onCta={() => {
+                        setTemplateCategory("All");
+                        setTemplateColorFilter("All");
+                      }}
+                    />
+                  )}
                   <div className="template-gallery">
                     {filtered.map((t) => (
                       <button
@@ -1887,6 +1913,15 @@ export default function CandidateApp() {
             <button className="btn-primary" onClick={() => saveApp()}>
               Log current job
             </button>
+            {apps.length === 0 && (
+              <EmptyState
+                icon="📋"
+                title="No applications logged yet"
+                detail="Log a job here after you tailor and export it, so you can track its status through to an offer."
+                ctaLabel={job ? "Log current job" : "Add a target job first"}
+                onCta={() => (job ? saveApp() : setStep("job"))}
+              />
+            )}
             <div className="kanban">
               {["Saved", "Applied", "Interview", "Offer", "Rejected"].map((col) => (
                 <div className="kanban-col" key={col}>
@@ -1948,6 +1983,15 @@ export default function CandidateApp() {
             <button className="btn-primary" onClick={runInterview}>
               Generate questions & STAR stories
             </button>
+            {!prep && (
+              <EmptyState
+                icon="🎤"
+                title="No prep generated yet"
+                detail="Generate job-specific questions and STAR stories pulled from your Career Vault evidence."
+                ctaLabel={job ? "Generate questions & STAR stories" : "Add a target job first"}
+                onCta={job ? runInterview : () => setStep("job")}
+              />
+            )}
             {prep?.stories?.map((s, i) => (
               <article className="card" key={i}>
                 <strong>STAR from vault {s.evidenceId}</strong>

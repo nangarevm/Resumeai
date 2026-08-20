@@ -398,6 +398,31 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .autosave-error { color: var(--accent-red); }
 .autosave-saving { color: var(--accent-yellow); }
 
+.loading-progress {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+  padding: 8px 14px; margin-bottom: 12px;
+  background: rgba(88, 166, 255, 0.08); border: 1px solid rgba(88, 166, 255, 0.2);
+  border-radius: 10px;
+}
+.loading-spinner {
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid rgba(88, 166, 255, 0.25); border-top-color: var(--accent-blue);
+  animation: loading-spin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes loading-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner { animation: none; }
+}
+
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
+  padding: 28px 16px; border: 1px dashed var(--border-color); border-radius: 12px;
+  margin: 12px 0;
+}
+.empty-state-icon { font-size: 28px; }
+.empty-state .btn-ghost { margin-top: 6px; }
+
 .wizard { margin-top: 12px; }
 .wizard-progress { margin-bottom: 12px; }
 .wizard-step { display: flex; flex-direction: column; gap: 4px; }
@@ -659,7 +684,7 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 
 @media print {
   .sidebar, .banner, .btn-primary, .btn-ghost, .chip, .nav-btn, .mode-pills, .template-gallery, .template-actions,
-  .hamburger-btn, .mobile-sticky-cta, .sidebar-backdrop { display: none !important; }
+  .hamburger-btn, .mobile-sticky-cta, .sidebar-backdrop, .loading-progress { display: none !important; }
   .app-shell { display: block; background: #fff; color: #111; }
   .main { padding: 0; }
   .card { box-shadow: none; border-color: #ddd; background: #fff; color: #111; }
