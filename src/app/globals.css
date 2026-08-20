@@ -734,6 +734,19 @@ a.sidebar-foot:hover { color: var(--text-primary); }
   .mobile-sticky-cta .btn-primary { flex-shrink: 0; white-space: nowrap; }
   .form-grid, .grid-2, .grid-3, .metrics, .door-grid, .compare { grid-template-columns: 1fr; }
   .span-3 { grid-column: auto; }
+
+  /* Touch targets: primary/chip/nav buttons and form fields get room for a
+     finger tap. Scoped to classed controls only — small icon/remove
+     buttons (×, Archive) and the checkbox on Verify are left alone so
+     this doesn't visually balloon tightly packed rows. The color-swatch
+     palette keeps its compact circles but gains spacing so adjacent
+     targets don't collide. */
+  .btn, .btn-primary, .btn-ghost, .chip, .nav-btn, .category-chip, .form-control, .form-select {
+    min-height: 44px;
+  }
+  .hamburger-btn { width: 44px; height: 44px; min-height: 44px; }
+  .color-swatches { gap: 10px; }
+  .color-swatch-btn { width: 30px; height: 30px; }
 }
 
 @media (min-width: 981px) {
