@@ -40,6 +40,8 @@ import SkillsOptimizationPanel from "@/components/SkillsOptimizationPanel";
 import { categorizeSkills, applyCategorizedSkillsToResume } from "@/lib/engines/skills-optimizer";
 import BulletFormulaPanel from "@/components/BulletFormulaPanel";
 import { checkBulletFormulas } from "@/lib/engines/bullet-formula-check";
+import ProjectIntelligencePanel from "@/components/ProjectIntelligencePanel";
+import { rankProjectsByRelevance } from "@/lib/engines/project-intelligence";
 import AchievementBuilderPanel from "@/components/AchievementBuilderPanel";
 import {
   unquantifiedBullets,
@@ -930,6 +932,7 @@ export default function CandidateApp() {
     [ws, job]
   );
   const skillGroups = useMemo(() => (ws ? categorizeSkills(ws.profile.extractedSkills) : []), [ws]);
+  const rankedProjects = useMemo(() => (ws && job ? rankProjectsByRelevance(ws.profile, job) : []), [ws, job]);
   const bulletFormulaResults = useMemo(() => (ws ? checkBulletFormulas(ws.profile) : []), [ws]);
   const achievementCandidates = useMemo(
     () => unquantifiedBullets(bulletFormulaResults).filter((b) => !skippedAchievements[b]),
@@ -1491,6 +1494,12 @@ export default function CandidateApp() {
               <details className="opt-section" style={{ marginTop: 12 }}>
                 <summary>Recruiter View — the 10-second test</summary>
                 <RecruiterViewPanel view={recruiterView} />
+              </details>
+            )}
+            {rankedProjects.length > 0 && (
+              <details className="opt-section" style={{ marginTop: 12 }}>
+                <summary>Project Intelligence — which projects to lead with</summary>
+                <ProjectIntelligencePanel ranked={rankedProjects} />
               </details>
             )}
             <div className="chips" style={{ marginTop: 16 }}>

@@ -165,9 +165,12 @@ function extractProjectList(projectsText: string): string[] {
   const projects: string[] = [];
   for (const line of projectsText.split("\n")) {
     const trimmed = line.trim();
-    if (trimmed.startsWith("-") || trimmed.startsWith("•") || /^project\b/i.test(trimmed)) {
-      projects.push(trimmed.replace(/^[-•]\s*/, ""));
-    }
+    // Every non-blank line inside the PROJECTS section is a project entry —
+    // not just bulleted ones. A very common real-world format is one plain
+    // "Title - description" line per project with no leading bullet marker,
+    // and requiring "-"/"•" here used to silently drop every project in
+    // that format from extractedProjects (and therefore from vault evidence).
+    if (trimmed) projects.push(trimmed.replace(/^[-•]\s*/, ""));
   }
   return projects;
 }
