@@ -23,6 +23,8 @@ import OptimizerReportPanel from "@/components/OptimizerReportPanel";
 import AuthBar from "@/components/AuthBar";
 import ResumeSectionEditor from "@/components/ResumeSectionEditor";
 import GuidedProfileWizard from "@/components/GuidedProfileWizard";
+import ResumeTemplatePreview from "@/components/ResumeTemplatePreview";
+import { RESUME_TEMPLATES } from "@/lib/resume-render";
 
 // Plain-language labels for fit.subScores — the raw object keys (keywordCoverage,
 // evidenceStrength, ...) are meaningful to the code but not to a first-time user.
@@ -40,9 +42,10 @@ const STEPS = [
   { id: "tailor", n: 4, title: "Tailor", help: "Accept, edit, or reject each suggestion. Red items are blocked." },
   { id: "verify", n: 5, title: "Verify", help: "High-risk claims must be removed, confirmed, or edited before export." },
   { id: "kit", n: 6, title: "Application kit", help: "Resume draft, cover letter, recruiter email, LinkedIn note, checklist." },
-  { id: "tracker", n: 7, title: "Tracker", help: "Saved → Applied → Interview → Offer. Link the resume version you sent." },
-  { id: "interview", n: 8, title: "Interview", help: "Job-specific questions and STAR stories from your vault." },
-  { id: "change", n: 9, title: "Career change", help: "Map transferable skills. Never fake the missing ones." }
+  { id: "templates", n: 7, title: "Templates", help: "Pick a professional layout. ATS-recommended templates stay plain on purpose." },
+  { id: "tracker", n: 8, title: "Tracker", help: "Saved → Applied → Interview → Offer. Link the resume version you sent." },
+  { id: "interview", n: 9, title: "Interview", help: "Job-specific questions and STAR stories from your vault." },
+  { id: "change", n: 10, title: "Career change", help: "Map transferable skills. Never fake the missing ones." }
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
@@ -115,6 +118,7 @@ export default function CandidateApp() {
   const [analyzedInputKey, setAnalyzedInputKey] = useState("");
   const [importMode, setImportMode] = useState<ImportMode>("paste");
   const [goalChoice, setGoalChoice] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState("ats");
   const [onboardingDismissed, setOnboardingDismissed] = useState(true);
   const [welcomeDismissed, setWelcomeDismissed] = useState(true);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -195,11 +199,12 @@ export default function CandidateApp() {
       tailor: suggestions.some((s) => s.status !== "pending"),
       verify: findings.length > 0,
       kit: Boolean(kit),
+      templates: selectedTemplate !== "ats",
       tracker: apps.length > 0,
       interview: Boolean(prep),
       change: Boolean(change)
     }),
-    [ws, job, fit, suggestions, findings, kit, apps, prep, change]
+    [ws, job, fit, suggestions, findings, kit, apps, prep, change, selectedTemplate]
   );
 
   async function importVault() {
@@ -729,7 +734,7 @@ export default function CandidateApp() {
         </Link>
       </aside>
 
-      <main className="main">
+      <main className="main" data-step={step}>
         <header className="topbar">
           <div>
             <div className="label">Step {current.n} of {STEPS.length}</div>
@@ -1655,6 +1660,40 @@ export default function CandidateApp() {
                 </button>
               </>
             )}
+          </section>
+        )}
+
+        {step === "templates" && (
+          <section className="card">
+            <h3>7. Templates</h3>
+            <p className="muted">
+              Same evidence-bound content, different look. ATS-recommended templates stay single-column with no color or icons — that&apos;s
+              deliberate, not a missing feature, since some ATS parsers choke on decoration.
+            </p>
+            <div className="template-gallery">
+              {RESUME_TEMPLATES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`template-card ${selectedTemplate === t.id ? "active" : ""}`}
+                  onClick={() => setSelectedTemplate(t.id)}
+                >
+                  <div className={`template-swatch tpl-${t.id}`} />
+                  <strong>{t.name}</strong>
+                  <span>{t.description}</span>
+                  {t.atsRecommended && <span className="ats-badge">ATS Recommended</span>}
+                </button>
+              ))}
+            </div>
+            <div className="template-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+              <button className="btn-primary" type="button" onClick={() => window.print()}>
+                Print / Download PDF in this style
+              </button>
+              <button className="btn-ghost" type="button" onClick={() => downloadDocx("resume")}>
+                Export DOCX (plain layout)
+              </button>
+            </div>
+            <ResumeTemplatePreview text={draft || resumePreview || resumeText} templateId={selectedTemplate} />
           </section>
         )}
 

@@ -43,4 +43,13 @@ describe("resume formatter", () => {
     expect(out).toContain("- Python");
     expect(out).toContain("- Playwright");
   });
+
+  it("keeps a 'Company | Role | Dates' sub-header as plain text, not a bullet", () => {
+    const out = formatResumeDraft(
+      "WORK EXPERIENCE\nSt. Mary Hospital | Registered Nurse | 2021-Present\n- Provided direct patient care"
+    );
+    expect(out).toContain("St. Mary Hospital | Registered Nurse | 2021-Present");
+    expect(out).not.toContain("- St. Mary Hospital");
+    expect(out).toContain("- Provided direct patient care");
+  });
 });

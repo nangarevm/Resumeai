@@ -149,6 +149,12 @@ function normalizeBullets(body: string): string {
       out.push(t.replace(/^[-•*]\s+/, "- "));
     } else if (/^[A-Za-z].+:\s*.+/.test(t) && t.length < 80 && !t.startsWith("-")) {
       out.push(t);
+    } else if (/\S\s*\|\s*\S/.test(t) && t.length < 100) {
+      // "Company | Role | Dates" style sub-header — a role/company line, not
+      // a bullet point. Without this, it fell through to the bullet branch
+      // below and got a "- " prefix, which visually mislabeled it as a duty
+      // bullet in every downstream export and template.
+      out.push(t);
     } else if (t.length > 0) {
       out.push(t.startsWith("- ") ? t : `- ${t}`);
     }

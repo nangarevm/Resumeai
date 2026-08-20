@@ -389,11 +389,138 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .vault-item-main .muted { font-size: 11px; }
 .vault-item-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ---------- Resume templates ---------- */
+.template-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin: 10px 0 16px;
+}
+.template-card {
+  text-align: left;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px;
+  position: relative;
+}
+.template-card:hover { border-color: var(--accent-blue); }
+.template-card.active { border-color: var(--accent-blue); background: rgba(88, 166, 255, 0.1); }
+.template-card strong { display: block; font-size: 13px; margin-bottom: 3px; }
+.template-card span { font-size: 11px; color: var(--text-secondary); }
+.template-card .ats-badge {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(63, 185, 80, 0.15);
+  color: var(--accent-green);
+}
+.template-swatch { height: 34px; border-radius: 8px; margin-bottom: 8px; }
+.template-swatch.tpl-ats { background: linear-gradient(180deg, #f4f4f4 0 40%, #ddd 40% 44%, #f4f4f4 44%); }
+.template-swatch.tpl-minimal { background: #fbfbfb; border: 1px solid #eee; }
+.template-swatch.tpl-graduate { background: linear-gradient(180deg, #e8f1ff 0 40%, #fff 40%); }
+.template-swatch.tpl-modern { background: linear-gradient(180deg, #1f6feb 0 34%, #fff 34%); }
+.template-swatch.tpl-executive { background: linear-gradient(180deg, #fff 0 30%, #2b2b2b 30% 33%, #fff 33%); }
+.template-swatch.tpl-technical { background: linear-gradient(180deg, #0d1117 0 34%, #fff 34%); }
+
+.resume-tpl {
+  background: #fff;
+  color: #1a1a1a;
+  border-radius: 10px;
+  padding: 36px 40px;
+  max-width: 780px;
+  margin: 0 auto;
+  box-shadow: var(--shadow-glow);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.resume-tpl .tpl-header { margin-bottom: 14px; }
+.resume-tpl .tpl-header h1 { font-size: 24px; margin-bottom: 4px; color: #111; }
+.resume-tpl .tpl-contact { font-size: 11.5px; color: #555; }
+.resume-tpl .tpl-section { margin-top: 14px; }
+.resume-tpl .tpl-section h2 {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #333;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 3px;
+  margin-bottom: 6px;
+}
+.resume-tpl .tpl-lines { list-style: none; }
+.resume-tpl .tpl-bullet { padding-left: 14px; position: relative; margin-bottom: 3px; }
+.resume-tpl .tpl-bullet::before { content: "•"; position: absolute; left: 0; color: #888; }
+.resume-tpl .tpl-plain { font-weight: 700; margin-top: 6px; margin-bottom: 2px; }
+.resume-tpl .tpl-plain:first-child { margin-top: 0; }
+.resume-tpl .tpl-skill-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.resume-tpl .tpl-skill-tag {
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #f0f0f0;
+  color: #333;
+}
+
+/* ATS Professional — plain, no color, maximum parser compatibility */
+.tpl-ats { font-family: Arial, Helvetica, sans-serif; }
+.tpl-ats .tpl-header h1 { color: #000; font-size: 20px; }
+.tpl-ats .tpl-section h2 { color: #000; border-bottom: 1px solid #000; }
+.tpl-ats .tpl-skill-tag { background: transparent; border: 1px solid #999; border-radius: 4px; }
+
+/* Minimal — understated, generous whitespace */
+.tpl-minimal { padding: 44px 52px; }
+.tpl-minimal .tpl-header h1 { font-weight: 400; font-size: 26px; }
+.tpl-minimal .tpl-section { margin-top: 20px; }
+.tpl-minimal .tpl-section h2 { border-bottom: none; color: #999; font-weight: 600; }
+.tpl-minimal .tpl-skill-tag { background: transparent; color: #444; padding: 3px 0; }
+.tpl-minimal .tpl-skill-tag:not(:last-child)::after { content: "·"; margin-left: 8px; color: #ccc; }
+
+/* Graduate / Fresher — friendly accent, approachable */
+.tpl-graduate .tpl-header { background: #eaf2ff; margin: -36px -40px 16px; padding: 24px 40px 18px; border-radius: 10px 10px 0 0; }
+.tpl-graduate .tpl-header h1 { color: #1f6feb; }
+.tpl-graduate .tpl-section h2 { color: #1f6feb; border-bottom-color: #cfe1ff; }
+.tpl-graduate .tpl-skill-tag { background: #eaf2ff; color: #1f6feb; }
+
+/* Modern Professional — color header band, sans-serif */
+.tpl-modern { padding: 0; overflow: hidden; }
+.tpl-modern .tpl-header { background: #1f6feb; color: #fff; padding: 26px 40px 20px; margin-bottom: 0; }
+.tpl-modern .tpl-header h1 { color: #fff; }
+.tpl-modern .tpl-contact { color: #dbe8ff; }
+.tpl-modern .tpl-section { padding: 0 40px; }
+.tpl-modern .tpl-section:last-child { padding-bottom: 30px; }
+.tpl-modern .tpl-section h2 { color: #1f6feb; border-bottom-color: #d8e4fb; }
+.tpl-modern .tpl-skill-tag { background: #1f6feb; color: #fff; }
+
+/* Executive — formal serif, centered header */
+.tpl-executive { font-family: Georgia, "Times New Roman", serif; }
+.tpl-executive .tpl-header { text-align: center; border-bottom: 2px solid #2b2b2b; padding-bottom: 12px; }
+.tpl-executive .tpl-header h1 { letter-spacing: 0.05em; text-transform: uppercase; font-size: 22px; }
+.tpl-executive .tpl-section h2 { text-align: center; letter-spacing: 0.15em; border-bottom: none; }
+.tpl-executive .tpl-skill-tag { background: transparent; border: 1px solid #2b2b2b; border-radius: 0; }
+
+/* Technical — monospace accents, dense */
+.tpl-technical { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+.tpl-technical .tpl-header { background: #0d1117; color: #f0f6fc; margin: -36px -40px 16px; padding: 22px 40px; border-radius: 10px 10px 0 0; }
+.tpl-technical .tpl-header h1 { color: #58a6ff; font-size: 20px; }
+.tpl-technical .tpl-contact { color: #8b949e; }
+.tpl-technical .tpl-section h2 { color: #58a6ff; border-bottom-color: #d8dee4; }
+.tpl-technical .tpl-skill-tag { background: #0d1117; color: #58a6ff; border-radius: 4px; font-family: inherit; }
+
 @media print {
-  .sidebar, .banner, .btn-primary, .btn-ghost, .chip, .nav-btn, .mode-pills { display: none !important; }
+  .sidebar, .banner, .btn-primary, .btn-ghost, .chip, .nav-btn, .mode-pills, .template-gallery, .template-actions { display: none !important; }
   .app-shell { display: block; background: #fff; color: #111; }
   .main { padding: 0; }
-  .card { box-shadow: none; border-color: #ddd; }
+  .card { box-shadow: none; border-color: #ddd; background: #fff; color: #111; }
+  .card .muted { color: #555; }
+  .resume-tpl { box-shadow: none; max-width: 100%; }
+  .card:has(.resume-tpl) > h3, .card:has(.resume-tpl) > p { display: none; }
+  .main[data-step="templates"] .topbar, .main[data-step="templates"] .banner {
+    display: none !important;
+  }
 }
 
 @media (max-width: 980px) {
