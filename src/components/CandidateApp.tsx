@@ -24,7 +24,7 @@ import AuthBar from "@/components/AuthBar";
 import ResumeSectionEditor from "@/components/ResumeSectionEditor";
 import GuidedProfileWizard from "@/components/GuidedProfileWizard";
 import ResumeTemplatePreview from "@/components/ResumeTemplatePreview";
-import { RESUME_TEMPLATES } from "@/lib/resume-render";
+import { RESUME_TEMPLATES, TEMPLATE_COLORS, TEMPLATE_SKELETONS, type TemplateCategory } from "@/lib/resume-render";
 
 // Plain-language labels for fit.subScores — the raw object keys (keywordCoverage,
 // evidenceStrength, ...) are meaningful to the code but not to a first-time user.
@@ -118,7 +118,9 @@ export default function CandidateApp() {
   const [analyzedInputKey, setAnalyzedInputKey] = useState("");
   const [importMode, setImportMode] = useState<ImportMode>("paste");
   const [goalChoice, setGoalChoice] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState("ats");
+  const [selectedTemplate, setSelectedTemplate] = useState("ats-classic-black");
+  const [templateCategory, setTemplateCategory] = useState("All");
+  const [templateColorFilter, setTemplateColorFilter] = useState("All");
   const [onboardingDismissed, setOnboardingDismissed] = useState(true);
   const [welcomeDismissed, setWelcomeDismissed] = useState(true);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -199,7 +201,7 @@ export default function CandidateApp() {
       tailor: suggestions.some((s) => s.status !== "pending"),
       verify: findings.length > 0,
       kit: Boolean(kit),
-      templates: selectedTemplate !== "ats",
+      templates: selectedTemplate !== "ats-classic-black",
       tracker: apps.length > 0,
       interview: Boolean(prep),
       change: Boolean(change)
@@ -1667,24 +1669,82 @@ export default function CandidateApp() {
           <section className="card">
             <h3>7. Templates</h3>
             <p className="muted">
-              Same evidence-bound content, different look. ATS-recommended templates stay single-column with no color or icons — that&apos;s
-              deliberate, not a missing feature, since some ATS parsers choke on decoration.
+              {RESUME_TEMPLATES.length} templates — same evidence-bound content, different look. ATS-recommended templates stay
+              single-column with no color blocks or icons; that&apos;s deliberate, not a missing feature, since some ATS parsers
+              choke on decoration. Filter by style or color to find one fast.
             </p>
-            <div className="template-gallery">
-              {RESUME_TEMPLATES.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={`template-card ${selectedTemplate === t.id ? "active" : ""}`}
-                  onClick={() => setSelectedTemplate(t.id)}
-                >
-                  <div className={`template-swatch tpl-${t.id}`} />
-                  <strong>{t.name}</strong>
-                  <span>{t.description}</span>
-                  {t.atsRecommended && <span className="ats-badge">ATS Recommended</span>}
-                </button>
-              ))}
+            <div className="template-filters">
+              <div className="template-filter-group">
+                <span className="template-filter-label">STYLE</span>
+                <div className="category-chips">
+                  {(["All", ...new Set(TEMPLATE_SKELETONS.map((s) => s.category))] as Array<TemplateCategory | "All">).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`category-chip ${templateCategory === c ? "active" : ""}`}
+                      onClick={() => setTemplateCategory(c)}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="template-filter-group">
+                <span className="template-filter-label">COLOR</span>
+                <div className="color-swatches">
+                  <button
+                    type="button"
+                    className={`color-swatch-btn all ${templateColorFilter === "All" ? "active" : ""}`}
+                    onClick={() => setTemplateColorFilter("All")}
+                    title="All colors"
+                    aria-label="All colors"
+                  />
+                  {TEMPLATE_COLORS.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`color-swatch-btn ${templateColorFilter === c.id ? "active" : ""}`}
+                      style={{ background: c.hex }}
+                      onClick={() => setTemplateColorFilter(c.id)}
+                      title={c.name}
+                      aria-label={c.name}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
+            {(() => {
+              const filtered = RESUME_TEMPLATES.filter(
+                (t) =>
+                  (templateCategory === "All" || t.category === templateCategory) &&
+                  (templateColorFilter === "All" || t.colorId === templateColorFilter)
+              );
+              return (
+                <>
+                  <p className="template-count">{filtered.length} matching templates</p>
+                  <div className="template-gallery">
+                    {filtered.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        title={t.bestFor}
+                        data-template-id={t.id}
+                        className={`template-card ${selectedTemplate === t.id ? "active" : ""}`}
+                        onClick={() => setSelectedTemplate(t.id)}
+                      >
+                        <div
+                          className="template-swatch"
+                          style={{ background: `linear-gradient(180deg, ${t.accent} 0 38%, #fff 38%)` }}
+                        />
+                        <strong>{t.name}</strong>
+                        <span>{t.description}</span>
+                        {t.atsRecommended && <span className="ats-badge">ATS Recommended</span>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
             <div className="template-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
               <button className="btn-primary" type="button" onClick={() => window.print()}>
                 Print / Download PDF in this style

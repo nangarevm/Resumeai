@@ -67,7 +67,7 @@ Then open the app (on this cloud VM the public preview is a tunnel; on your own 
 | Email application directly to a recruiter | Done | Kit step 6 — opens the user's own email client with recipient/subject/cover letter filled in (no SMTP needed; resume is attached manually since browsers can't attach files from JS) |
 | Structured resume editor (add/edit/delete lines, not just one raw textarea) | Done | Tailor + Verify steps, `ResumeSectionEditor` |
 | Guided step-by-step profile builder (Welcome → goal → About You → Experience → Education → Skills → Projects → Certifications, fresher vs. experienced ordering, deterministic bullet-writing, never-invent AI follow-ups) | Done | Career Vault step, `GuidedProfileWizard`, `lib/wizard/guided-profile.ts` |
-| Professional resume templates (ATS Professional, Minimal, Graduate/Fresher, Modern, Executive, Technical) with live preview and print-to-PDF | Done | Templates step, `ResumeTemplatePreview`, `lib/resume-render.ts` |
+| 166 professional resume templates (18 layout skeletons × color palette, filterable by style/color, ATS-recommended ones flagged) with live preview and print-to-PDF | Done | Templates step, `ResumeTemplatePreview`, `lib/resume-render.ts` |
 
 ## What is left (Phase 2–3 / deferred)
 

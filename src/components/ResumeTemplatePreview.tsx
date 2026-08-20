@@ -1,18 +1,32 @@
 "use client";
 
-import { parseResumeForRender } from "@/lib/resume-render";
+import type { CSSProperties } from "react";
+import { findTemplate, parseResumeForRender, type ParsedResume } from "@/lib/resume-render";
 
 export default function ResumeTemplatePreview({ text, templateId }: { text: string; templateId: string }) {
-  const resume = parseResumeForRender(text);
-  const contactLine = [resume.meta.location, resume.meta.phone, resume.meta.email, resume.meta.linkedin, resume.meta.github, resume.meta.portfolio]
-    .filter(Boolean)
-    .join("  ·  ");
+  const resume: ParsedResume = parseResumeForRender(text);
+  const template = findTemplate(templateId);
+  const contactItems = [resume.meta.location, resume.meta.phone, resume.meta.email, resume.meta.linkedin, resume.meta.github, resume.meta.portfolio].filter(
+    Boolean
+  );
 
   return (
-    <div className={`resume-tpl tpl-${templateId}`} aria-label={`Resume preview, ${templateId} template`}>
+    <div
+      className={`resume-tpl tpl-${template.skeletonId}`}
+      style={{ "--tpl-accent": template.accent, "--tpl-accent-soft": template.accentSoft } as CSSProperties}
+      aria-label={`Resume preview, ${template.name} template`}
+    >
       <header className="tpl-header">
         <h1>{resume.meta.name || "Your Name"}</h1>
-        {contactLine && <p className="tpl-contact">{contactLine}</p>}
+        {contactItems.length > 0 && (
+          <p className="tpl-contact">
+            {contactItems.map((item, i) => (
+              <span className="tpl-contact-item" key={`${item}-${i}`}>
+                {item}
+              </span>
+            ))}
+          </p>
+        )}
       </header>
 
       {resume.summary && (
