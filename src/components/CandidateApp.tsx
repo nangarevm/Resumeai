@@ -55,6 +55,12 @@ const STEPS = [
 type StepId = (typeof STEPS)[number]["id"];
 type ImportMode = "guided" | "paste" | "file" | "linkedin" | "sample";
 
+const NAV_GROUPS: Array<{ id: string; label: string; steps: StepId[] }> = [
+  { id: "create", label: "Create", steps: ["vault", "job", "fit", "tailor", "verify", "kit", "templates"] },
+  { id: "apply", label: "Apply", steps: ["tracker", "interview"] },
+  { id: "manage", label: "Manage", steps: ["change"] }
+];
+
 const GOAL_OPTIONS = [
   "Get a new job",
   "Switch careers",
@@ -141,6 +147,22 @@ export default function CandidateApp() {
   const [aiError, setAiError] = useState("");
   const [recruiterEmail, setRecruiterEmail] = useState("");
   const [recruiterEmailSubject, setRecruiterEmailSubject] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  function toggleGroup(id: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function goToStep(id: StepId) {
+    setStep(id);
+    setMobileNavOpen(false);
+  }
 
   const currentJobInputKey = useMemo(() => jobInputKey(jobUrl, jdText), [jobUrl, jdText]);
   const jobIntelStale = Boolean(job && analyzedInputKey && analyzedInputKey !== currentJobInputKey);
@@ -760,7 +782,8 @@ export default function CandidateApp() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      {mobileNavOpen && <div className="sidebar-backdrop" onClick={() => setMobileNavOpen(false)} />}
+      <aside className={`sidebar ${mobileNavOpen ? "sidebar-open" : ""}`}>
         <Link href="/" className="brand" style={{ textDecoration: "none", color: "inherit" }}>
           <div className="logo">👤</div>
           <div>
@@ -768,11 +791,26 @@ export default function CandidateApp() {
             <span>Job Application Copilot</span>
           </div>
         </Link>
-        {STEPS.map((s) => (
-          <button key={s.id} className={`nav-btn ${step === s.id ? "active" : ""}`} onClick={() => setStep(s.id)}>
-            <span className={`step-dot ${done[s.id] ? "ok" : ""}`}>{s.n}</span> {s.title}
-          </button>
-        ))}
+        {NAV_GROUPS.map((group) => {
+          const collapsed = collapsedGroups.has(group.id);
+          return (
+            <div className="nav-group" key={group.id}>
+              <button type="button" className="nav-group-header" onClick={() => toggleGroup(group.id)} aria-expanded={!collapsed}>
+                <span>{group.label}</span>
+                <span className="nav-group-chevron">{collapsed ? "▸" : "▾"}</span>
+              </button>
+              {!collapsed &&
+                group.steps.map((id) => {
+                  const s = STEPS.find((st) => st.id === id)!;
+                  return (
+                    <button key={s.id} className={`nav-btn ${step === s.id ? "active" : ""}`} onClick={() => goToStep(s.id)}>
+                      <span className={`step-dot ${done[s.id] ? "ok" : ""}`}>{s.n}</span> {s.title}
+                    </button>
+                  );
+                })}
+            </div>
+          );
+        })}
         <Link href="/agency" className="sidebar-foot" style={{ textDecoration: "none" }}>
           Switch to agency desk →
         </Link>
@@ -780,12 +818,23 @@ export default function CandidateApp() {
 
       <main className="main" data-step={step}>
         <header className="topbar">
-          <div>
-            <div className="label">Step {current.n} of {STEPS.length}</div>
-            <h2>{current.title}</h2>
-            <p className="muted">{current.help}</p>
-            <div style={{ marginTop: 10, maxWidth: 320 }}>
-              <ReadinessScore steps={readinessSteps} />
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <button
+              type="button"
+              className="hamburger-btn"
+              onClick={() => setMobileNavOpen((v) => !v)}
+              aria-label="Toggle navigation"
+              aria-expanded={mobileNavOpen}
+            >
+              ☰
+            </button>
+            <div>
+              <div className="label">Step {current.n} of {STEPS.length}</div>
+              <h2>{current.title}</h2>
+              <p className="muted">{current.help}</p>
+              <div style={{ marginTop: 10, maxWidth: 320 }}>
+                <ReadinessScore steps={readinessSteps} />
+              </div>
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -2003,6 +2052,18 @@ export default function CandidateApp() {
           </section>
         )}
       </main>
+
+      {nextBestAction && (
+        <div className="mobile-sticky-cta">
+          <div>
+            <strong>{nextBestAction.title}</strong>
+            <p className="muted">{nextBestAction.detail}</p>
+          </div>
+          <button className="btn-primary" onClick={() => setStep(nextBestAction.step)}>
+            {nextBestAction.ctaLabel}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
