@@ -40,6 +40,14 @@ import SkillsOptimizationPanel from "@/components/SkillsOptimizationPanel";
 import { categorizeSkills, applyCategorizedSkillsToResume } from "@/lib/engines/skills-optimizer";
 import BulletFormulaPanel from "@/components/BulletFormulaPanel";
 import { checkBulletFormulas } from "@/lib/engines/bullet-formula-check";
+import AchievementBuilderPanel from "@/components/AchievementBuilderPanel";
+import {
+  unquantifiedBullets,
+  isQuantifiedAnswer,
+  buildQuantifiedBullet,
+  applyQuantifiedBulletToResume,
+  type AchievementAnswer
+} from "@/lib/engines/achievement-builder";
 import { isHeaderLine } from "@/lib/resume-line-editor";
 import LoadingProgress from "@/components/LoadingProgress";
 import EmptyState from "@/components/EmptyState";
@@ -153,6 +161,9 @@ export default function CandidateApp() {
   const [editingIntegrityClaim, setEditingIntegrityClaim] = useState<string | null>(null);
   const [integrityEditValue, setIntegrityEditValue] = useState("");
   const [genericPhraseResolutions, setGenericPhraseResolutions] = useState<Record<string, "kept" | "removed">>({});
+  const [achievementDrafts, setAchievementDrafts] = useState<Record<string, Partial<AchievementAnswer>>>({});
+  const [achievementApplied, setAchievementApplied] = useState<Record<string, boolean>>({});
+  const [skippedAchievements, setSkippedAchievements] = useState<Record<string, boolean>>({});
   const [keywordResolutions, setKeywordResolutions] = useState<Record<string, KeywordResolution>>({});
   const [answerDraft, setAnswerDraft] = useState("");
   const [linkedinPaste, setLinkedinPaste] = useState("");
@@ -462,6 +473,36 @@ export default function CandidateApp() {
         .join("\n");
       setDraft(next);
     }
+  }
+
+  function updateAchievementDraft(bullet: string, field: keyof AchievementAnswer, value: string) {
+    setAchievementDrafts((prev) => ({ ...prev, [bullet]: { ...prev[bullet], [field]: value } }));
+  }
+
+  function skipAchievement(bullet: string) {
+    setSkippedAchievements((prev) => ({ ...prev, [bullet]: true }));
+  }
+
+  async function applyAchievement(bullet: string) {
+    const draft = achievementDrafts[bullet] || {};
+    if (!isQuantifiedAnswer(draft)) return;
+    const base = ws?.profile.rawResumeText || resumeText;
+    if (!base) return;
+    const quantified = buildQuantifiedBullet(bullet, draft as AchievementAnswer);
+    const updatedText = applyQuantifiedBulletToResume(base, bullet, quantified);
+    setResumeText(updatedText);
+    setBusy(true);
+    setAutosaveState("saving");
+    const res = await fetch("/api/vault", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resumeText: updatedText, targetRole, goals })
+    });
+    await refresh();
+    setBusy(false);
+    flashAutosave(res.ok);
+    setAchievementApplied((prev) => ({ ...prev, [bullet]: true }));
+    setNotice("Quantified bullet added to your draft — using the numbers you provided.");
   }
 
   async function confirmMissingKeyword(skill: string, mode: "add" | "mention" | "decline") {
@@ -890,6 +931,10 @@ export default function CandidateApp() {
   );
   const skillGroups = useMemo(() => (ws ? categorizeSkills(ws.profile.extractedSkills) : []), [ws]);
   const bulletFormulaResults = useMemo(() => (ws ? checkBulletFormulas(ws.profile) : []), [ws]);
+  const achievementCandidates = useMemo(
+    () => unquantifiedBullets(bulletFormulaResults).filter((b) => !skippedAchievements[b]),
+    [bulletFormulaResults, skippedAchievements]
+  );
   const showOnboardingBanner =
     !onboardingDismissed && (step === "vault" || step === "job" || step === "fit") && progress < 55;
   const current = STEPS.find((s) => s.id === step)!;
@@ -1642,6 +1687,16 @@ export default function CandidateApp() {
             ))}
             {bulletFormulaResults.length > 0 && <h3>Bullet formula check — Action + Technology + Scope + Result</h3>}
             <BulletFormulaPanel results={bulletFormulaResults} />
+
+            {achievementCandidates.length > 0 && <h3>Achievement Builder — quantify it yourself</h3>}
+            <AchievementBuilderPanel
+              bullets={achievementCandidates}
+              drafts={achievementDrafts}
+              applied={achievementApplied}
+              onChange={updateAchievementDraft}
+              onApply={applyAchievement}
+              onSkip={skipAchievement}
+            />
 
             <h3>Edit tailored draft</h3>
             <p className="muted">

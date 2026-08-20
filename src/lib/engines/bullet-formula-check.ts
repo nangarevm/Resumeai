@@ -25,7 +25,7 @@ export interface BulletFormulaResult {
 const WEAK_START_RE =
   /^(responsible for|worked on|worked with|helped(?:\s+with)?|assisted(?:\s+with)?|involved in|duties included|in charge of|was part of|part of a team|tasked with)\b/i;
 
-const RESULT_RE =
+export const RESULT_RE =
   /\b\d+\+?\s*%|\b(?:reduc|increas|improv|boost|cut|grew|grow|sav|accelerat|shorten|speed(?:ed)? up|doubl|tripl)\w*\s+(?:it\s+)?(?:by\s+)?\d+/i;
 
 const SCOPE_RE =
