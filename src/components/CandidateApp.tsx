@@ -1908,9 +1908,13 @@ export default function CandidateApp() {
               <EmptyState
                 icon="📋"
                 title="No applications logged yet"
-                detail="Log a job here after you tailor and export it, so you can track its status through to an offer."
-                ctaLabel={job ? "Log current job" : "Add a target job first"}
-                onCta={() => (job ? saveApp() : setStep("job"))}
+                detail={
+                  job
+                    ? "Log a job here after you tailor and export it, so you can track its status through to an offer."
+                    : "Add a target job first, then use the button above to log it here and track its status through to an offer."
+                }
+                ctaLabel={job ? undefined : "Add a target job first"}
+                onCta={job ? undefined : () => setStep("job")}
               />
             )}
             <div className="kanban">
