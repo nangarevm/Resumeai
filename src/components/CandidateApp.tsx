@@ -32,6 +32,7 @@ import { computeNextBestAction } from "@/lib/next-best-action";
 import LoadingProgress from "@/components/LoadingProgress";
 import EmptyState from "@/components/EmptyState";
 import HealthCard from "@/components/HealthCard";
+import ApplicationKitCard from "@/components/ApplicationKitCard";
 
 // Plain-language labels for fit.subScores — the raw object keys (keywordCoverage,
 // evidenceStrength, ...) are meaningful to the code but not to a first-time user.
@@ -1646,34 +1647,29 @@ export default function CandidateApp() {
                   Open email to send
                 </button>
 
-                <details className="opt-section kit-section" open>
-                  <summary>Recruiter email</summary>
+                <div className="kit-cards">
+                <ApplicationKitCard icon="📧" title="Recruiter email" description="A ready-to-send email to a hiring contact or recruiter." defaultOpen>
                   <CopyButton text={kit.recruiterEmail} />
                   <pre className="pre">{kit.recruiterEmail}</pre>
-                </details>
-                <details className="opt-section kit-section" open>
-                  <summary>Cover letter</summary>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="✉️" title="Cover letter" description="The full cover letter for this application." defaultOpen>
                   <CopyButton text={kit.coverLetter} />
                   <pre className="pre">{kit.coverLetter}</pre>
-                </details>
-                <details className="opt-section kit-section">
-                  <summary>3-line cover</summary>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="✂️" title="3-line cover" description="A short version for forms with a character limit.">
                   <CopyButton text={kit.shortCover} />
                   <pre className="pre">{kit.shortCover}</pre>
-                </details>
-                <details className="opt-section kit-section">
-                  <summary>WhatsApp note</summary>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="💬" title="WhatsApp note" description="A casual note for WhatsApp-first hiring.">
                   <CopyButton text={kit.whatsappNote} />
                   <pre className="pre">{kit.whatsappNote}</pre>
-                </details>
-                <details className="opt-section kit-section">
-                  <summary>LinkedIn note</summary>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="🔗" title="LinkedIn note" description="A short connection or InMail message.">
                   <CopyButton text={kit.linkedinNote} />
                   <pre className="pre">{kit.linkedinNote}</pre>
-                </details>
+                </ApplicationKitCard>
 
-                <details className="opt-section kit-section">
-                  <summary>✨ Generate with AI (optional)</summary>
+                <ApplicationKitCard icon="✨" title="Generate with AI (optional)" description="AI-written draft — read carefully before sending.">
                   <div className="banner">
                     <strong>AI-generated draft — not evidence-checked</strong>
                     <p className="muted" style={{ marginTop: 6 }}>
@@ -1731,15 +1727,13 @@ export default function CandidateApp() {
                       <textarea className="form-control" rows={3} value={aiSummary} onChange={(e) => setAiSummary(e.target.value)} />
                     </>
                   )}
-                </details>
+                </ApplicationKitCard>
 
-                <details className="opt-section kit-section">
-                  <summary>Thank-you note (24h)</summary>
+                <ApplicationKitCard icon="🙏" title="Thank-you note (24h)" description="Send within a day of applying or interviewing.">
                   <CopyButton text={kit.thankYouNote} />
                   <pre className="pre">{kit.thankYouNote}</pre>
-                </details>
-                <details className="opt-section kit-section">
-                  <summary>Referral ask + checklist</summary>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="🤝" title="Referral ask + checklist" description="A message to ask a contact for a referral.">
                   <CopyButton text={kit.referralNote} />
                   <pre className="pre">{kit.referralNote}</pre>
                   <h4 style={{ marginTop: 10 }}>Referrer checklist</h4>
@@ -1756,18 +1750,17 @@ export default function CandidateApp() {
                       <input className="form-control" value={referralUrl} onChange={(e) => setReferralUrl(e.target.value)} placeholder="https://..." />
                     </div>
                   </div>
-                </details>
-                <details className="opt-section kit-section">
-                  <summary>Checklist</summary>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="☑️" title="Checklist" description="Steps to finish before you consider this application sent.">
                   {kit.checklist.map((c) => (
                     <p key={c}>☐ {c}</p>
                   ))}
-                </details>
-                <details className="opt-section kit-section" open>
-                  <summary>Tailored resume</summary>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="📄" title="Tailored resume" description="The full resume text for this application." defaultOpen>
                   <CopyButton text={kit.tailoredResume} label="Copy resume" />
                   <pre className="pre">{kit.tailoredResume}</pre>
-                </details>
+                </ApplicationKitCard>
+                </div>
                 <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => saveApp()}>
                   Save to application tracker
                 </button>

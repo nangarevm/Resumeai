@@ -15,6 +15,8 @@ import type {
 } from "@/lib/models";
 import { EVALUATION_MODES } from "@/lib/models";
 import CopyButton from "@/components/CopyButton";
+import CompactSearch from "@/components/CompactSearch";
+import ComparisonTable from "@/components/ComparisonTable";
 
 type Tab = "overview" | "hiring" | "discovery" | "pool" | "clients" | "brand";
 type ModalTool = "evidence" | "ats" | "optimizer" | "github" | "cover";
@@ -522,7 +524,7 @@ export default function AgencyApp() {
           <section className="card">
             <h3>Client roster & seats</h3>
             <p className="muted">Recruiter notes stay on the seat. Billing meters are tracked on Overview.</p>
-            <input className="search" placeholder="Search clients or notes…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <CompactSearch value={search} onChange={setSearch} placeholder="Search clients or notes…" resultCount={visibleSeats.length} />
             <div className="table-wrap">
               <table>
                 <thead>
@@ -595,7 +597,7 @@ export default function AgencyApp() {
             <section className="card">
               <h3>Ranked candidates {busy ? "…" : ""}</h3>
               <p className="muted">Click a row for evidence + ATS, optimizer, GitHub proof, and cover letter tools.</p>
-              <input className="search" placeholder="Search name, strengths, or gaps…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <CompactSearch value={search} onChange={setSearch} placeholder="Search name, strengths, or gaps…" resultCount={visible.length} />
               <div className="chips">
                 <button className="btn-ghost" type="button" onClick={copyShortlist}>
                   Copy shortlist
@@ -622,16 +624,7 @@ export default function AgencyApp() {
               </div>
               {aRow && bRow && (
                 <div className="compare">
-                  {[aRow, bRow].map((r) => (
-                    <article key={r.candidateId} className="card">
-                      <h4>{r.candidateName}</h4>
-                      <p>
-                        {Math.round(r.qualificationScore)}% · {r.isShortlisted ? "Shortlisted" : "Rejected"} · {r.preferenceAlignment}
-                      </p>
-                      <p className="muted">Strong: {r.strongAreas.slice(0, 5).join(", ") || "—"}</p>
-                      <p className="muted">Missing: {r.missingRequirements.slice(0, 5).join(", ") || "—"}</p>
-                    </article>
-                  ))}
+                  <ComparisonTable a={aRow} b={bRow} />
                 </div>
               )}
               <div className="table-wrap">
