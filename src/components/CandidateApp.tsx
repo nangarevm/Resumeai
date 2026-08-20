@@ -579,10 +579,26 @@ export default function CandidateApp() {
   async function onUpload(file: File) {
     const form = new FormData();
     form.append("file", file);
-    const data = await fetch("/api/parse", { method: "POST", body: form }).then((r) => r.json());
+    const res = await fetch("/api/parse", { method: "POST", body: form });
+    const data = await res.json().catch(() => ({ error: "Could not read that file — try a different one, or paste the resume text directly." }));
     if (data.text) {
       setResumeText(data.text);
-      setNotice("File parsed. Review the text, then save the vault.");
+      const stats = resumeImportStats(data.text);
+      // "File parsed" used to fire unconditionally, even when extraction
+      // yielded almost nothing readable (e.g. a scanned/image-only PDF —
+      // pdf-parse has no OCR, so it silently returns whatever stray text
+      // metadata happened to be embedded). The char-count save gate below
+      // already caught this before anything bad could be saved, but the
+      // notice itself was actively misleading in the meantime.
+      if (stats.chars < 80) {
+        setNotice(
+          `Only ${stats.chars} character${stats.chars === 1 ? "" : "s"} of readable text came out of that file — it may be a scanned or image-based PDF, which we can't read text from yet. Try pasting the resume text directly instead.`
+        );
+      } else if (!stats.hasName && !stats.hasEmail) {
+        setNotice("File parsed, but we couldn't confidently find a name or email in it — check the extracted text below before saving.");
+      } else {
+        setNotice("File parsed. Review the text, then save the vault.");
+      }
     } else setNotice(data.error || "Could not read that file.");
   }
 
