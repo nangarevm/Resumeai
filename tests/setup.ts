@@ -4,19 +4,23 @@ import path from "path";
 
 const testWorkspace = path.join(os.tmpdir(), `resumeproof-test-${process.pid}-${Date.now()}.json`);
 const testAccounts = path.join(os.tmpdir(), `resumeproof-test-accounts-${process.pid}-${Date.now()}.json`);
+const testShares = path.join(os.tmpdir(), `resumeproof-test-shares-${process.pid}-${Date.now()}.json`);
 
 process.env.RESUMEPROOF_WORKSPACE_FILE = testWorkspace;
 process.env.RESUMEPROOF_ACCOUNTS_FILE = testAccounts;
+process.env.RESUMEPROOF_SHARES_FILE = testShares;
 process.env.RESUMEPROOF_TEST_MODE = "1";
 process.env.NEXTAUTH_SECRET = "resumeproof-test-secret";
 
 import { beforeEach } from "vitest";
 import { resetWorkspaceCache } from "@/lib/workspace-store";
 import { resetAccountsCache } from "@/lib/auth/accounts";
+import { resetSharesCache } from "@/lib/shares";
 
 beforeEach(() => {
   resetWorkspaceCache();
   resetAccountsCache();
+  resetSharesCache();
 });
 
 if (fs.existsSync(testWorkspace)) {
@@ -24,4 +28,7 @@ if (fs.existsSync(testWorkspace)) {
 }
 if (fs.existsSync(testAccounts)) {
   fs.unlinkSync(testAccounts);
+}
+if (fs.existsSync(testShares)) {
+  fs.unlinkSync(testShares);
 }

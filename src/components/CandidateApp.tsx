@@ -43,6 +43,7 @@ import { checkBulletFormulas } from "@/lib/engines/bullet-formula-check";
 import { BUCKET_ORDER, type InterviewBucket } from "@/lib/engines/interview-categorizer";
 import VersionHistoryPanel from "@/components/VersionHistoryPanel";
 import NamedResumesPanel from "@/components/NamedResumesPanel";
+import SharePanel from "@/components/SharePanel";
 import ProjectIntelligencePanel from "@/components/ProjectIntelligencePanel";
 import { rankProjectsByRelevance } from "@/lib/engines/project-intelligence";
 import AchievementBuilderPanel from "@/components/AchievementBuilderPanel";
@@ -159,6 +160,7 @@ export default function CandidateApp() {
   // sites elsewhere (applying a suggestion, a rewrite, etc.).
   const [draftHistory, setDraftHistory] = useState<string[]>([]);
   const MAX_DRAFT_HISTORY = 20;
+  const [shareStatus, setShareStatus] = useState<{ active: boolean; url?: string; expiresAt?: string }>({ active: false });
 
   function updateDraftWithHistory(next: string) {
     setDraftHistory((h) => [...h, draft].slice(-MAX_DRAFT_HISTORY));
@@ -279,6 +281,7 @@ export default function CandidateApp() {
 
   useEffect(() => {
     refresh();
+    loadShareStatus();
     try {
       setOnboardingDismissed(localStorage.getItem("resumeproof-onboarding-dismissed") === "1");
       setWelcomeDismissed(localStorage.getItem("resumeproof-welcome-dismissed") === "1");
@@ -646,6 +649,36 @@ export default function CandidateApp() {
     await refresh();
     setBusy(false);
     setNotice(res.ok ? "Deleted." : "Could not delete that resume.");
+  }
+
+  async function loadShareStatus() {
+    const data = await fetch("/api/share").then((r) => r.json()).catch(() => ({ active: false }));
+    setShareStatus(data);
+  }
+
+  async function createShareLink() {
+    setBusy(true);
+    const res = await fetch("/api/share", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "create" })
+    });
+    const data = await res.json().catch(() => ({ active: false }));
+    setShareStatus(data);
+    setBusy(false);
+    setNotice(res.ok ? "Link ready — copy it and send it to whoever you want reviewing this." : "Could not create a share link.");
+  }
+
+  async function revokeShareLink() {
+    setBusy(true);
+    const res = await fetch("/api/share", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "revoke" })
+    });
+    setShareStatus({ active: false });
+    setBusy(false);
+    setNotice(res.ok ? "Sharing stopped — that link no longer works." : "Could not stop sharing.");
   }
 
   async function onUpload(file: File) {
@@ -1379,6 +1412,14 @@ export default function CandidateApp() {
                   onDelete={deleteNamedResume}
                 />
                 <VersionHistoryPanel versions={ws.versions || []} busy={busy} onRestore={restoreVersion} />
+                <SharePanel
+                  active={shareStatus.active}
+                  url={shareStatus.url}
+                  expiresAt={shareStatus.expiresAt}
+                  busy={busy}
+                  onCreate={createShareLink}
+                  onRevoke={revokeShareLink}
+                />
                 {ws.vault.evidence.slice(0, 16).map((e) => (
                   <div key={e.id} className="chain-item vault-item">
                     <div className="vault-item-main">

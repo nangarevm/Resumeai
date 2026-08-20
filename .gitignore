@@ -7,6 +7,7 @@ data/runtime/*.json
 data/users/
 data/runtime/market-cache.json
 data/accounts/
+data/shares/
 *.log
 .DS_Store
 .env
