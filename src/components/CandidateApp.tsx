@@ -149,6 +149,28 @@ export default function CandidateApp() {
   const [suggestions, setSuggestions] = useState<TailorSuggestion[]>([]);
   const [findings, setFindings] = useState<VerificationFinding[]>([]);
   const [draft, setDraft] = useState("");
+  // Undo, scoped specifically to ResumeSectionEditor's structural edits
+  // (line edit/delete/move/add). A plain <textarea> already gets free
+  // browser-native undo (Ctrl+Z) — but ResumeSectionEditor rebuilds its
+  // rows as separate <input> elements on every structural change, which
+  // breaks that native history entirely. This restores it for that one
+  // component specifically, without touching the other setDraft call
+  // sites elsewhere (applying a suggestion, a rewrite, etc.).
+  const [draftHistory, setDraftHistory] = useState<string[]>([]);
+  const MAX_DRAFT_HISTORY = 20;
+
+  function updateDraftWithHistory(next: string) {
+    setDraftHistory((h) => [...h, draft].slice(-MAX_DRAFT_HISTORY));
+    setDraft(next);
+  }
+
+  function undoDraft() {
+    setDraftHistory((h) => {
+      if (h.length === 0) return h;
+      setDraft(h[h.length - 1]);
+      return h.slice(0, -1);
+    });
+  }
   const [kit, setKit] = useState<ApplicationKit | null>(null);
   const [apps, setApps] = useState<ApplicationRecord[]>([]);
   const [prep, setPrep] = useState<{
@@ -1751,8 +1773,11 @@ export default function CandidateApp() {
             <p className="muted">
               Edit any line, add a line to a section, or remove one — every change stays in this draft, nothing is invented.
             </p>
-            <ResumeSectionEditor text={draft || resumePreview} onChange={setDraft} />
+            <ResumeSectionEditor text={draft || resumePreview} onChange={updateDraftWithHistory} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              <button className="chip" type="button" disabled={draftHistory.length === 0} onClick={undoDraft}>
+                ↩ Undo last change {draftHistory.length > 0 && `(${draftHistory.length})`}
+              </button>
               <button className="chip" type="button" onClick={() => setDraft(resumePreview)}>
                 Reset from accepted suggestions
               </button>
@@ -1902,8 +1927,11 @@ export default function CandidateApp() {
 
             <h3>Edit export resume</h3>
             <p className="muted">Edit, add, or remove a line here, then re-scan before you export or build the kit.</p>
-            <ResumeSectionEditor text={draft || resumePreview} onChange={setDraft} />
+            <ResumeSectionEditor text={draft || resumePreview} onChange={updateDraftWithHistory} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              <button className="chip" type="button" disabled={draftHistory.length === 0} onClick={undoDraft}>
+                ↩ Undo last change {draftHistory.length > 0 && `(${draftHistory.length})`}
+              </button>
               <button className="chip" type="button" disabled={busy} onClick={() => rescanDraft(draft || resumePreview)}>
                 Re-scan draft
               </button>
