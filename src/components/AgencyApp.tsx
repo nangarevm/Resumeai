@@ -461,24 +461,26 @@ export default function AgencyApp() {
               </div>
             </form>
             <h3 style={{ marginTop: 20 }}>Pool ({candidates.length})</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Skills</th>
-                </tr>
-              </thead>
-              <tbody>
-                {candidates.slice(0, 20).map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td>
-                    <td>{c.email}</td>
-                    <td>{(c.extractedSkills || []).slice(0, 5).join(", ")}</td>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Skills</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {candidates.slice(0, 20).map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.name}</td>
+                      <td>{c.email}</td>
+                      <td>{(c.extractedSkills || []).slice(0, 5).join(", ")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
         )}
 
@@ -521,38 +523,40 @@ export default function AgencyApp() {
             <h3>Client roster & seats</h3>
             <p className="muted">Recruiter notes stay on the seat. Billing meters are tracked on Overview.</p>
             <input className="search" placeholder="Search clients or notes…" value={search} onChange={(e) => setSearch(e.target.value)} />
-            <table>
-              <thead>
-                <tr>
-                  <th>Client</th>
-                  <th>Status</th>
-                  <th>Progress</th>
-                  <th>Recruiter notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleSeats.map((s) => (
-                  <tr key={s.clientId}>
-                    <td>{s.clientName}</td>
-                    <td>
-                      <span className="badge ok">{s.status}</span>
-                    </td>
-                    <td>{s.progress}</td>
-                    <td>
-                      <textarea
-                        className="form-control"
-                        rows={2}
-                        value={notesDraft[s.clientId] ?? s.notes ?? ""}
-                        onChange={(e) => setNotesDraft((prev) => ({ ...prev, [s.clientId]: e.target.value }))}
-                      />
-                      <button className="chip" type="button" onClick={() => saveSeatNotes(s.clientId)}>
-                        Save notes
-                      </button>
-                    </td>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Client</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Recruiter notes</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {visibleSeats.map((s) => (
+                    <tr key={s.clientId}>
+                      <td>{s.clientName}</td>
+                      <td>
+                        <span className="badge ok">{s.status}</span>
+                      </td>
+                      <td>{s.progress}</td>
+                      <td>
+                        <textarea
+                          className="form-control"
+                          rows={2}
+                          value={notesDraft[s.clientId] ?? s.notes ?? ""}
+                          onChange={(e) => setNotesDraft((prev) => ({ ...prev, [s.clientId]: e.target.value }))}
+                        />
+                        <button className="chip" type="button" onClick={() => saveSeatNotes(s.clientId)}>
+                          Save notes
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
         )}
 
@@ -630,30 +634,32 @@ export default function AgencyApp() {
                   ))}
                 </div>
               )}
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Name</th>
-                    <th>Status</th>
-                    <th>Score</th>
-                    <th>Alignment</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map((r, i) => (
-                    <tr key={r.candidateId} className="clickable" onClick={() => setSelected(r)}>
-                      <td>{i + 1}</td>
-                      <td>{r.candidateName}</td>
-                      <td>
-                        <span className={`badge ${r.isShortlisted ? "ok" : "no"}`}>{r.isShortlisted ? "Shortlisted" : "Rejected"}</span>
-                      </td>
-                      <td>{Math.round(r.qualificationScore)}%</td>
-                      <td>{r.preferenceAlignment}</td>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Name</th>
+                      <th>Status</th>
+                      <th>Score</th>
+                      <th>Alignment</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {visible.map((r, i) => (
+                      <tr key={r.candidateId} className="clickable" onClick={() => setSelected(r)}>
+                        <td>{i + 1}</td>
+                        <td>{r.candidateName}</td>
+                        <td>
+                          <span className={`badge ${r.isShortlisted ? "ok" : "no"}`}>{r.isShortlisted ? "Shortlisted" : "Rejected"}</span>
+                        </td>
+                        <td>{Math.round(r.qualificationScore)}%</td>
+                        <td>{r.preferenceAlignment}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </>
         )}
@@ -699,24 +705,26 @@ export default function AgencyApp() {
             {modalTool === "evidence" && (
               <>
                 <pre className="pre">{selected.explanationText}</pre>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Requirement</th>
-                      <th>Strength</th>
-                      <th>Snippet</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selected.evidenceList.map((ev) => (
-                      <tr key={ev.requirementName}>
-                        <td>{ev.requirementName}</td>
-                        <td>{ev.strength}</td>
-                        <td>{ev.snippet}</td>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Requirement</th>
+                        <th>Strength</th>
+                        <th>Snippet</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {selected.evidenceList.map((ev) => (
+                        <tr key={ev.requirementName}>
+                          <td>{ev.requirementName}</td>
+                          <td>{ev.strength}</td>
+                          <td>{ev.snippet}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
                 <h3>Interview questions</h3>
                 {selected.interviewQuestions.slice(0, 6).map((q, i) => (
                   <p key={i}>
