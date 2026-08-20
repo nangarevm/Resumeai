@@ -44,21 +44,35 @@ const ROLE_SEARCH_QUERIES: Record<string, string[]> = {
   general: ["career development", "workplace ai tools", "professional certification"]
 };
 
+// getCachedLiveOverlay() runs on every Fit Score computation — a hot path
+// hit on every job analysis — but this file's cache only actually changes
+// once per role family per 6-hour TTL. Re-reading and re-parsing the whole
+// cache file from disk synchronously on every call was pure waste (and,
+// being synchronous, blocked the event loop on every request that hit it).
+// Every other disk-backed cache in this codebase (store.ts, market-
+// intelligence.ts) already keeps its parsed contents in memory in front of
+// the disk read; this just brings this one file in line with that pattern.
+let memCache: MarketCacheFile | null = null;
+
 function readCache(): MarketCacheFile {
+  if (memCache) return memCache;
   try {
     if (fs.existsSync(CACHE_FILE)) {
-      return JSON.parse(fs.readFileSync(CACHE_FILE, "utf8")) as MarketCacheFile;
+      memCache = JSON.parse(fs.readFileSync(CACHE_FILE, "utf8")) as MarketCacheFile;
+      return memCache;
     }
   } catch {
     /* ignore */
   }
-  return { entries: {} };
+  memCache = { entries: {} };
+  return memCache;
 }
 
 function writeCache(file: MarketCacheFile): void {
   const dir = path.dirname(CACHE_FILE);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(CACHE_FILE, JSON.stringify(file, null, 2));
+  memCache = file;
 }
 
 function isFresh(entry: MarketCacheEntry): boolean {
