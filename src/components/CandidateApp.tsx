@@ -568,13 +568,13 @@ export default function CandidateApp() {
     setNotice("Apply pack downloaded — resume DOCX, 3-line cover, LinkedIn note, referral checklist.");
   }
 
-  async function downloadDocx(kind: "resume" | "cover") {
+  async function downloadDocx(kind: "resume" | "cover", templateId?: string) {
     const text = kind === "resume" ? draft || resumePreview || kit?.tailoredResume : kit?.shortCover || kit?.coverLetter;
     if (!text) return;
     const res = await fetch("/api/export-docx", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind, text })
+      body: JSON.stringify({ kind, text, templateId })
     });
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
@@ -1749,8 +1749,8 @@ export default function CandidateApp() {
               <button className="btn-primary" type="button" onClick={() => window.print()}>
                 Print / Download PDF in this style
               </button>
-              <button className="btn-ghost" type="button" onClick={() => downloadDocx("resume")}>
-                Export DOCX (plain layout)
+              <button className="btn-ghost" type="button" onClick={() => downloadDocx("resume", selectedTemplate)}>
+                Export DOCX in this style
               </button>
             </div>
             <ResumeTemplatePreview text={draft || resumePreview || resumeText} templateId={selectedTemplate} />
