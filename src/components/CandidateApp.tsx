@@ -38,6 +38,8 @@ import { computeRecruiterView } from "@/lib/engines/recruiter-view";
 import { detectGenericPhrases, stripGenericPhrase } from "@/lib/engines/generic-phrase-detector";
 import SkillsOptimizationPanel from "@/components/SkillsOptimizationPanel";
 import { categorizeSkills, applyCategorizedSkillsToResume } from "@/lib/engines/skills-optimizer";
+import BulletFormulaPanel from "@/components/BulletFormulaPanel";
+import { checkBulletFormulas } from "@/lib/engines/bullet-formula-check";
 import { isHeaderLine } from "@/lib/resume-line-editor";
 import LoadingProgress from "@/components/LoadingProgress";
 import EmptyState from "@/components/EmptyState";
@@ -887,6 +889,7 @@ export default function CandidateApp() {
     [ws, job]
   );
   const skillGroups = useMemo(() => (ws ? categorizeSkills(ws.profile.extractedSkills) : []), [ws]);
+  const bulletFormulaResults = useMemo(() => (ws ? checkBulletFormulas(ws.profile) : []), [ws]);
   const showOnboardingBanner =
     !onboardingDismissed && (step === "vault" || step === "job" || step === "fit") && progress < 55;
   const current = STEPS.find((s) => s.id === step)!;
@@ -1637,6 +1640,9 @@ export default function CandidateApp() {
                 </div>
               </article>
             ))}
+            {bulletFormulaResults.length > 0 && <h3>Bullet formula check — Action + Technology + Scope + Result</h3>}
+            <BulletFormulaPanel results={bulletFormulaResults} />
+
             <h3>Edit tailored draft</h3>
             <p className="muted">
               Edit any line, add a line to a section, or remove one — every change stays in this draft, nothing is invented.
