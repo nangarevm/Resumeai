@@ -14,7 +14,8 @@ import {
 } from "@/lib/workspace-store";
 import { getSeedCandidates, getSeedJobs } from "@/lib/store";
 import { GET as candidatesGet, POST as candidatesPost, DELETE as candidatesDelete } from "@/app/api/candidates/route";
-import { GET as jobsGet, POST as jobsPost } from "@/app/api/jobs/route";
+import { GET as jobsGet, POST as jobsPost, DELETE as jobsDelete } from "@/app/api/jobs/route";
+import { POST as agencyPost, DELETE as agencyDelete } from "@/app/api/agency/route";
 
 /** Same isolation pattern as version-history.test.ts / photo-upload.test.ts:
  *  temporarily unset the shared RESUMEPROOF_WORKSPACE_FILE so
@@ -238,9 +239,73 @@ describe("agency candidate/job pool isolation (API route level)", () => {
     });
 
     await withIsolatedUser("agency-iso-route-job-b", async () => {
-      const res = await jobsGet();
+      const res = await jobsGet(new Request("http://localhost/api/jobs"));
       const active = (await res.json()) as { id?: string };
       expect(active.id).not.toBe(jobId);
+    });
+  });
+
+  it("DELETE /api/jobs?all=true lists only this account's own posted jobs", async () => {
+    // Unlike the fixed-id tests elsewhere in this file, this one asserts an
+    // exact count of customJobs — POST is not idempotent like
+    // attachClientFromPool, so a fixed user id would silently accumulate
+    // jobs across repeated local test runs (data/users/** isn't wiped
+    // between invocations, only reset in-memory per beforeEach). A
+    // per-run-unique id keeps this test's own directory always empty at the
+    // start.
+    await withIsolatedUser(`agency-iso-route-list-jobs-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, async () => {
+      await jobsPost(
+        new Request("http://localhost/api/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: "Listable Role", companyName: "Route Co", domain: "Testing", mandatoryText: "Testing" })
+        })
+      );
+      const res = await jobsGet(new Request("http://localhost/api/jobs?all=true"));
+      const jobs = (await res.json()) as Array<{ title: string; isCustom: boolean }>;
+      const custom = jobs.filter((j) => j.isCustom);
+      expect(custom.length).toBe(1);
+      expect(custom[0].title).toBe("Listable Role");
+      // Shared seed jobs are still visible, just flagged isCustom: false.
+      expect(jobs.some((j) => !j.isCustom)).toBe(true);
+    });
+  });
+
+  it("DELETE /api/jobs removes a posted job and falls back to another active job", async () => {
+    await withIsolatedUser("agency-iso-route-delete-job", async () => {
+      const postRes = await jobsPost(
+        new Request("http://localhost/api/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: "Deletable Role", companyName: "Route Co", domain: "Testing", mandatoryText: "Testing" })
+        })
+      );
+      const { activeJob } = (await postRes.json()) as { activeJob: { id: string } };
+
+      const delRes = await jobsDelete(new Request(`http://localhost/api/jobs?id=${activeJob.id}`, { method: "DELETE" }));
+      const delData = (await delRes.json()) as { removed: boolean; activeJob: { id: string } };
+      expect(delData.removed).toBe(true);
+      expect(delData.activeJob.id).not.toBe(activeJob.id);
+    });
+  });
+
+  it("DELETE /api/agency removes a client seat without touching the pool", async () => {
+    await withIsolatedUser("agency-iso-route-delete-seat", async () => {
+      const seedId = getSeedCandidates()[3].id;
+      await agencyPost(
+        new Request("http://localhost/api/agency", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clientId: seedId })
+        })
+      );
+      const delRes = await agencyDelete(new Request(`http://localhost/api/agency?clientId=${seedId}`, { method: "DELETE" }));
+      const agency = (await delRes.json()) as { seats: Array<{ clientId: string }> };
+      expect(agency.seats.some((s) => s.clientId === seedId)).toBe(false);
+
+      const poolRes = await candidatesGet();
+      const pool = (await poolRes.json()) as Array<{ id: string }>;
+      expect(pool.some((c) => c.id === seedId)).toBe(true);
     });
   });
 });

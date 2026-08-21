@@ -20,6 +20,8 @@ import ComparisonTable from "@/components/ComparisonTable";
 
 type Tab = "overview" | "hiring" | "discovery" | "pool" | "clients" | "brand";
 type ModalTool = "evidence" | "ats" | "optimizer" | "github" | "cover";
+type PoolCandidate = CandidateProfile & { isCustom: boolean };
+type PoolJob = JobDescription & { isCustom: boolean };
 
 export default function AgencyApp() {
   const [tab, setTab] = useState<Tab>("overview");
@@ -40,7 +42,8 @@ export default function AgencyApp() {
 
   const [discovery, setDiscovery] = useState<Array<{ id: string; name: string; email: string; skills: string[]; snippet: string }>>([]);
   const [discoveryQuery, setDiscoveryQuery] = useState("");
-  const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
+  const [candidates, setCandidates] = useState<PoolCandidate[]>([]);
+  const [postedJobs, setPostedJobs] = useState<PoolJob[]>([]);
   const [candForm, setCandForm] = useState({
     name: "",
     email: "",
@@ -67,6 +70,11 @@ export default function AgencyApp() {
     setCandidates(list);
   }, []);
 
+  const loadPostedJobs = useCallback(async () => {
+    const list: PoolJob[] = await fetch("/api/jobs?all=true").then((r) => r.json());
+    setPostedJobs(list.filter((j) => j.isCustom));
+  }, []);
+
   const runAnalysis = useCallback(async (next = mode) => {
     setBusy(true);
     const [jd, ranked] = await Promise.all([
@@ -82,6 +90,7 @@ export default function AgencyApp() {
   useEffect(() => {
     loadAgency();
     loadCandidates();
+    loadPostedJobs();
     runAnalysis("BALANCED");
     fetch("/api/search?q=").then((r) => r.json()).then(setDiscovery);
   }, []);
@@ -116,7 +125,25 @@ export default function AgencyApp() {
     e.preventDefault();
     await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(jobForm) });
     await runAnalysis(mode);
+    await loadPostedJobs();
     setTab("hiring");
+  }
+
+  async function switchActiveJob(jobId: string) {
+    setBusy(true);
+    await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ templateId: jobId }) });
+    await runAnalysis(mode);
+    setBusy(false);
+    setNotice("Switched active job.");
+  }
+
+  async function removeJob(jobId: string) {
+    setBusy(true);
+    await fetch(`/api/jobs?id=${jobId}`, { method: "DELETE" });
+    await loadPostedJobs();
+    await runAnalysis(mode);
+    setBusy(false);
+    setNotice("Job removed.");
   }
 
   async function submitCandidate(e: React.FormEvent) {
@@ -131,6 +158,16 @@ export default function AgencyApp() {
     setNotice("Candidate added to pool and re-ranked.");
   }
 
+  async function removeCandidate(candidateId: string) {
+    setBusy(true);
+    await fetch(`/api/candidates?id=${candidateId}`, { method: "DELETE" });
+    await loadCandidates();
+    await runAnalysis(mode);
+    await loadAgency();
+    setBusy(false);
+    setNotice("Candidate removed from pool.");
+  }
+
   async function addToClientSeats(candidateId: string) {
     setBusy(true);
     const next = await fetch("/api/agency", {
@@ -141,6 +178,14 @@ export default function AgencyApp() {
     setAgency(next);
     setBusy(false);
     setNotice("Added to client seats.");
+  }
+
+  async function removeSeat(clientId: string) {
+    setBusy(true);
+    const next = await fetch(`/api/agency?clientId=${clientId}`, { method: "DELETE" }).then((r) => r.json());
+    setAgency(next);
+    setBusy(false);
+    setNotice("Removed from client seats.");
   }
 
   async function onBulkUpload(files: FileList | null) {
@@ -487,6 +532,7 @@ export default function AgencyApp() {
                     <th>Email</th>
                     <th>Skills</th>
                     <th>Client seat</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -504,6 +550,17 @@ export default function AgencyApp() {
                             <button className="chip" type="button" disabled={busy} onClick={() => addToClientSeats(c.id)}>
                               Add to client seats
                             </button>
+                          )}
+                        </td>
+                        <td>
+                          {c.isCustom ? (
+                            <button className="chip" type="button" disabled={busy} onClick={() => removeCandidate(c.id)}>
+                              Remove
+                            </button>
+                          ) : (
+                            <span className="muted" style={{ fontSize: 12 }}>
+                              Demo data
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -562,6 +619,7 @@ export default function AgencyApp() {
                     <th>Status</th>
                     <th>Progress</th>
                     <th>Recruiter notes</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -581,6 +639,11 @@ export default function AgencyApp() {
                         />
                         <button className="chip" type="button" onClick={() => saveSeatNotes(s.clientId)}>
                           Save notes
+                        </button>
+                      </td>
+                      <td>
+                        <button className="chip" type="button" disabled={busy} onClick={() => removeSeat(s.clientId)}>
+                          Remove
                         </button>
                       </td>
                     </tr>
@@ -623,6 +686,43 @@ export default function AgencyApp() {
                 </div>
               </form>
             </section>
+            {postedJobs.length > 0 && (
+              <section className="card">
+                <h3>Your posted jobs ({postedJobs.length})</h3>
+                <p className="muted">Jobs you've posted yourself — switch which one the pool is ranked against, or remove one.</p>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Company</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {postedJobs.map((j) => (
+                        <tr key={j.id}>
+                          <td>{j.title}</td>
+                          <td>{j.companyName}</td>
+                          <td style={{ display: "flex", gap: 8 }}>
+                            {job?.id === j.id ? (
+                              <span className="badge ok">Active</span>
+                            ) : (
+                              <button className="chip" type="button" disabled={busy} onClick={() => switchActiveJob(j.id)}>
+                                Set active
+                              </button>
+                            )}
+                            <button className="chip" type="button" disabled={busy} onClick={() => removeJob(j.id)}>
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
             <section className="card">
               <h3>Ranked candidates {busy ? "…" : ""}</h3>
               <p className="muted">Click a row for evidence + ATS, optimizer, GitHub proof, and cover letter tools.</p>

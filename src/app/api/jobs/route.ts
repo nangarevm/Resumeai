@@ -1,13 +1,26 @@
 import { NextResponse } from "next/server";
-import { addAgencyJob, getAgencyActiveJob, setAgencyActiveJobId } from "@/lib/workspace-store";
+import { addAgencyJob, getAgencyActiveJob, getAgencyJobs, removeAgencyJob, setAgencyActiveJobId } from "@/lib/workspace-store";
 import { bindWorkspaceUser } from "@/lib/auth/bind-workspace";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   await bindWorkspaceUser();
+  const { searchParams } = new URL(request.url);
+  if (searchParams.get("all")) {
+    return NextResponse.json(await getAgencyJobs());
+  }
   const jd = await getAgencyActiveJob();
   return NextResponse.json(jd ?? {});
+}
+
+export async function DELETE(request: Request) {
+  await bindWorkspaceUser();
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  const removed = await removeAgencyJob(id);
+  return NextResponse.json({ removed, activeJob: await getAgencyActiveJob() });
 }
 
 export async function POST(request: Request) {
