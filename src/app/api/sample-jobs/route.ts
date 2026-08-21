@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getStore } from "@/lib/store";
+import { getSeedJobs } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const jobs = getStore().jobs.map((j) => ({
+  const jobs = getSeedJobs().map((j) => ({
     id: j.id,
     title: j.title,
     companyName: j.companyName,

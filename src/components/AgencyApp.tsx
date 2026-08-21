@@ -99,10 +99,14 @@ export default function AgencyApp() {
   async function saveBrand(e: React.FormEvent) {
     e.preventDefault();
     if (!agency) return;
+    // Only the fields this form actually edits — sending the whole `agency`
+    // object round-tripped a stale customCandidates/customJobs snapshot from
+    // whenever this tab last fetched, silently reverting newer pool changes
+    // made since (e.g. a candidate added in another tab) on every save.
     const next = await fetch("/api/agency", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(agency)
+      body: JSON.stringify({ name: agency.name, logoText: agency.logoText, brandColor: agency.brandColor, tier: agency.tier })
     }).then((r) => r.json());
     setAgency(next);
     setNotice("Branding saved.");

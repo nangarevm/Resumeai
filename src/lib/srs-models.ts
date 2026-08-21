@@ -268,6 +268,13 @@ export interface AgencyWorkspace {
   tier: "Coach" | "Small Agency" | "Professional";
   seats: Array<{ clientId: string; clientName: string; status: string; progress: string; notes?: string }>;
   usageMeters?: AgencyUsageMeters;
+  /** This account's own candidates/jobs, layered on top of the shared read-only
+   *  demo seed data (src/lib/store.ts). Each agency account only ever sees its
+   *  own additions here — not other accounts' — since this whole object lives
+   *  inside the per-user workspace file. */
+  customCandidates: CandidateProfile[];
+  customJobs: JobDescription[];
+  activeJobId: string | null;
 }
 
 export interface JobInputSnapshot {

@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
-import { addJob, getActiveJob, getStore, setActiveJob } from "@/lib/store";
-import { parseJD } from "@/lib/parsers/jd-extractor";
+import { addAgencyJob, getAgencyActiveJob, setAgencyActiveJobId } from "@/lib/workspace-store";
+import { bindWorkspaceUser } from "@/lib/auth/bind-workspace";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const jd = getActiveJob();
+  await bindWorkspaceUser();
+  const jd = await getAgencyActiveJob();
   return NextResponse.json(jd ?? {});
 }
 
 export async function POST(request: Request) {
+  await bindWorkspaceUser();
   const body = (await request.json()) as {
     templateId?: string;
     title?: string;
@@ -21,13 +23,12 @@ export async function POST(request: Request) {
   };
 
   if (body.templateId) {
-    const switched = setActiveJob(body.templateId);
-    return NextResponse.json({ success: Boolean(switched), activeJob: switched ?? getActiveJob() });
+    const switched = await setAgencyActiveJobId(body.templateId);
+    return NextResponse.json({ success: Boolean(switched), activeJob: switched ?? (await getAgencyActiveJob()) });
   }
 
   if (body.rawText) {
-    const jd = parseJD(`custom_${Date.now()}`, body.rawText);
-    addJob(jd);
+    const jd = await addAgencyJob(body.rawText);
     return NextResponse.json({ success: true, activeJob: jd });
   }
 
@@ -43,10 +44,9 @@ export async function POST(request: Request) {
       "PREFERRED REQUIREMENTS:",
       body.preferredText || ""
     ].join("\n");
-    const jd = parseJD(`custom_${Date.now()}`, raw);
-    addJob(jd);
+    const jd = await addAgencyJob(raw);
     return NextResponse.json({ success: true, activeJob: jd });
   }
 
-  return NextResponse.json({ success: false, activeJob: getStore().jobs[0] }, { status: 400 });
+  return NextResponse.json({ success: false, activeJob: await getAgencyActiveJob() }, { status: 400 });
 }

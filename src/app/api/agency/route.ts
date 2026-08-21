@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { attachClientFromPool, getAgency, incrementAgencyUsage, updateAgency, updateSeatNotes } from "@/lib/workspace-store";
+import { bindWorkspaceUser } from "@/lib/auth/bind-workspace";
 import type { AgencyWorkspace } from "@/lib/srs-models";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  await bindWorkspaceUser();
   return NextResponse.json(await getAgency());
 }
 
 export async function POST(request: Request) {
+  await bindWorkspaceUser();
   const body = (await request.json()) as Partial<AgencyWorkspace> & {
     clientId?: string;
     notes?: string;

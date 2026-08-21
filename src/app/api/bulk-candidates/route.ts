@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { addCandidate, nextCandidateId } from "@/lib/store";
-import { parseResume } from "@/lib/parsers/resume-parser";
-import { incrementAgencyUsage } from "@/lib/workspace-store";
+import { addAgencyCandidate, incrementAgencyUsage } from "@/lib/workspace-store";
+import { bindWorkspaceUser } from "@/lib/auth/bind-workspace";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  await bindWorkspaceUser();
   const body = (await request.json()) as { resumes?: string[] };
   const resumes = body.resumes || [];
   if (!resumes.length) return NextResponse.json({ error: "resumes array required" }, { status: 400 });
@@ -21,8 +21,7 @@ export async function POST(request: Request) {
       continue;
     }
     try {
-      const profile = parseResume(nextCandidateId(), raw);
-      addCandidate(profile);
+      const profile = await addAgencyCandidate(raw);
       added.push({ candidateId: profile.id, name: profile.name });
     } catch {
       errors.push(`Row ${i + 1}: parse failed`);
