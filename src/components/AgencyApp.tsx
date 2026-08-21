@@ -131,6 +131,18 @@ export default function AgencyApp() {
     setNotice("Candidate added to pool and re-ranked.");
   }
 
+  async function addToClientSeats(candidateId: string) {
+    setBusy(true);
+    const next = await fetch("/api/agency", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: candidateId })
+    }).then((r) => r.json());
+    setAgency(next);
+    setBusy(false);
+    setNotice("Added to client seats.");
+  }
+
   async function onBulkUpload(files: FileList | null) {
     if (!files?.length) return;
     setBusy(true);
@@ -474,16 +486,29 @@ export default function AgencyApp() {
                     <th>Name</th>
                     <th>Email</th>
                     <th>Skills</th>
+                    <th>Client seat</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {candidates.slice(0, 20).map((c) => (
-                    <tr key={c.id}>
-                      <td>{c.name}</td>
-                      <td>{c.email}</td>
-                      <td>{(c.extractedSkills || []).slice(0, 5).join(", ")}</td>
-                    </tr>
-                  ))}
+                  {candidates.slice(0, 20).map((c) => {
+                    const isSeat = (agency?.seats || []).some((s) => s.clientId === c.id);
+                    return (
+                      <tr key={c.id}>
+                        <td>{c.name}</td>
+                        <td>{c.email}</td>
+                        <td>{(c.extractedSkills || []).slice(0, 5).join(", ")}</td>
+                        <td>
+                          {isSeat ? (
+                            <span className="badge ok">Client</span>
+                          ) : (
+                            <button className="chip" type="button" disabled={busy} onClick={() => addToClientSeats(c.id)}>
+                              Add to client seats
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -671,9 +696,18 @@ export default function AgencyApp() {
                 <p className="muted">
                   {Math.round(selected.qualificationScore)}% · {selected.isShortlisted ? "Shortlisted" : "Rejected"} · {selected.preferenceAlignment}
                 </p>
-                <button className="chip" type="button" onClick={() => copyClientBrief(selected.candidateId)} style={{ marginTop: 6 }}>
-                  Copy client brief
-                </button>
+                <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                  <button className="chip" type="button" onClick={() => copyClientBrief(selected.candidateId)}>
+                    Copy client brief
+                  </button>
+                  {(agency?.seats || []).some((s) => s.clientId === selected.candidateId) ? (
+                    <span className="badge ok">Already a client</span>
+                  ) : (
+                    <button className="chip" type="button" disabled={busy} onClick={() => addToClientSeats(selected.candidateId)}>
+                      Add to client seats
+                    </button>
+                  )}
+                </div>
               </div>
               <button className="close" onClick={() => setSelected(null)}>
                 ×
