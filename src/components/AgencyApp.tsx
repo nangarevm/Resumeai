@@ -54,6 +54,9 @@ export default function AgencyApp() {
     rawResumeText: ""
   });
   const [bulkStatus, setBulkStatus] = useState("");
+  const PAGE_SIZE = 20;
+  const [poolVisibleCount, setPoolVisibleCount] = useState(PAGE_SIZE);
+  const [discoveryVisibleCount, setDiscoveryVisibleCount] = useState(PAGE_SIZE);
 
   const [ats, setAts] = useState<AtsReport | null>(null);
   const [optimizer, setOptimizer] = useState<OptimizerResult | null>(null);
@@ -104,6 +107,18 @@ export default function AgencyApp() {
       setModalTool("evidence");
     }
   }, [selected]);
+
+  // Reset back to the first page whenever the underlying list actually
+  // changes (a new search, a candidate added/removed) — otherwise a stale
+  // "show more" offset from a previous, longer list could hide rows from a
+  // shorter new one.
+  useEffect(() => {
+    setPoolVisibleCount(PAGE_SIZE);
+  }, [candidates]);
+
+  useEffect(() => {
+    setDiscoveryVisibleCount(PAGE_SIZE);
+  }, [discovery]);
 
   async function saveBrand(e: React.FormEvent) {
     e.preventDefault();
@@ -469,8 +484,13 @@ export default function AgencyApp() {
                 ))}
               </div>
             </section>
+            {discovery.length > 0 && (
+              <p className="muted" style={{ margin: "4px 0" }}>
+                Showing {Math.min(discoveryVisibleCount, discovery.length)} of {discovery.length}
+              </p>
+            )}
             <div className="grid-2">
-              {discovery.map((c) => (
+              {discovery.slice(0, discoveryVisibleCount).map((c) => (
                 <article className="card" key={c.id}>
                   <h4>{c.name}</h4>
                   <p className="muted">{c.email}</p>
@@ -487,6 +507,11 @@ export default function AgencyApp() {
                 </article>
               ))}
             </div>
+            {discovery.length > discoveryVisibleCount && (
+              <button className="btn-ghost" type="button" onClick={() => setDiscoveryVisibleCount((n) => n + PAGE_SIZE)}>
+                Show more ({discovery.length - discoveryVisibleCount} more)
+              </button>
+            )}
           </>
         )}
 
@@ -523,7 +548,14 @@ export default function AgencyApp() {
                 </button>
               </div>
             </form>
-            <h3 style={{ marginTop: 20 }}>Pool ({candidates.length})</h3>
+            <h3 style={{ marginTop: 20 }}>
+              Pool ({candidates.length}){" "}
+              {candidates.length > 0 && (
+                <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>
+                  — showing {Math.min(poolVisibleCount, candidates.length)} of {candidates.length}
+                </span>
+              )}
+            </h3>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -536,7 +568,7 @@ export default function AgencyApp() {
                   </tr>
                 </thead>
                 <tbody>
-                  {candidates.slice(0, 20).map((c) => {
+                  {candidates.slice(0, poolVisibleCount).map((c) => {
                     const isSeat = (agency?.seats || []).some((s) => s.clientId === c.id);
                     return (
                       <tr key={c.id}>
@@ -569,6 +601,11 @@ export default function AgencyApp() {
                 </tbody>
               </table>
             </div>
+            {candidates.length > poolVisibleCount && (
+              <button className="btn-ghost" type="button" onClick={() => setPoolVisibleCount((n) => n + PAGE_SIZE)}>
+                Show more ({candidates.length - poolVisibleCount} more)
+              </button>
+            )}
           </section>
         )}
 
