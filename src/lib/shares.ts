@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { randomBytes } from "crypto";
+import { dataDir } from "./data-dir";
 
 export interface ShareRecord {
   token: string;
@@ -17,7 +18,7 @@ interface SharesFile {
 const SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 function sharesFilePath(): string {
-  return process.env.RESUMEPROOF_SHARES_FILE || path.join(process.cwd(), "data", "shares", "shares.json");
+  return process.env.RESUMEPROOF_SHARES_FILE || path.join(dataDir(), "shares", "shares.json");
 }
 
 // Deliberately NOT using the in-memory-cache-in-front-of-disk pattern the

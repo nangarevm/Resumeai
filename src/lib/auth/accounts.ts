@@ -2,9 +2,10 @@ import fs from "fs";
 import path from "path";
 import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { userIdFromEmail } from "./user-id";
+import { dataDir } from "../data-dir";
 
 function accountsFilePath(): string {
-  return process.env.RESUMEPROOF_ACCOUNTS_FILE || path.join(process.cwd(), "data", "accounts", "accounts.json");
+  return process.env.RESUMEPROOF_ACCOUNTS_FILE || path.join(dataDir(), "accounts", "accounts.json");
 }
 
 interface Account {

@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: resumeproof
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: RESUMEPROOF_DATA_DIR
+        value: /var/data
+    disk:
+      name: resumeproof-data
+      mountPath: /var/data
+      sizeGB: 1

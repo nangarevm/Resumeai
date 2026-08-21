@@ -16,6 +16,7 @@ import type {
 import { getCandidate, getStore } from "./store";
 import { parseResume } from "./parsers/resume-parser";
 import { buildCareerVault } from "./engines/career-vault";
+import { dataDir } from "./data-dir";
 
 function sanitizeUserId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
@@ -55,10 +56,10 @@ async function resolveWorkspaceFile(): Promise<string> {
     return process.env.RESUMEPROOF_WORKSPACE_FILE;
   }
   const userId = sanitizeUserId(await resolveActiveUserId());
-  return path.join(process.cwd(), "data", "users", userId, "workspace.json");
+  return path.join(dataDir(), "users", userId, "workspace.json");
 }
 
-const LEGACY_FILE = path.join(process.cwd(), "data", "runtime", "workspace.json");
+const LEGACY_FILE = path.join(dataDir(), "runtime", "workspace.json");
 
 let activeUserId: string | null = null;
 
