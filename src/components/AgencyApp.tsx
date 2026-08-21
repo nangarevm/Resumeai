@@ -183,10 +183,10 @@ export default function AgencyApp() {
     setToolBusy(false);
   }
 
-  async function copyClientBrief() {
-    const data = await fetch("/api/client-brief").then((r) => r.json());
+  async function copyClientBrief(candidateId: string) {
+    const data = await fetch(`/api/client-brief?candidateId=${encodeURIComponent(candidateId)}`).then((r) => r.json());
     await navigator.clipboard.writeText(data.brief);
-    setNotice("Client brief copied — share with coach or referrer (read-only summary).");
+    setNotice(`Client brief for ${data.candidateName} copied — share with coach or referrer (read-only summary).`);
   }
 
   const shortlisted = results.filter((r) => r.isShortlisted).length;
@@ -376,9 +376,9 @@ export default function AgencyApp() {
               <button className="btn-primary" onClick={() => setTab("hiring")}>
                 Open hiring desk
               </button>
-              <button className="btn-ghost" onClick={copyClientBrief} style={{ marginLeft: 8 }}>
-                Copy client brief
-              </button>
+              <p className="muted" style={{ marginTop: 8, fontSize: 12.5 }}>
+                Click a candidate on Hiring desk to copy a client brief for them specifically.
+              </p>
             </section>
           </>
         )}
@@ -671,6 +671,9 @@ export default function AgencyApp() {
                 <p className="muted">
                   {Math.round(selected.qualificationScore)}% · {selected.isShortlisted ? "Shortlisted" : "Rejected"} · {selected.preferenceAlignment}
                 </p>
+                <button className="chip" type="button" onClick={() => copyClientBrief(selected.candidateId)} style={{ marginTop: 6 }}>
+                  Copy client brief
+                </button>
               </div>
               <button className="close" onClick={() => setSelected(null)}>
                 ×
