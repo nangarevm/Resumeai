@@ -46,7 +46,11 @@ export default function LoginPage() {
     const res = await signIn("password", { email, password, redirect: false, callbackUrl: "/candidate" });
     setBusy(false);
     if (res?.error) {
-      setError("Incorrect email or password.");
+      setError(
+        res.error === "rate_limited"
+          ? "Too many sign-in attempts for this account. Wait 15 minutes and try again."
+          : "Incorrect email or password."
+      );
       return;
     }
     window.location.href = "/candidate";

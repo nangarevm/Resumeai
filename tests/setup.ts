@@ -16,11 +16,13 @@ import { beforeEach } from "vitest";
 import { resetWorkspaceCache } from "@/lib/workspace-store";
 import { resetAccountsCache } from "@/lib/auth/accounts";
 import { resetSharesCache } from "@/lib/shares";
+import { resetRateLimits } from "@/lib/auth/rate-limit";
 
 beforeEach(() => {
   resetWorkspaceCache();
   resetAccountsCache();
   resetSharesCache();
+  resetRateLimits();
 });
 
 if (fs.existsSync(testWorkspace)) {
