@@ -1439,7 +1439,12 @@ export default function CandidateApp() {
                   onRename={renameNamedResume}
                   onDelete={deleteNamedResume}
                 />
-                <VersionHistoryPanel versions={ws.versions || []} busy={busy} onRestore={restoreVersion} />
+                <VersionHistoryPanel
+                  versions={ws.versions || []}
+                  currentText={ws.profile.rawResumeText}
+                  busy={busy}
+                  onRestore={restoreVersion}
+                />
                 <SharePanel
                   active={shareStatus.active}
                   url={shareStatus.url}
