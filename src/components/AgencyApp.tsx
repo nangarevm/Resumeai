@@ -14,9 +14,25 @@ import type {
   OptimizerResult
 } from "@/lib/models";
 import { EVALUATION_MODES } from "@/lib/models";
+import type { AuditEvent } from "@/lib/audit-log";
 import CopyButton from "@/components/CopyButton";
 import CompactSearch from "@/components/CompactSearch";
 import ComparisonTable from "@/components/ComparisonTable";
+
+const AUDIT_ACTION_LABEL: Record<AuditEvent["action"], string> = { view: "Viewed", export: "Exported", delete: "Deleted" };
+const AUDIT_TARGET_LABEL: Record<string, string> = {
+  "shortlist-csv": "shortlist CSV"
+};
+
+function describeAuditTarget(target: string, detail?: string): string {
+  if (AUDIT_TARGET_LABEL[target]) return AUDIT_TARGET_LABEL[target];
+  const [kind] = target.split(":");
+  if (kind === "candidate") return "a candidate";
+  if (kind === "candidate-brief") return detail ? `${detail}'s client brief` : "a client brief";
+  if (kind === "job") return "a job posting";
+  if (kind === "seat") return "a client seat";
+  return target;
+}
 
 type Tab = "overview" | "hiring" | "discovery" | "pool" | "clients" | "brand";
 type ModalTool = "evidence" | "ats" | "optimizer" | "github" | "cover";
@@ -44,6 +60,7 @@ export default function AgencyApp() {
   const [discoveryQuery, setDiscoveryQuery] = useState("");
   const [candidates, setCandidates] = useState<PoolCandidate[]>([]);
   const [postedJobs, setPostedJobs] = useState<PoolJob[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditEvent[]>([]);
   const [candForm, setCandForm] = useState({
     name: "",
     email: "",
@@ -79,6 +96,10 @@ export default function AgencyApp() {
     setPostedJobs(list.filter((j) => j.isCustom));
   }, []);
 
+  const loadAuditLog = useCallback(async () => {
+    setAuditLog(await fetch("/api/audit-log").then((r) => r.json()));
+  }, []);
+
   const runAnalysis = useCallback(async (next = mode) => {
     setBusy(true);
     const [jd, ranked] = await Promise.all([
@@ -95,6 +116,7 @@ export default function AgencyApp() {
     loadAgency();
     loadCandidates();
     loadPostedJobs();
+    loadAuditLog();
     runAnalysis("BALANCED");
     fetch("/api/search?q=").then((r) => r.json()).then(setDiscovery);
   }, []);
@@ -158,6 +180,7 @@ export default function AgencyApp() {
     await fetch(`/api/jobs?id=${jobId}`, { method: "DELETE" });
     await loadPostedJobs();
     await runAnalysis(mode);
+    await loadAuditLog();
     setBusy(false);
     setNotice("Job removed.");
   }
@@ -180,6 +203,7 @@ export default function AgencyApp() {
     await loadCandidates();
     await runAnalysis(mode);
     await loadAgency();
+    await loadAuditLog();
     setBusy(false);
     setNotice("Candidate removed from pool.");
   }
@@ -200,6 +224,7 @@ export default function AgencyApp() {
     setBusy(true);
     const next = await fetch(`/api/agency?clientId=${clientId}`, { method: "DELETE" }).then((r) => r.json());
     setAgency(next);
+    await loadAuditLog();
     setBusy(false);
     setNotice("Removed from client seats.");
   }
@@ -266,6 +291,7 @@ export default function AgencyApp() {
   async function copyClientBrief(candidateId: string) {
     const data = await fetch(`/api/client-brief?candidateId=${encodeURIComponent(candidateId)}`).then((r) => r.json());
     await navigator.clipboard.writeText(data.brief);
+    await loadAuditLog();
     setNotice(`Client brief for ${data.candidateName} copied — share with coach or referrer (read-only summary).`);
   }
 
@@ -316,7 +342,10 @@ export default function AgencyApp() {
     a.href = url;
     a.download = "resumeproof-shortlist.csv";
     a.click();
-    fetch("/api/agency", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ incrementUsage: "shortlistsExported" }) }).then(() => loadAgency());
+    fetch("/api/agency", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ incrementUsage: "shortlistsExported" }) }).then(() => {
+      loadAgency();
+      loadAuditLog();
+    });
     setNotice("Shortlist CSV downloaded for hiring manager.");
   }
 
@@ -459,6 +488,38 @@ export default function AgencyApp() {
               <p className="muted" style={{ marginTop: 8, fontSize: 12.5 }}>
                 Click a candidate on Hiring desk to copy a client brief for them specifically.
               </p>
+            </section>
+            <section className="card">
+              <h3>Recent activity</h3>
+              <p className="muted">
+                An audit trail of views, exports, and deletions on this desk — visible only to this account.
+              </p>
+              {auditLog.length === 0 ? (
+                <p className="muted">No activity recorded yet.</p>
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>When</th>
+                        <th>Action</th>
+                        <th>What</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {auditLog.map((event) => (
+                        <tr key={event.id}>
+                          <td>{new Date(event.timestamp).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</td>
+                          <td>
+                            <span className={`badge ${event.action === "delete" ? "no" : "ok"}`}>{AUDIT_ACTION_LABEL[event.action]}</span>
+                          </td>
+                          <td>{describeAuditTarget(event.target, event.detail)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </section>
           </>
         )}

@@ -188,6 +188,7 @@ export default function CandidateApp() {
   } | null>(null);
   const [change, setChange] = useState<CareerChangePlan | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deleteConfirmArmed, setDeleteConfirmArmed] = useState(false);
   const [notice, setNotice] = useState("");
   const [override, setOverride] = useState(false);
   const [integrityResolutions, setIntegrityResolutions] = useState<Record<string, "confirmed" | "edited" | "removed">>({});
@@ -406,6 +407,7 @@ export default function CandidateApp() {
   }
 
   async function deleteMyData() {
+    setDeleteConfirmArmed(false);
     await fetch("/api/privacy", { method: "DELETE" });
     setKit(null);
     setChange(null);
@@ -1473,9 +1475,26 @@ export default function CandidateApp() {
                     </button>
                   </div>
                 ))}
-                <button className="btn-ghost" onClick={deleteMyData} style={{ marginTop: 8 }}>
-                  Delete my vault
-                </button>
+                {deleteConfirmArmed ? (
+                  <div className="banner" style={{ marginTop: 8, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+                    <span>
+                      This permanently deletes your entire vault — resume, versions, evidence, and named resumes. This
+                      cannot be undone.
+                    </span>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button className="btn-ghost" onClick={() => setDeleteConfirmArmed(false)}>
+                        Cancel
+                      </button>
+                      <button className="btn-primary" onClick={deleteMyData}>
+                        Yes, delete everything
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button className="btn-ghost" onClick={() => setDeleteConfirmArmed(true)} style={{ marginTop: 8 }}>
+                    Delete my vault
+                  </button>
+                )}
               </div>
             )}
           </section>

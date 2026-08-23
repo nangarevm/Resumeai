@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { addAgencyJob, getAgencyActiveJob, getAgencyJobs, removeAgencyJob, setAgencyActiveJobId } from "@/lib/workspace-store";
 import { bindWorkspaceUser } from "@/lib/auth/bind-workspace";
+import { recordAuditEvent } from "@/lib/audit-log";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +16,12 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  await bindWorkspaceUser();
+  const userId = await bindWorkspaceUser();
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
   const removed = await removeAgencyJob(id);
+  if (removed) await recordAuditEvent(userId, "delete", `job:${id}`);
   return NextResponse.json({ removed, activeJob: await getAgencyActiveJob() });
 }
 

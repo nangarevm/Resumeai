@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAgencyActiveJob, getAgencyCandidatePool } from "@/lib/workspace-store";
 import { bindWorkspaceUser } from "@/lib/auth/bind-workspace";
+import { recordAuditEvent } from "@/lib/audit-log";
 import { analyzeOne } from "@/lib/pipeline";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
  *  used the logged-in account's own seeker profile, which only made sense
  *  if the agency operator was also using the app as their own candidate. */
 export async function GET(request: Request) {
-  await bindWorkspaceUser();
+  const userId = await bindWorkspaceUser();
   const { searchParams } = new URL(request.url);
   const candidateId = searchParams.get("candidateId");
 
@@ -23,6 +24,7 @@ export async function GET(request: Request) {
       { status: 400 }
     );
   }
+  await recordAuditEvent(userId, "view", `candidate-brief:${candidate.id}`, candidate.name);
 
   const job = await getAgencyActiveJob();
   const evaluation = job ? analyzeOne(candidate, job) : null;
