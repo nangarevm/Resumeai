@@ -54,6 +54,7 @@ export default function AgencyApp() {
     rawResumeText: ""
   });
   const [bulkStatus, setBulkStatus] = useState("");
+  const [bulkDuplicates, setBulkDuplicates] = useState<Array<{ name: string; email: string }>>([]);
   const PAGE_SIZE = 20;
   const [poolVisibleCount, setPoolVisibleCount] = useState(PAGE_SIZE);
   const [discoveryVisibleCount, setDiscoveryVisibleCount] = useState(PAGE_SIZE);
@@ -207,6 +208,7 @@ export default function AgencyApp() {
     if (!files?.length) return;
     setBusy(true);
     setBulkStatus("");
+    setBulkDuplicates([]);
     const resumes: string[] = [];
     for (const file of Array.from(files).slice(0, 20)) {
       const form = new FormData();
@@ -224,7 +226,13 @@ export default function AgencyApp() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ resumes })
     }).then((r) => r.json());
-    setBulkStatus(`Added ${result.count} candidates${result.errors?.length ? ` · ${result.errors.length} skipped` : ""}`);
+    const dupCount = result.duplicates?.length || 0;
+    setBulkStatus(
+      `Added ${result.count} candidates` +
+        (dupCount ? ` · ${dupCount} skipped as duplicate${dupCount === 1 ? "" : "s"} (already in the pool)` : "") +
+        (result.errors?.length ? ` · ${result.errors.length} failed to parse` : "")
+    );
+    setBulkDuplicates(result.duplicates || []);
     await loadCandidates();
     await runAnalysis(mode);
     await loadAgency();
@@ -525,6 +533,15 @@ export default function AgencyApp() {
               <input type="file" accept=".txt,.md,.pdf,.docx" multiple hidden onChange={(e) => onBulkUpload(e.target.files)} />
             </label>
             {bulkStatus && <p className="muted">{bulkStatus}</p>}
+            {bulkDuplicates.length > 0 && (
+              <div className="chips" style={{ marginBottom: 8 }}>
+                {bulkDuplicates.map((d, i) => (
+                  <span className="chip" key={`${d.email}-${i}`} title={d.email}>
+                    Skipped: {d.name}
+                  </span>
+                ))}
+              </div>
+            )}
             <form className="form-grid" onSubmit={submitCandidate}>
               <div>
                 <label className="form-label">Full name</label>
