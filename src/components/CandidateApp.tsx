@@ -32,7 +32,9 @@ import { computeNextBestAction } from "@/lib/next-best-action";
 import { extractVerifiableClaims, INTEGRITY_KIND_LABELS } from "@/lib/engines/integrity-check";
 import MissingKeywordPanel, { type KeywordResolution } from "@/components/MissingKeywordPanel";
 import ResumeHealthDashboard from "@/components/ResumeHealthDashboard";
+import TopFixesPanel from "@/components/TopFixesPanel";
 import { computeResumeHealth } from "@/lib/engines/resume-health";
+import { computeTopFixes } from "@/lib/engines/top-fixes";
 import RecruiterViewPanel from "@/components/RecruiterViewPanel";
 import { computeRecruiterView } from "@/lib/engines/recruiter-view";
 import { detectGenericPhrases, stripGenericPhrase } from "@/lib/engines/generic-phrase-detector";
@@ -1095,6 +1097,7 @@ export default function CandidateApp() {
   });
   const vaultHealth = ws ? vaultCompleteness(ws.vault) : null;
   const resumeHealth = useMemo(() => (ws ? computeResumeHealth(ws.profile, ws.vault, fit) : null), [ws, fit]);
+  const topFixes = useMemo(() => (ws ? computeTopFixes(ws.profile, ws.vault, fit) : []), [ws, fit]);
   const recruiterView = useMemo(
     () => (ws ? computeRecruiterView(ws.profile, ws.vault, job || undefined) : null),
     [ws, job]
@@ -1418,6 +1421,7 @@ export default function CandidateApp() {
             )}
             {ws && vaultHealth && (
               <div style={{ marginTop: 16 }}>
+                <TopFixesPanel fixes={topFixes} />
                 <HealthCard
                   percent={vaultHealth.percent}
                   approvedCount={vaultHealth.approvedCount}
