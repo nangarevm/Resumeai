@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseResume } from "@/lib/parsers/resume-parser";
+import { looksLikeScannedPdf } from "@/lib/parsers/pdf-quality";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,15 @@ export async function POST(request: Request) {
       const pdfParse = (await import("pdf-parse")).default as (buf: Buffer) => Promise<{ text: string }>;
       const parsed = await pdfParse(buffer);
       text = parsed.text;
+      if (looksLikeScannedPdf(text)) {
+        return NextResponse.json(
+          {
+            error:
+              "This PDF has no selectable text — it looks like a scanned image rather than a text-based document, so nothing could be extracted. Try re-exporting it from the original file (Word, Google Docs, etc.), or paste the resume text directly."
+          },
+          { status: 400 }
+        );
+      }
     } else if (name.endsWith(".docx")) {
       const mammoth = await import("mammoth");
       const parsed = await mammoth.extractRawText({ buffer });
