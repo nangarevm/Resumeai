@@ -155,7 +155,7 @@ describe("resumeTextToTemplatedDocxBuffer", () => {
   });
 
   it(
-    "generates a valid, non-empty .docx for every one of the 166 templates, across every stream/experience shape",
+    "generates a valid, non-empty .docx for every resume template, across every stream/experience shape",
     async () => {
       const failures: string[] = [];
       for (const [streamName, resumeText] of Object.entries(STREAM_RESUMES)) {
@@ -169,6 +169,6 @@ describe("resumeTextToTemplatedDocxBuffer", () => {
       }
       expect(failures, failures.join("\n")).toEqual([]);
     },
-    60000
+    90000
   );
 });

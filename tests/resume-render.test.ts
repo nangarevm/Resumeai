@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findTemplate, parseResumeForRender, RESUME_TEMPLATES, TEMPLATE_COLORS, TEMPLATE_SKELETONS } from "@/lib/resume-render";
+import { findTemplate, parseResumeForRender, RESUME_TEMPLATES, TEMPLATE_COLORS, TEMPLATE_SKELETONS, templateColorOptionsForCategory } from "@/lib/resume-render";
 
 const SAMPLE = `NAME: Jane Rivera
 EMAIL: jane.rivera@example.com
@@ -60,9 +60,9 @@ describe("parseResumeForRender", () => {
 });
 
 describe("RESUME_TEMPLATES catalog", () => {
-  it("generates between 100 and 200 unique templates", () => {
-    expect(RESUME_TEMPLATES.length).toBeGreaterThanOrEqual(100);
-    expect(RESUME_TEMPLATES.length).toBeLessThanOrEqual(200);
+  it("generates between 250 and 400 unique templates", () => {
+    expect(RESUME_TEMPLATES.length).toBeGreaterThanOrEqual(250);
+    expect(RESUME_TEMPLATES.length).toBeLessThanOrEqual(400);
     const ids = RESUME_TEMPLATES.map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
@@ -96,5 +96,11 @@ describe("RESUME_TEMPLATES catalog", () => {
     const known = RESUME_TEMPLATES[5];
     expect(findTemplate(known.id)).toEqual(known);
     expect(findTemplate("not-a-real-template-id")).toEqual(RESUME_TEMPLATES[0]);
+  });
+
+  it("ATS-Safe category only offers grayscale ink shades in the color picker", () => {
+    const options = templateColorOptionsForCategory("ATS-Safe");
+    expect(options.length).toBe(3);
+    expect(options.every((c) => !TEMPLATE_COLORS.some((palette) => palette.id === c.id))).toBe(true);
   });
 });

@@ -677,6 +677,16 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .tpl-serif-ats .tpl-header h1 { color: var(--tpl-accent); font-size: 21px; }
 .tpl-serif-ats .tpl-section h2 { font-family: Arial, sans-serif; color: var(--tpl-accent); border-bottom-color: var(--tpl-accent); }
 
+.tpl-balanced-ats { padding: 32px 44px; }
+.tpl-balanced-ats .tpl-header { border-bottom: 2px solid var(--tpl-accent); padding-bottom: 10px; }
+.tpl-balanced-ats .tpl-header h1 { color: var(--tpl-accent); font-size: 22px; }
+.tpl-balanced-ats .tpl-section h2 { color: var(--tpl-accent); border-bottom: 1px solid var(--tpl-accent-soft); }
+
+.tpl-centered-ats { text-align: center; }
+.tpl-centered-ats .tpl-header { flex-direction: column; text-align: center; border-bottom: 1px solid var(--tpl-accent); padding-bottom: 12px; }
+.tpl-centered-ats .tpl-header h1 { color: var(--tpl-accent); }
+.tpl-centered-ats .tpl-section h2 { color: var(--tpl-accent); border-bottom-color: var(--tpl-accent-soft); }
+
 /* ===== Modern ===== */
 .tpl-modern-band { padding: 0; overflow: hidden; }
 .tpl-modern-band .tpl-header { background: var(--tpl-accent); color: #fff; padding: 26px 40px 20px; margin-bottom: 0; }
@@ -719,6 +729,20 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 }
 .tpl-boxed-sections .tpl-skill-tag { background: var(--tpl-accent-soft); color: var(--tpl-accent); }
 
+.tpl-strip-modern .tpl-header { border-bottom: 6px solid var(--tpl-accent); padding-bottom: 12px; }
+.tpl-strip-modern .tpl-header h1 { color: var(--tpl-accent); }
+.tpl-strip-modern .tpl-section h2 { color: var(--tpl-accent); border-bottom-color: var(--tpl-accent-soft); }
+.tpl-strip-modern .tpl-skill-tag { background: var(--tpl-accent-soft); color: var(--tpl-accent); }
+
+.tpl-column-modern .tpl-header { justify-content: space-between; align-items: flex-start; }
+.tpl-column-modern .tpl-header-text { text-align: left; }
+.tpl-column-modern .tpl-contact { text-align: right; display: block; }
+.tpl-column-modern .tpl-contact-item { display: block; }
+.tpl-column-modern .tpl-contact-item::after { content: none !important; }
+.tpl-column-modern .tpl-header h1 { color: var(--tpl-accent); }
+.tpl-column-modern .tpl-section h2 { color: var(--tpl-accent); border-bottom-color: var(--tpl-accent-soft); }
+.tpl-column-modern .tpl-skill-tag { background: var(--tpl-accent-soft); color: var(--tpl-accent); }
+
 /* ===== Executive ===== */
 .tpl-executive-serif { font-family: Georgia, "Times New Roman", serif; }
 .tpl-executive-serif .tpl-header { text-align: center; border-bottom: 2px solid var(--tpl-accent); padding-bottom: 12px; flex-direction: column; }
@@ -738,6 +762,13 @@ a.sidebar-foot:hover { color: var(--text-primary); }
   color: #111; border-bottom: 3px double var(--tpl-accent); padding-bottom: 4px;
 }
 
+.tpl-ribbon-executive .tpl-header h1 { color: var(--tpl-accent); letter-spacing: 0.06em; }
+.tpl-ribbon-executive .tpl-section h2 {
+  background: var(--tpl-accent-soft); color: var(--tpl-accent); border-bottom: none;
+  padding: 4px 10px; display: inline-block; border-radius: 4px;
+}
+.tpl-ribbon-executive .tpl-skill-tag { border: 1px solid var(--tpl-accent); color: var(--tpl-accent); background: transparent; }
+
 /* ===== Technical ===== */
 .tpl-technical-dark { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
 .tpl-technical-dark .tpl-header { background: #0d1117; color: #f0f6fc; margin: -36px -40px 16px; padding: 22px 40px; border-radius: 10px 10px 0 0; }
@@ -746,6 +777,12 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .tpl-technical-dark .tpl-contact { color: #8b949e; }
 .tpl-technical-dark .tpl-section h2 { color: var(--tpl-accent); border-bottom-color: #d8dee4; }
 .tpl-technical-dark .tpl-skill-tag { background: #0d1117; color: var(--tpl-accent); border-radius: 4px; font-family: inherit; }
+
+.tpl-grid-technical { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+.tpl-grid-technical .tpl-header h1 { color: var(--tpl-accent); font-family: Calibri, Arial, sans-serif; }
+.tpl-grid-technical .tpl-section h2 { color: var(--tpl-accent); border-bottom: 1px dashed var(--tpl-accent-soft); font-family: Calibri, Arial, sans-serif; }
+.tpl-grid-technical .tpl-skill-tags { gap: 4px; }
+.tpl-grid-technical .tpl-skill-tag { background: var(--tpl-accent-soft); color: var(--tpl-accent); border-radius: 3px; font-family: inherit; }
 
 /* ===== Creative ===== */
 .tpl-timeline .tpl-header h1 { color: var(--tpl-accent); }
@@ -776,6 +813,13 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .tpl-rounded-cards .tpl-section h2 { color: var(--tpl-accent); border-bottom: none; }
 .tpl-rounded-cards .tpl-skill-tag { background: var(--tpl-accent-soft); color: var(--tpl-accent); }
 
+.tpl-dotted-creative .tpl-header h1 { color: var(--tpl-accent); }
+.tpl-dotted-creative .tpl-section h2 {
+  color: var(--tpl-accent); border-bottom: none;
+  border-bottom: 2px dotted var(--tpl-accent); padding-bottom: 4px;
+}
+.tpl-dotted-creative .tpl-skill-tag { background: var(--tpl-accent-soft); color: var(--tpl-accent); }
+
 /* ===== Editorial ===== */
 .tpl-editorial-spacious { padding: 48px 56px; }
 .tpl-editorial-spacious .tpl-header h1 { font-weight: 300; font-size: 30px; color: #111; }
@@ -789,6 +833,16 @@ a.sidebar-foot:hover { color: var(--text-primary); }
 .tpl-graduate-banner .tpl-header h1 { color: var(--tpl-accent); }
 .tpl-graduate-banner .tpl-section h2 { color: var(--tpl-accent); border-bottom-color: var(--tpl-accent-soft); }
 .tpl-graduate-banner .tpl-skill-tag { background: var(--tpl-accent-soft); color: var(--tpl-accent); }
+
+.tpl-folio-editorial { padding: 52px 60px; font-family: Georgia, "Times New Roman", serif; }
+.tpl-folio-editorial .tpl-header { border-bottom: 3px solid var(--tpl-accent); padding-bottom: 16px; }
+.tpl-folio-editorial .tpl-header h1 { font-size: 34px; font-weight: 400; color: var(--tpl-accent); letter-spacing: 0.02em; }
+.tpl-folio-editorial .tpl-section { margin-top: 24px; }
+.tpl-folio-editorial .tpl-section h2 {
+  font-family: Arial, sans-serif; font-size: 11px; letter-spacing: 0.16em;
+  color: var(--tpl-accent); border-bottom: none;
+}
+.tpl-folio-editorial .tpl-skill-tag { background: transparent; color: var(--tpl-accent); border: 1px solid var(--tpl-accent-soft); }
 
 @media print {
   .sidebar, .banner, .nba-banner, .template-filters, .btn-primary, .btn-ghost, .chip, .nav-btn, .mode-pills, .template-gallery, .template-actions,
