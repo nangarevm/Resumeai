@@ -100,7 +100,7 @@ const STEPS = [
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
-type ImportMode = "guided" | "paste" | "file" | "linkedin" | "sample";
+type ImportMode = "guided" | "paste" | "file" | "linkedin";
 
 const NAV_GROUPS: Array<{ id: string; label: string; steps: StepId[] }> = [
   { id: "create", label: "Create", steps: ["vault", "job", "fit", "tailor", "verify", "kit", "templates"] },
@@ -363,24 +363,6 @@ export default function CandidateApp() {
     setStep("job");
   }
 
-  async function loadDemo() {
-    const demo = await fetch("/api/demo").then((r) => r.json());
-    setResumeText(demo.resume);
-    setJdText(demo.jd);
-    setJobUrl("");
-    setTargetRole(demo.targetRole);
-    setGoals(demo.goals);
-    setImportMode("sample");
-    setNotice("Sample intern resume + AI/ML JD loaded. Save the vault, then analyze the job — about 3 minutes to a Fit Score.");
-  }
-
-  async function loadSampleJd() {
-    const demo = await fetch("/api/demo").then((r) => r.json());
-    setJdText(demo.jd);
-    setJobUrl("");
-    setNotice("Sample AI/ML intern JD loaded. Click Analyze job & score fit to parse it.");
-  }
-
   function onJdTextChange(value: string) {
     setJdText(value);
   }
@@ -414,16 +396,6 @@ export default function CandidateApp() {
       body: JSON.stringify({ evidenceId: id, verificationStatus })
     }).then((r) => r.json());
     if (data.vault && ws) setWs({ ...ws, vault: data.vault });
-  }
-
-  async function exportMyData() {
-    const data = await fetch("/api/privacy").then((r) => r.json());
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "resumeproof-export.json";
-    a.click();
   }
 
   async function deleteMyData() {
@@ -1229,15 +1201,6 @@ export default function CandidateApp() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <AutosaveStatus state={autosaveState} />
             <AuthBar />
-            <button className="btn-ghost" onClick={loadDemo}>
-              Load sample resume
-            </button>
-            <button className="btn-ghost" onClick={exportMyData}>
-              Export my data
-            </button>
-            <button className="btn-ghost" onClick={() => window.print()}>
-              Print / PDF
-            </button>
           </div>
         </header>
 
@@ -1331,8 +1294,7 @@ export default function CandidateApp() {
                   ["guided", "Build step-by-step"],
                   ["paste", "Paste text"],
                   ["file", "Upload file"],
-                  ["linkedin", "LinkedIn paste"],
-                  ["sample", "Sample resume"]
+                  ["linkedin", "LinkedIn paste"]
                 ] as const
               ).map(([mode, label]) => (
                 <button
@@ -1359,15 +1321,6 @@ export default function CandidateApp() {
                     setNotice("Resume text built from your answers — review it below, then save.");
                   }}
                 />
-              </div>
-            )}
-
-            {importMode === "sample" && (
-              <div className="import-panel">
-                <p className="muted">Load a realistic intern resume to walk the full path — vault → job → Fit Score — in under 5 minutes.</p>
-                <button className="chip" onClick={loadDemo} type="button">
-                  Try with sample intern resume
-                </button>
               </div>
             )}
 
@@ -1410,11 +1363,11 @@ export default function CandidateApp() {
                 <div className="form-grid" style={{ marginTop: 12 }}>
                   <div>
                     <label className="form-label">Target role (optional)</label>
-                    <input className="form-control" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="e.g. AI/ML Intern" />
+                    <input className="form-control" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="e.g. Senior Software Engineer" />
                   </div>
                   <div className="span-3">
                     <label className="form-label">Career goals</label>
-                    <input className="form-control" value={goals} onChange={(e) => setGoals(e.target.value)} placeholder="e.g. First internship in applied ML" />
+                    <input className="form-control" value={goals} onChange={(e) => setGoals(e.target.value)} placeholder="e.g. Land a senior backend role at a product company" />
                   </div>
                   <div className="span-3">
                     <div className="form-label-row">
@@ -1545,9 +1498,6 @@ export default function CandidateApp() {
               Paste beats URLs in 2026 — most boards block scrapers. If a URL fails, paste the description. We split required vs preferred skills and infer seniority/location.
             </p>
             <div className="chips">
-              <button className="chip" type="button" onClick={loadSampleJd}>
-                Load sample AI/ML intern JD
-              </button>
               {jobIntelStale && (
                 <span className="stale-pill">JD changed — re-analyze to refresh</span>
               )}
@@ -1565,7 +1515,7 @@ export default function CandidateApp() {
               placeholder={"POSITION: AI/ML Intern\nMANDATORY REQUIREMENTS:\n- Python\n- Machine Learning"}
             />
             <p className="muted" style={{ marginTop: 8 }}>
-              {jdText.trim() ? `${jdText.trim().split("\n").length} lines · ${jdText.trim().length.toLocaleString()} chars` : "Paste a JD or load the sample to continue."}
+              {jdText.trim() ? `${jdText.trim().split("\n").length} lines · ${jdText.trim().length.toLocaleString()} chars` : "Paste a job description or enter a job URL to continue."}
             </p>
             <button className="btn-primary" disabled={busy || (!jdText.trim() && !jobUrl.trim())} onClick={analyzeJob} style={{ marginTop: 12 }}>
               Analyze job & score fit

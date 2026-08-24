@@ -26,8 +26,8 @@ export default function HomePage() {
             Import your resume into a Career Vault, paste a job, see a transparent Fit Score, accept or reject evidence-backed edits, then export an application kit.
           </p>
           <ol>
-            <li>Load the sample resume (optional)</li>
-            <li>Analyze a pasted JD</li>
+            <li>Import your resume (paste, upload, or LinkedIn)</li>
+            <li>Paste or fetch a job description</li>
             <li>Tailor → verify → copy WhatsApp / apply</li>
           </ol>
           <strong>Open candidate workspace →</strong>
@@ -51,7 +51,7 @@ export default function HomePage() {
       <section className="card landing-note">
         <h3>How a new user should start</h3>
         <p className="muted">
-          Candidates: click Load sample resume, save the vault, then Analyze job — a Fit Score in a few minutes. Agencies: pick a job template and click a candidate row for proof, not a black-box percentage.
+          Candidates: import your resume, save the vault, then analyze a job — a Fit Score in a few minutes. Agencies: pick a job template and click a candidate row for proof, not a black-box percentage.
         </p>
       </section>
 
