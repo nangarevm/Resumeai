@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { attachClientFromPool, getAgency, incrementAgencyUsage, removeAgencySeat, updateAgency, updateSeatNotes } from "@/lib/workspace-store";
 import { bindWorkspaceUser } from "@/lib/auth/bind-workspace";
 import { recordAuditEvent } from "@/lib/audit-log";
+import { tierLimitsFor } from "@/lib/agency/tier-limits";
 import type { AgencyWorkspace } from "@/lib/srs-models";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,17 @@ export async function POST(request: Request) {
   if (body.clientId && typeof body.notes === "string") {
     return NextResponse.json(await updateSeatNotes(body.clientId, body.notes));
   }
-  if (body.clientId) return NextResponse.json(await attachClientFromPool(body.clientId));
+  if (body.clientId) {
+    const agency = await getAgency();
+    const alreadySeated = agency.seats.some((s) => s.clientId === body.clientId);
+    const limits = tierLimitsFor(agency.tier);
+    if (!alreadySeated && agency.seats.length >= limits.maxSeats) {
+      return NextResponse.json(
+        { error: `This account's ${agency.tier} plan allows ${limits.maxSeats} client seats, and that limit has been reached.` },
+        { status: 402 }
+      );
+    }
+    return NextResponse.json(await attachClientFromPool(body.clientId));
+  }
   return NextResponse.json(await updateAgency(body));
 }

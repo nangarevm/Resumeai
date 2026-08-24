@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { addAgencyCandidate, getAgencyCandidatePool, incrementAgencyUsage, removeAgencyCandidate } from "@/lib/workspace-store";
+import { addAgencyCandidate, getAgency, getAgencyCandidatePool, incrementAgencyUsage, removeAgencyCandidate } from "@/lib/workspace-store";
 import { bindWorkspaceUser } from "@/lib/auth/bind-workspace";
 import { recordAuditEvent } from "@/lib/audit-log";
+import { tierLimitsFor } from "@/lib/agency/tier-limits";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,16 @@ export async function POST(request: Request) {
     preferredDomains?: string;
     rawResumeText?: string;
   };
+
+  const agency = await getAgency();
+  const limits = tierLimitsFor(agency.tier);
+  const usedThisMonth = agency.usageMeters?.candidatesAdded ?? 0;
+  if (usedThisMonth >= limits.maxCandidatesPerMonth) {
+    return NextResponse.json(
+      { error: `This account's ${agency.tier} plan allows ${limits.maxCandidatesPerMonth} new candidates per month, and that limit has been reached.` },
+      { status: 402 }
+    );
+  }
 
   const raw = [
     `NAME: ${body.name || "Candidate Profile"}`,

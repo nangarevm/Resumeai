@@ -15,6 +15,7 @@ import type {
 } from "@/lib/models";
 import { EVALUATION_MODES } from "@/lib/models";
 import type { AuditEvent } from "@/lib/audit-log";
+import { tierLimitsFor } from "@/lib/agency/tier-limits";
 import CopyButton from "@/components/CopyButton";
 import CompactSearch from "@/components/CompactSearch";
 import ComparisonTable from "@/components/ComparisonTable";
@@ -188,7 +189,13 @@ export default function AgencyApp() {
   async function submitCandidate(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    await fetch("/api/candidates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(candForm) });
+    const res = await fetch("/api/candidates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(candForm) });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setBusy(false);
+      setNotice(data.error || "Could not add this candidate.");
+      return;
+    }
     setCandForm({ name: "", email: "", phone: "", dreamCompanies: "", preferredRoles: "", preferredDomains: "", rawResumeText: "" });
     await loadCandidates();
     await runAnalysis(mode);
@@ -210,12 +217,18 @@ export default function AgencyApp() {
 
   async function addToClientSeats(candidateId: string) {
     setBusy(true);
-    const next = await fetch("/api/agency", {
+    const res = await fetch("/api/agency", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientId: candidateId })
-    }).then((r) => r.json());
-    setAgency(next);
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setBusy(false);
+      setNotice(data.error || "Could not add this seat.");
+      return;
+    }
+    setAgency(data);
     setBusy(false);
     setNotice("Added to client seats.");
   }
@@ -255,7 +268,7 @@ export default function AgencyApp() {
     setBulkStatus(
       `Added ${result.count} candidates` +
         (dupCount ? ` · ${dupCount} skipped as duplicate${dupCount === 1 ? "" : "s"} (already in the pool)` : "") +
-        (result.errors?.length ? ` · ${result.errors.length} failed to parse` : "")
+        (result.errors?.length ? ` · ${result.errors.length} not added (parse failed or plan limit reached)` : "")
     );
     setBulkDuplicates(result.duplicates || []);
     await loadCandidates();
@@ -298,6 +311,7 @@ export default function AgencyApp() {
   const shortlisted = results.filter((r) => r.isShortlisted).length;
   const color = agency?.brandColor || "#58a6ff";
   const meters = agency?.usageMeters;
+  const tierLimits = tierLimitsFor(agency?.tier ?? "Small Agency");
   const visible = results.filter((r) => {
     const q = search.toLowerCase();
     return (
@@ -460,7 +474,7 @@ export default function AgencyApp() {
                 <strong>{results.length}</strong>
               </div>
             </div>
-            {meters && (
+            {meters && agency && (
               <div className="metrics">
                 <div className="metric">
                   <span>ANALYZES ({meters.monthKey})</span>
@@ -468,11 +482,19 @@ export default function AgencyApp() {
                 </div>
                 <div className="metric">
                   <span>CANDIDATES ADDED</span>
-                  <strong>{meters.candidatesAdded}</strong>
+                  <strong>
+                    {meters.candidatesAdded} / {tierLimits.maxCandidatesPerMonth}
+                  </strong>
                 </div>
                 <div className="metric">
                   <span>SHORTLISTS EXPORTED</span>
                   <strong>{meters.shortlistsExported}</strong>
+                </div>
+                <div className="metric">
+                  <span>CLIENT SEATS ({agency.tier})</span>
+                  <strong>
+                    {agency.seats.length} / {tierLimits.maxSeats}
+                  </strong>
                 </div>
               </div>
             )}
