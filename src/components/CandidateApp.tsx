@@ -35,8 +35,11 @@ import ResumeHealthDashboard from "@/components/ResumeHealthDashboard";
 import TopFixesPanel from "@/components/TopFixesPanel";
 import { computeResumeHealth } from "@/lib/engines/resume-health";
 import { computeTopFixes } from "@/lib/engines/top-fixes";
+import { parseResume } from "@/lib/parsers/resume-parser";
 import RecruiterViewPanel from "@/components/RecruiterViewPanel";
 import { computeRecruiterView } from "@/lib/engines/recruiter-view";
+import CandidateBriefPanel from "@/components/CandidateBriefPanel";
+import { buildCandidateBrief } from "@/lib/engines/candidate-brief";
 import { detectGenericPhrases, stripGenericPhrase } from "@/lib/engines/generic-phrase-detector";
 import SkillsOptimizationPanel from "@/components/SkillsOptimizationPanel";
 import { categorizeSkills, applyCategorizedSkillsToResume } from "@/lib/engines/skills-optimizer";
@@ -145,6 +148,10 @@ export default function CandidateApp() {
   const [step, setStep] = useState<StepId>("vault");
   const [ws, setWs] = useState<SeekerWorkspace | null>(null);
   const [resumeText, setResumeText] = useState("");
+  // Debounced mirror of resumeText — health/top-fixes recompute off this,
+  // not off every keystroke, so the score updates live as the candidate
+  // edits without recomputing on each character.
+  const [liveResumeText, setLiveResumeText] = useState("");
   const [targetRole, setTargetRole] = useState("");
   const [goals, setGoals] = useState("");
   const [jdText, setJdText] = useState("");
@@ -300,6 +307,19 @@ export default function CandidateApp() {
       setNotice("");
     }
   }, [step]);
+
+  // Any fresh load from the server (initial load, save, restore, switch) is
+  // authoritative — sync instantly, no debounce. Only unsaved local edits
+  // typed into the vault textarea get debounced below.
+  useEffect(() => {
+    if (ws) setLiveResumeText(ws.profile.rawResumeText);
+  }, [ws]);
+
+  useEffect(() => {
+    if (!ws || resumeText === ws.profile.rawResumeText) return;
+    const t = setTimeout(() => setLiveResumeText(resumeText), 500);
+    return () => clearTimeout(t);
+  }, [resumeText, ws]);
 
   useEffect(() => {
     if (step === "tailor" && !draft.trim() && (ws?.profile.rawResumeText || resumeText)) {
@@ -1098,12 +1118,25 @@ export default function CandidateApp() {
     return days >= 3;
   });
   const vaultHealth = ws ? vaultCompleteness(ws.vault) : null;
-  const resumeHealth = useMemo(() => (ws ? computeResumeHealth(ws.profile, ws.vault, fit) : null), [ws, fit]);
-  const topFixes = useMemo(() => (ws ? computeTopFixes(ws.profile, ws.vault, fit) : []), [ws, fit]);
+  // Live preview of unsaved edits — reparses the debounced textarea content
+  // the same way an actual Save would, so health/top-fixes reflect what the
+  // candidate is typing right now rather than only the last saved version.
+  const draftProfile = useMemo(() => {
+    if (!ws) return null;
+    if (liveResumeText === ws.profile.rawResumeText) return ws.profile;
+    return parseResume(ws.profile.id, liveResumeText);
+  }, [ws, liveResumeText]);
+  const isLivePreview = Boolean(ws && draftProfile && draftProfile !== ws.profile);
+  const resumeHealth = useMemo(() => (ws && draftProfile ? computeResumeHealth(draftProfile, ws.vault, fit) : null), [ws, draftProfile, fit]);
+  const topFixes = useMemo(() => (ws && draftProfile ? computeTopFixes(draftProfile, ws.vault, fit) : []), [ws, draftProfile, fit]);
   const recruiterView = useMemo(
     () => (ws ? computeRecruiterView(ws.profile, ws.vault, job || undefined) : null),
     [ws, job]
   );
+  // Deliberately built from the saved profile (ws.profile), not the live
+  // draftProfile above — this is meant to show what's actually out there
+  // today, not a preview of unsaved edits.
+  const candidateBrief = useMemo(() => (ws ? buildCandidateBrief(ws.profile, job, fit) : ""), [ws, job, fit]);
   const skillGroups = useMemo(() => (ws ? categorizeSkills(ws.profile.extractedSkills) : []), [ws]);
   const rankedProjects = useMemo(() => (ws && job ? rankProjectsByRelevance(ws.profile, job) : []), [ws, job]);
   const bulletFormulaResults = useMemo(() => (ws ? checkBulletFormulas(ws.profile) : []), [ws]);
@@ -1423,6 +1456,11 @@ export default function CandidateApp() {
             )}
             {ws && vaultHealth && (
               <div style={{ marginTop: 16 }}>
+                {isLivePreview && (
+                  <p className="muted" style={{ marginBottom: 8 }}>
+                    ✨ Previewing your unsaved edits — this updates as you type. Save Career Vault to keep them.
+                  </p>
+                )}
                 <TopFixesPanel fixes={topFixes} />
                 <HealthCard
                   percent={vaultHealth.percent}
@@ -1713,6 +1751,12 @@ export default function CandidateApp() {
               <details className="opt-section" style={{ marginTop: 12 }}>
                 <summary>Recruiter View — the 10-second test</summary>
                 <RecruiterViewPanel view={recruiterView} />
+              </details>
+            )}
+            {ws && (
+              <details className="opt-section" style={{ marginTop: 12 }}>
+                <summary>Your client brief preview — what agencies and recruiters see</summary>
+                <CandidateBriefPanel brief={candidateBrief} />
               </details>
             )}
             {rankedProjects.length > 0 && (
