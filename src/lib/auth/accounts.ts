@@ -102,6 +102,13 @@ export async function createAccount(rawEmail: string, password: string): Promise
   return { id, email };
 }
 
+/** All registered accounts — used by scheduled jobs (the weekly digest
+ *  cron route) that need to iterate every account rather than resolve one
+ *  from a request. Never expose this over an unauthenticated route. */
+export function listAccounts(): AccountResult[] {
+  return Object.values(readAccounts().accounts).map((a) => ({ id: a.id, email: a.email }));
+}
+
 export async function findAccountByEmail(rawEmail: string): Promise<AccountResult | null> {
   const email = normalizeEmail(rawEmail);
   const account = readAccounts().accounts[userIdFromEmail(email)];

@@ -200,6 +200,41 @@ export async function getSeeker(): Promise<SeekerWorkspace> {
   return (await load()).seeker;
 }
 
+/** Reads a SPECIFIC account's seeker workspace by userId, bypassing the
+ *  request-scoped resolveActiveUserId()/cookie mechanism entirely — for
+ *  scheduled jobs (the weekly digest cron route) that need to iterate every
+ *  account rather than resolve "the current" one. Shares the same on-disk
+ *  layout and in-memory cache as the request-scoped path above, so a
+ *  concurrent request for the same user stays consistent. Throws if that
+ *  account has never saved a workspace. */
+export async function getSeekerForUserId(userId: string): Promise<SeekerWorkspace> {
+  const file = path.join(dataDir(), "users", sanitizeUserId(userId), "workspace.json");
+  const cached = workspaceCache.get(file);
+  if (cached) return cached.seeker;
+  if (!fs.existsSync(/* turbopackIgnore: true */ file)) throw new Error("no_workspace");
+  const ws = JSON.parse(fs.readFileSync(/* turbopackIgnore: true */ file, "utf8")) as WorkspaceFile;
+  ws.agency = normalizeAgency(ws.agency);
+  workspaceCache.set(file, ws);
+  return ws.seeker;
+}
+
+/** Records that a digest email went out for this account, so the next run
+ *  can compute a delta and throttle how often it re-sends. Counterpart to
+ *  getSeekerForUserId above — same direct-by-id path, same shared cache. */
+export async function recordDigestSent(userId: string, healthPercent: number): Promise<void> {
+  const file = path.join(dataDir(), "users", sanitizeUserId(userId), "workspace.json");
+  let ws = workspaceCache.get(file);
+  if (!ws) {
+    if (!fs.existsSync(/* turbopackIgnore: true */ file)) return;
+    ws = JSON.parse(fs.readFileSync(/* turbopackIgnore: true */ file, "utf8")) as WorkspaceFile;
+    ws.agency = normalizeAgency(ws.agency);
+  }
+  ws.seeker.lastDigestSentAt = new Date().toISOString();
+  ws.seeker.lastDigestHealthPercent = healthPercent;
+  fs.writeFileSync(file, JSON.stringify(ws, null, 2));
+  workspaceCache.set(file, ws);
+}
+
 export async function getAgency(): Promise<AgencyWorkspace> {
   return (await load()).agency;
 }

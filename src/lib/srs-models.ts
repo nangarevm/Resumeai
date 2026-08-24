@@ -294,4 +294,9 @@ export interface SeekerWorkspace {
   suggestions: TailorSuggestion[];
   findings: VerificationFinding[];
   tailoredDraft?: string;
+  /** Weekly email digest state — when the last digest went out, and the
+   *  vault-completeness percent at that time, so the next digest can say
+   *  "up 8 points since last week" instead of just a flat snapshot. */
+  lastDigestSentAt?: string;
+  lastDigestHealthPercent?: number;
 }

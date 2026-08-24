@@ -45,6 +45,7 @@ Everything below is optional, added the same way (dashboard → Environment → 
 | Google sign-in | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials → OAuth client ID. Set the authorized redirect URI to `<your-url>/api/auth/callback/google`. |
 | GitHub sign-in | `GITHUB_ID`, `GITHUB_SECRET` | GitHub → Settings → Developer settings → OAuth Apps. Set the callback URL to `<your-url>/api/auth/callback/github`. |
 | Real email delivery (magic links, password reset) | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_SECURE` | Any SMTP provider (e.g. a transactional email service). Without these set, the app falls back to returning the link directly in the API response instead of emailing it — functional for testing, not for real users. |
+| Weekly candidate digest email | `CRON_SECRET` | Any random string. Also requires the SMTP vars above (the digest is sent through the same `sendEmail()` path). Point an external scheduler (Render Cron Job, a GitHub Actions cron workflow, etc.) at `POST <your-url>/api/cron/digest` roughly weekly with header `Authorization: Bearer <CRON_SECRET>`. Without `CRON_SECRET` set, the endpoint returns 501 rather than being a public "email every user" route. |
 
 None of these are required to get a working deploy — the app is designed to degrade gracefully
 without them (conditional OAuth providers, dev-mode link fallback for email).
