@@ -416,16 +416,6 @@ export default function CandidateApp() {
     if (data.vault && ws) setWs({ ...ws, vault: data.vault });
   }
 
-  async function exportMyData() {
-    const data = await fetch("/api/privacy").then((r) => r.json());
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "resumeproof-export.json";
-    a.click();
-  }
-
   async function deleteMyData() {
     setDeleteConfirmArmed(false);
     await fetch("/api/privacy", { method: "DELETE" });
@@ -1231,12 +1221,6 @@ export default function CandidateApp() {
             <AuthBar />
             <button className="btn-ghost" onClick={loadDemo}>
               Load sample resume
-            </button>
-            <button className="btn-ghost" onClick={exportMyData}>
-              Export my data
-            </button>
-            <button className="btn-ghost" onClick={() => window.print()}>
-              Print / PDF
             </button>
           </div>
         </header>
