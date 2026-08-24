@@ -16,13 +16,7 @@ export async function POST(request: Request) {
   };
   if (body.resumeText) {
     const profile = parseResume("seeker", body.resumeText);
-    const seeker = await setSeekerProfile(profile);
-    if (body.targetRole || body.goals) {
-      seeker.vault = await updateVault({
-        targetRole: body.targetRole || seeker.vault.targetRole,
-        goals: body.goals || seeker.vault.goals
-      });
-    }
+    const seeker = await setSeekerProfile(profile, "Resume import / edit", body.targetRole ?? "", body.goals ?? "");
     return NextResponse.json(seeker);
   }
   if (body.vault) {
