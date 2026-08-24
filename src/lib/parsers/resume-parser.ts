@@ -14,7 +14,14 @@ const SECTION_ALIASES: Array<[RegExp, string]> = [
 export function parseResume(id: string, rawText: string): CandidateProfile {
   const text = normalize(rawText);
   const name = extractHeaderField(text, "NAME:", extractNameFallback(text, `Candidate ${id}`));
-  const email = extractHeaderField(text, "EMAIL:", extractEmail(text) ?? `candidate${id}@example.com`);
+  // No fabricated placeholder here — a resume with no real EMAIL: line or
+  // detectable address gets an empty string, not an invented address. A
+  // synthetic candidate${id}@example.com previously caused every no-email
+  // resume in a batch to collide on the identical fake address and falsely
+  // dedupe against each other; callers already treat a falsy email as "no
+  // email on file" (bulk-candidates' seenEmails set, share-redaction's
+  // `if (profile.email)` guard).
+  const email = extractHeaderField(text, "EMAIL:", extractEmail(text) ?? "");
   const phone = extractHeaderField(text, "PHONE:", extractPhone(text) ?? "Not specified");
   const sections = extractSections(text);
   const preferences = extractCareerPreferences(text);

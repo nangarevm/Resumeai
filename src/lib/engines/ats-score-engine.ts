@@ -26,7 +26,12 @@ export function scoreAts(resumeText: string, jd?: JobDescription): AtsReport {
     detail: headingCount >= 3 ? "Core ATS headings are present." : "Use Skills, Experience, Education, and Projects as plain headings."
   });
 
-  const hasTables = /\|.+\|/.test(text) || /\t.+\t/.test(text);
+  // A single "Company | Role | Dates"-style line (2 pipes, 3 columns) is a
+  // common, legitimate one-line work-history format — including this app's
+  // own placeholder text — not a pasted table. Only flag genuinely
+  // table-like content: a line with 3+ pipes (4+ columns), or tab-delimited
+  // runs (the shape a real Word/Excel table paste produces).
+  const hasTables = text.split("\n").some((line) => (line.match(/\|/g) || []).length >= 3) || /\t.+\t/.test(text);
   checks.push({
     name: "No complex tables",
     passed: !hasTables,

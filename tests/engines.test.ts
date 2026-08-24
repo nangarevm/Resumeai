@@ -152,6 +152,34 @@ PROJECTS:
     expect(report.checks.find((c) => c.name === "Contact details")?.passed).toBe(true);
   });
 
+  it("ATS scorer does not flag a single 'Company | Role | Dates' line as a complex table", () => {
+    const resume = `NAME: Anuja P
+EMAIL: anuja@example.com
+PHONE: +91 9876543210
+SKILLS:
+- Python
+EXPERIENCE:
+Acme Corp | Senior Engineer | 2022-Present
+- Built APIs
+EDUCATION:
+- B.Tech`;
+    const report = scoreAts(resume, parseJD("job1", SAMPLE_JD));
+    expect(report.checks.find((c) => c.name === "No complex tables")?.passed).toBe(true);
+  });
+
+  it("ATS scorer still flags a genuinely wide pasted table (4+ columns on one line)", () => {
+    const resume = `NAME: Anuja P
+EMAIL: anuja@example.com
+PHONE: +91 9876543210
+SKILLS:
+- Python
+EXPERIENCE:
+Acme Corp | Senior Engineer | Bangalore | 2022-Present | Full-time
+- Built APIs`;
+    const report = scoreAts(resume, parseJD("job1", SAMPLE_JD));
+    expect(report.checks.find((c) => c.name === "No complex tables")?.passed).toBe(false);
+  });
+
   it("cover letter uses only evidenced requirements", () => {
     const c = parseResume("anuja", ANUJA);
     const jd = parseJD("job1", SAMPLE_JD);
