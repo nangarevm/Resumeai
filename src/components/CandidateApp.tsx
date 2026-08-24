@@ -14,7 +14,7 @@ import type {
   VerificationFinding
 } from "@/lib/srs-models";
 import type { JobDescription } from "@/lib/models";
-import { vaultCompleteness } from "@/lib/engines/career-vault";
+import { vaultCompleteness, buildCareerVault } from "@/lib/engines/career-vault";
 import { bandFromScore } from "@/lib/engines/outcome-tracker";
 import { applyAcceptedSuggestions, applySummaryToResume } from "@/lib/engines/tailoring";
 import { buildWhatsAppBundle } from "@/lib/export/whatsapp-bundle";
@@ -428,12 +428,25 @@ export default function CandidateApp() {
 
   async function deleteMyData() {
     setDeleteConfirmArmed(false);
-    await fetch("/api/privacy", { method: "DELETE" });
+    setBusy(true);
+    const res = await fetch("/api/privacy", { method: "DELETE" });
+    if (!res.ok) {
+      setBusy(false);
+      setNotice("Could not delete your vault. Try again.");
+      return;
+    }
     setKit(null);
     setChange(null);
     setPrep(null);
+    setResumeText("");
+    setLiveResumeText("");
+    setTargetRole("");
+    setGoals("");
+    setDraft("");
+    setShareStatus({ active: false });
     await refresh();
-    setNotice("Workspace reset. Your previous vault was deleted on this device.");
+    setBusy(false);
+    setNotice("Workspace reset. Your vault was deleted.");
   }
 
   async function importLinkedIn() {
@@ -1117,18 +1130,32 @@ export default function CandidateApp() {
     const days = Math.round((Date.now() - new Date(a.appliedAt || a.savedAt).getTime()) / 86400000);
     return days >= 3;
   });
-  const vaultHealth = ws ? vaultCompleteness(ws.vault) : null;
-  // Live preview of unsaved edits — reparses the debounced textarea content
-  // the same way an actual Save would, so health/top-fixes reflect what the
-  // candidate is typing right now rather than only the last saved version.
   const draftProfile = useMemo(() => {
     if (!ws) return null;
     if (liveResumeText === ws.profile.rawResumeText) return ws.profile;
     return parseResume(ws.profile.id, liveResumeText);
   }, [ws, liveResumeText]);
-  const isLivePreview = Boolean(ws && draftProfile && draftProfile !== ws.profile);
-  const resumeHealth = useMemo(() => (ws && draftProfile ? computeResumeHealth(draftProfile, ws.vault, fit) : null), [ws, draftProfile, fit]);
-  const topFixes = useMemo(() => (ws && draftProfile ? computeTopFixes(draftProfile, ws.vault, fit) : []), [ws, draftProfile, fit]);
+  const vaultStale = Boolean(
+    ws &&
+      (liveResumeText !== ws.profile.rawResumeText ||
+        targetRole !== ws.vault.targetRole ||
+        goals !== ws.vault.goals)
+  );
+  const previewVault = useMemo(() => {
+    if (!ws || !draftProfile) return null;
+    if (!vaultStale) return ws.vault;
+    return buildCareerVault(draftProfile, targetRole, goals);
+  }, [ws, draftProfile, vaultStale, targetRole, goals]);
+  const vaultHealth = previewVault ? vaultCompleteness(previewVault) : null;
+  const isLivePreview = vaultStale;
+  const resumeHealth = useMemo(
+    () => (draftProfile && previewVault ? computeResumeHealth(draftProfile, previewVault, fit) : null),
+    [draftProfile, previewVault, fit]
+  );
+  const topFixes = useMemo(
+    () => (draftProfile && previewVault ? computeTopFixes(draftProfile, previewVault, fit) : []),
+    [draftProfile, previewVault, fit]
+  );
   const recruiterView = useMemo(
     () => (ws ? computeRecruiterView(ws.profile, ws.vault, job || undefined) : null),
     [ws, job]
@@ -1137,9 +1164,9 @@ export default function CandidateApp() {
   // draftProfile above — this is meant to show what's actually out there
   // today, not a preview of unsaved edits.
   const candidateBrief = useMemo(() => (ws ? buildCandidateBrief(ws.profile, job, fit) : ""), [ws, job, fit]);
-  const skillGroups = useMemo(() => (ws ? categorizeSkills(ws.profile.extractedSkills) : []), [ws]);
-  const rankedProjects = useMemo(() => (ws && job ? rankProjectsByRelevance(ws.profile, job) : []), [ws, job]);
-  const bulletFormulaResults = useMemo(() => (ws ? checkBulletFormulas(ws.profile) : []), [ws]);
+  const skillGroups = useMemo(() => (draftProfile ? categorizeSkills(draftProfile.extractedSkills) : []), [draftProfile]);
+  const rankedProjects = useMemo(() => (ws && job && draftProfile ? rankProjectsByRelevance(draftProfile, job) : []), [ws, job, draftProfile]);
+  const bulletFormulaResults = useMemo(() => (draftProfile ? checkBulletFormulas(draftProfile) : []), [draftProfile]);
   const achievementCandidates = useMemo(
     () => unquantifiedBullets(bulletFormulaResults).filter((b) => !skippedAchievements[b]),
     [bulletFormulaResults, skippedAchievements]
@@ -1499,7 +1526,7 @@ export default function CandidateApp() {
                   onUpload={uploadPhoto}
                   onRemove={removePhoto}
                 />
-                {ws.vault.evidence.slice(0, 16).map((e) => (
+                {previewVault.evidence.slice(0, 16).map((e) => (
                   <div key={e.id} className="chain-item vault-item">
                     <div className="vault-item-main">
                       <span className={`badge ${e.verificationStatus === "approved" ? "ok" : "mid"}`}>{e.type}</span>{" "}

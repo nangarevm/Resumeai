@@ -89,7 +89,7 @@ export async function getWorkspaceFilePath(): Promise<string> {
 }
 
 function defaultSeeker(): SeekerWorkspace {
-  const profile = getSeedCandidates()[0] || parseResume("seeker", "NAME: New user\nEMAIL: you@example.com\nSKILLS:\n- Communication\n");
+  const profile = parseResume("seeker", "NAME: New user\nEMAIL: you@example.com\n");
   return {
     profile,
     vault: buildCareerVault(profile),
@@ -258,10 +258,17 @@ function capVersions(versions: ResumeVersion[]): ResumeVersion[] {
   return versions.filter((v) => (v.pinned ? pinnedIds.has(v.id) : autoIds.has(v.id)));
 }
 
-export async function setSeekerProfile(profile: CandidateProfile, reason = "Resume import / edit"): Promise<SeekerWorkspace> {
+export async function setSeekerProfile(
+  profile: CandidateProfile,
+  reason = "Resume import / edit",
+  targetRole?: string,
+  goals?: string
+): Promise<SeekerWorkspace> {
   const ws = await load();
+  const role = targetRole !== undefined ? targetRole : ws.seeker.vault.targetRole;
+  const goalText = goals !== undefined ? goals : ws.seeker.vault.goals;
   ws.seeker.profile = profile;
-  ws.seeker.vault = buildCareerVault(profile, ws.seeker.vault.targetRole, ws.seeker.vault.goals);
+  ws.seeker.vault = buildCareerVault(profile, role, goalText);
   ws.seeker.versions.unshift({
     id: uniqueId("ver"),
     reason,

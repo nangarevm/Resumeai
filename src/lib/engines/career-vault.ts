@@ -50,7 +50,7 @@ export function buildCareerVault(profile: CandidateProfile, targetRole = "", goa
 
   return {
     profileId: profile.id,
-    targetRole: targetRole || profile.preferences.preferredRoles[0] || "",
+    targetRole: targetRole || "",
     goals,
     evidence,
     updatedAt: new Date().toISOString()

@@ -43,6 +43,12 @@ describe("SRS v2 candidate engines", () => {
     expect(health.present).toContain("skill");
   });
 
+  it("does not auto-fill targetRole from PREFERRED ROLE in resume text", () => {
+    const profile = parseResume("1", RESUME);
+    const vault = buildCareerVault(profile);
+    expect(vault.targetRole).toBe("");
+  });
+
   it("Fit Score is labeled as an estimate and has sub-scores", () => {
     const profile = parseResume("1", RESUME);
     const jd = parseJD("j", JD);
