@@ -33,6 +33,32 @@ export function buildApplicationKit(
   ].join("\n");
 
   const linkedinNote = `Hi — I applied for ${jd.title} at ${jd.companyName}. Happy to share how my ${strong[0]?.requirementName || "recent project"} maps to the role.`;
+
+  // section 18 of the AI Job Application Optimizer spec: LinkedIn Headline
+  // + About Section. Built from the same evidence as the rest of the kit —
+  // no new claims, just a LinkedIn-appropriate framing of facts already on
+  // the resume (no "Career Vault"-style app jargon, since this text is
+  // meant to be pasted straight into a real LinkedIn profile).
+  const years = profile.rawResumeText.match(/(\d+)\+?\s*years?/i)?.[1];
+  const hasWorkExperience = Boolean(profile.parsedSections.WORK_EXPERIENCE?.trim());
+  const headlineSkills = (strong.length ? strong.map((e) => e.requirementName) : profile.extractedSkills).slice(0, 3);
+
+  const linkedinHeadline = [jd.title, years ? `${years}+ years` : null, headlineSkills.length ? headlineSkills.join(", ") : null]
+    .filter(Boolean)
+    .join(" | ");
+
+  const aboutLead = years
+    ? `${years}+ years of experience as a ${jd.title}, focused on ${headlineSkills.join(", ") || "building real, shippable software"}.`
+    : hasWorkExperience
+      ? `${jd.title} with hands-on experience in ${headlineSkills.join(", ") || "modern development practices"}.`
+      : `Aspiring ${jd.title}, currently building experience in ${headlineSkills.join(", ") || "the field"}.`;
+  const linkedinAbout = [
+    aboutLead,
+    strong[0] ? `Recent work: ${strong[0].snippet.slice(0, 180)}` : "",
+    "Open to connecting about roles where I can keep proving impact with real, evidenced results."
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const whatsappNote = `Hi, I applied for ${jd.title} at ${jd.companyName}. I can walk through ${strong[0]?.requirementName || "a project from my resume"} — happy to share a 3-line summary.`;
   const proofLine = strong[0]
     ? `${strong[0].requirementName}: ${strong[0].snippet.slice(0, 140)}`
@@ -65,6 +91,8 @@ export function buildApplicationKit(
     shortCover,
     recruiterEmail,
     linkedinNote,
+    linkedinHeadline,
+    linkedinAbout,
     whatsappNote,
     thankYouNote,
     referralNote,

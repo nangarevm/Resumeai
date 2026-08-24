@@ -1,4 +1,4 @@
-import type { CandidateProfile, JobDescription } from "./models";
+import type { CandidateProfile, Evidence, JobDescription } from "./models";
 
 export type EvidenceType =
   | "work"
@@ -41,6 +41,12 @@ export interface ResumeVersion {
   reason: string;
   snapshot: string;
   createdAt: string;
+  /** A pinned version is a deliberately-named resume (e.g. "Frontend
+   *  resume") the user wants to keep and switch between, distinct from
+   *  the automatic save-history snapshots — pinned entries are exempt
+   *  from the auto-history cap so a later flurry of edits can't quietly
+   *  evict a resume the user explicitly saved. */
+  pinned?: boolean;
 }
 
 export interface FitSubScores {
@@ -99,6 +105,9 @@ export interface JdMatchBreakdown {
   responsibilityTotalCount?: number;
   atsKeywordMatch: number;
   educationCertMatch: number;
+  domainMatch: number;
+  seniorityMatch: number;
+  achievementMatch: number;
   leadershipMatch?: number;
   communicationMatch?: number;
   aiRelevanceMatch?: number;
@@ -106,6 +115,9 @@ export interface JdMatchBreakdown {
     leadership: string;
     communication: string;
     aiRelevance: string;
+    domain: string;
+    seniority: string;
+    achievement: string;
   };
 }
 
@@ -157,6 +169,7 @@ export interface CareerOptimizerReport {
   summarySuggestion?: string;
   responsibilityHighlights?: ResponsibilityHighlight[];
   responsibilityGaps?: string[];
+  requirementEvidence?: Evidence[];
 }
 
 export interface TailorSuggestion {
@@ -203,6 +216,8 @@ export interface ApplicationKit {
   shortCover: string;
   recruiterEmail: string;
   linkedinNote: string;
+  linkedinHeadline: string;
+  linkedinAbout: string;
   whatsappNote: string;
   thankYouNote: string;
   referralNote: string;
@@ -253,6 +268,13 @@ export interface AgencyWorkspace {
   tier: "Coach" | "Small Agency" | "Professional";
   seats: Array<{ clientId: string; clientName: string; status: string; progress: string; notes?: string }>;
   usageMeters?: AgencyUsageMeters;
+  /** This account's own candidates/jobs, layered on top of the shared read-only
+   *  demo seed data (src/lib/store.ts). Each agency account only ever sees its
+   *  own additions here — not other accounts' — since this whole object lives
+   *  inside the per-user workspace file. */
+  customCandidates: CandidateProfile[];
+  customJobs: JobDescription[];
+  activeJobId: string | null;
 }
 
 export interface JobInputSnapshot {
@@ -272,4 +294,9 @@ export interface SeekerWorkspace {
   suggestions: TailorSuggestion[];
   findings: VerificationFinding[];
   tailoredDraft?: string;
+  /** Weekly email digest state — when the last digest went out, and the
+   *  vault-completeness percent at that time, so the next digest can say
+   *  "up 8 points since last week" instead of just a flat snapshot. */
+  lastDigestSentAt?: string;
+  lastDigestHealthPercent?: number;
 }

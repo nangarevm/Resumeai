@@ -107,6 +107,8 @@ export interface CandidateProfile {
   preferences: CareerPreferences;
   linkedinUrl?: string;
   githubUrl?: string;
+  /** data: URI (small, pre-resized headshot) — optional, shown on templates that support a photo. */
+  photoDataUrl?: string;
 }
 
 export interface Evidence {

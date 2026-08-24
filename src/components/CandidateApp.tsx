@@ -21,7 +21,70 @@ import { buildWhatsAppBundle } from "@/lib/export/whatsapp-bundle";
 import CopyButton from "@/components/CopyButton";
 import OptimizerReportPanel from "@/components/OptimizerReportPanel";
 import AuthBar from "@/components/AuthBar";
-import ResumeDraftPreview from "@/components/ResumeDraftPreview";
+import ResumeSectionEditor from "@/components/ResumeSectionEditor";
+import GuidedProfileWizard from "@/components/GuidedProfileWizard";
+import ResumeTemplatePreview from "@/components/ResumeTemplatePreview";
+import { RESUME_TEMPLATES, TEMPLATE_COLORS, TEMPLATE_SKELETONS, type TemplateCategory } from "@/lib/resume-render";
+import NextBestAction from "@/components/NextBestAction";
+import ReadinessScore, { type ReadinessStep } from "@/components/ReadinessScore";
+import AutosaveStatus, { type AutosaveState } from "@/components/AutosaveStatus";
+import { computeNextBestAction } from "@/lib/next-best-action";
+import { extractVerifiableClaims, INTEGRITY_KIND_LABELS } from "@/lib/engines/integrity-check";
+import MissingKeywordPanel, { type KeywordResolution } from "@/components/MissingKeywordPanel";
+import ResumeHealthDashboard from "@/components/ResumeHealthDashboard";
+import TopFixesPanel from "@/components/TopFixesPanel";
+import { computeResumeHealth } from "@/lib/engines/resume-health";
+import { computeTopFixes } from "@/lib/engines/top-fixes";
+import { parseResume } from "@/lib/parsers/resume-parser";
+import RecruiterViewPanel from "@/components/RecruiterViewPanel";
+import { computeRecruiterView } from "@/lib/engines/recruiter-view";
+import CandidateBriefPanel from "@/components/CandidateBriefPanel";
+import { buildCandidateBrief } from "@/lib/engines/candidate-brief";
+import { detectGenericPhrases, stripGenericPhrase } from "@/lib/engines/generic-phrase-detector";
+import SkillsOptimizationPanel from "@/components/SkillsOptimizationPanel";
+import { categorizeSkills, applyCategorizedSkillsToResume } from "@/lib/engines/skills-optimizer";
+import BulletFormulaPanel from "@/components/BulletFormulaPanel";
+import { checkBulletFormulas } from "@/lib/engines/bullet-formula-check";
+import { BUCKET_ORDER, type InterviewBucket } from "@/lib/engines/interview-categorizer";
+import VersionHistoryPanel from "@/components/VersionHistoryPanel";
+import NamedResumesPanel from "@/components/NamedResumesPanel";
+import SharePanel from "@/components/SharePanel";
+import PhotoUploadPanel from "@/components/PhotoUploadPanel";
+import ProjectIntelligencePanel from "@/components/ProjectIntelligencePanel";
+import { rankProjectsByRelevance } from "@/lib/engines/project-intelligence";
+import AchievementBuilderPanel from "@/components/AchievementBuilderPanel";
+import {
+  unquantifiedBullets,
+  isQuantifiedAnswer,
+  buildQuantifiedBullet,
+  applyQuantifiedBulletToResume,
+  type AchievementAnswer
+} from "@/lib/engines/achievement-builder";
+import { isHeaderLine } from "@/lib/resume-line-editor";
+import LoadingProgress from "@/components/LoadingProgress";
+import EmptyState from "@/components/EmptyState";
+import HealthCard from "@/components/HealthCard";
+import ApplicationKitCard from "@/components/ApplicationKitCard";
+
+// Plain-language labels for fit.subScores — the raw object keys (keywordCoverage,
+// evidenceStrength, ...) are meaningful to the code but not to a first-time user.
+const SUBSCORE_INFO: Record<string, { label: string; hint: string }> = {
+  keywordCoverage: { label: "Skill match", hint: "How many of the job's must-have skills you can prove you have." },
+  evidenceStrength: { label: "Proof quality", hint: "How solid that proof is — a real project or task beats a bare skills list." },
+  atsReadiness: { label: "Resume readability", hint: "Whether hiring software can parse your contact info, headings, and layout." },
+  completeness: { label: "Vault completeness", hint: "How much of your Career Vault is filled in and approved for use." }
+};
+
+const BUSY_LABELS: Partial<Record<string, string>> = {
+  vault: "Saving your Career Vault…",
+  job: "Analyzing the job description…",
+  fit: "Working on your Fit Score and CV…",
+  tailor: "Updating your tailored suggestions…",
+  verify: "Scanning your draft for unsupported claims…",
+  kit: "Building your Application Kit…",
+  interview: "Preparing interview questions…",
+  change: "Building your career change plan…"
+};
 
 const STEPS = [
   { id: "vault", n: 1, title: "Career Vault", help: "Your source of truth. Import a resume. We only store what you provided." },
@@ -30,16 +93,40 @@ const STEPS = [
   { id: "tailor", n: 4, title: "Tailor", help: "Accept, edit, or reject each suggestion. Red items are blocked." },
   { id: "verify", n: 5, title: "Verify", help: "High-risk claims must be removed, confirmed, or edited before export." },
   { id: "kit", n: 6, title: "Application kit", help: "Resume draft, cover letter, recruiter email, LinkedIn note, checklist." },
-  { id: "tracker", n: 7, title: "Tracker", help: "Saved → Applied → Interview → Offer. Link the resume version you sent." },
-  { id: "interview", n: 8, title: "Interview", help: "Job-specific questions and STAR stories from your vault." },
-  { id: "change", n: 9, title: "Career change", help: "Map transferable skills. Never fake the missing ones." }
+  { id: "templates", n: 7, title: "Templates", help: "Pick a professional layout. ATS-recommended templates stay plain on purpose." },
+  { id: "tracker", n: 8, title: "Tracker", help: "Saved → Applied → Interview → Offer. Link the resume version you sent." },
+  { id: "interview", n: 9, title: "Interview", help: "Job-specific questions and STAR stories from your vault." },
+  { id: "change", n: 10, title: "Career change", help: "Map transferable skills. Never fake the missing ones." }
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
-type ImportMode = "paste" | "file" | "linkedin" | "sample";
+type ImportMode = "guided" | "paste" | "file" | "linkedin" | "sample";
+
+const NAV_GROUPS: Array<{ id: string; label: string; steps: StepId[] }> = [
+  { id: "create", label: "Create", steps: ["vault", "job", "fit", "tailor", "verify", "kit", "templates"] },
+  { id: "apply", label: "Apply", steps: ["tracker", "interview"] },
+  { id: "manage", label: "Manage", steps: ["change"] }
+];
+
+const GOAL_OPTIONS = [
+  "Get a new job",
+  "Switch careers",
+  "Get promoted",
+  "Apply for internships",
+  "Apply for remote jobs",
+  "Create an academic CV",
+  "Create a general professional CV",
+  "I'm not sure"
+] as const;
 
 function jobInputKey(jobUrl: string, jdText: string) {
   return `${jobUrl.trim()}\n---\n${jdText.trim()}`;
+}
+
+function confidenceLabel(pct: number): "High" | "Medium" | "Low" {
+  if (pct >= 80) return "High";
+  if (pct >= 50) return "Medium";
+  return "Low";
 }
 
 function resumeImportStats(text: string) {
@@ -61,6 +148,10 @@ export default function CandidateApp() {
   const [step, setStep] = useState<StepId>("vault");
   const [ws, setWs] = useState<SeekerWorkspace | null>(null);
   const [resumeText, setResumeText] = useState("");
+  // Debounced mirror of resumeText — health/top-fixes recompute off this,
+  // not off every keystroke, so the score updates live as the candidate
+  // edits without recomputing on each character.
+  const [liveResumeText, setLiveResumeText] = useState("");
   const [targetRole, setTargetRole] = useState("");
   const [goals, setGoals] = useState("");
   const [jdText, setJdText] = useState("");
@@ -70,18 +161,51 @@ export default function CandidateApp() {
   const [suggestions, setSuggestions] = useState<TailorSuggestion[]>([]);
   const [findings, setFindings] = useState<VerificationFinding[]>([]);
   const [draft, setDraft] = useState("");
+  // Undo, scoped specifically to ResumeSectionEditor's structural edits
+  // (line edit/delete/move/add). A plain <textarea> already gets free
+  // browser-native undo (Ctrl+Z) — but ResumeSectionEditor rebuilds its
+  // rows as separate <input> elements on every structural change, which
+  // breaks that native history entirely. This restores it for that one
+  // component specifically, without touching the other setDraft call
+  // sites elsewhere (applying a suggestion, a rewrite, etc.).
+  const [draftHistory, setDraftHistory] = useState<string[]>([]);
+  const MAX_DRAFT_HISTORY = 20;
+  const [shareStatus, setShareStatus] = useState<{ active: boolean; url?: string; expiresAt?: string }>({ active: false });
+
+  function updateDraftWithHistory(next: string) {
+    setDraftHistory((h) => [...h, draft].slice(-MAX_DRAFT_HISTORY));
+    setDraft(next);
+  }
+
+  function undoDraft() {
+    setDraftHistory((h) => {
+      if (h.length === 0) return h;
+      setDraft(h[h.length - 1]);
+      return h.slice(0, -1);
+    });
+  }
   const [kit, setKit] = useState<ApplicationKit | null>(null);
   const [apps, setApps] = useState<ApplicationRecord[]>([]);
   const [prep, setPrep] = useState<{
     questions: Array<{ category: string; question: string }>;
+    questionsByBucket?: Partial<Record<InterviewBucket, Array<{ category: string; question: string }>>>;
     stories: Array<{ evidenceId: string; situation: string; task: string; action: string; result: string }>;
     missingPrep: string[];
     thankYouNote?: string;
   } | null>(null);
   const [change, setChange] = useState<CareerChangePlan | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deleteConfirmArmed, setDeleteConfirmArmed] = useState(false);
   const [notice, setNotice] = useState("");
   const [override, setOverride] = useState(false);
+  const [integrityResolutions, setIntegrityResolutions] = useState<Record<string, "confirmed" | "edited" | "removed">>({});
+  const [editingIntegrityClaim, setEditingIntegrityClaim] = useState<string | null>(null);
+  const [integrityEditValue, setIntegrityEditValue] = useState("");
+  const [genericPhraseResolutions, setGenericPhraseResolutions] = useState<Record<string, "kept" | "removed">>({});
+  const [achievementDrafts, setAchievementDrafts] = useState<Record<string, Partial<AchievementAnswer>>>({});
+  const [achievementApplied, setAchievementApplied] = useState<Record<string, boolean>>({});
+  const [skippedAchievements, setSkippedAchievements] = useState<Record<string, boolean>>({});
+  const [keywordResolutions, setKeywordResolutions] = useState<Record<string, KeywordResolution>>({});
   const [answerDraft, setAnswerDraft] = useState("");
   const [linkedinPaste, setLinkedinPaste] = useState("");
   const [linkedinWarnings, setLinkedinWarnings] = useState<string[]>([]);
@@ -93,7 +217,36 @@ export default function CandidateApp() {
   const [jobFetchSource, setJobFetchSource] = useState("");
   const [analyzedInputKey, setAnalyzedInputKey] = useState("");
   const [importMode, setImportMode] = useState<ImportMode>("paste");
+  const [goalChoice, setGoalChoice] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState("ats-classic-black");
+  const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle");
+  const [templateCategory, setTemplateCategory] = useState("All");
+  const [templateColorFilter, setTemplateColorFilter] = useState("All");
   const [onboardingDismissed, setOnboardingDismissed] = useState(true);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(true);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiCoverLetter, setAiCoverLetter] = useState("");
+  const [aiSummary, setAiSummary] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [recruiterEmail, setRecruiterEmail] = useState("");
+  const [recruiterEmailSubject, setRecruiterEmailSubject] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  function toggleGroup(id: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function goToStep(id: StepId) {
+    setStep(id);
+    setMobileNavOpen(false);
+  }
 
   const currentJobInputKey = useMemo(() => jobInputKey(jobUrl, jdText), [jobUrl, jdText]);
   const jobIntelStale = Boolean(job && analyzedInputKey && analyzedInputKey !== currentJobInputKey);
@@ -104,6 +257,9 @@ export default function CandidateApp() {
     if (!ws?.profile.rawResumeText) return "";
     return applyAcceptedSuggestions(ws.profile.rawResumeText, suggestions);
   }, [ws?.profile.rawResumeText, suggestions]);
+
+  const integrityClaims = useMemo(() => extractVerifiableClaims(draft || resumePreview), [draft, resumePreview]);
+  const genericPhrases = useMemo(() => detectGenericPhrases(draft || resumePreview), [draft, resumePreview]);
 
   const progress = useMemo(() => {
     const flags = [ws?.vault.evidence.length, job, fit, suggestions.some((s) => s.status !== "pending"), findings.length, kit, apps.length, prep, change];
@@ -136,10 +292,13 @@ export default function CandidateApp() {
 
   useEffect(() => {
     refresh();
+    loadShareStatus();
     try {
       setOnboardingDismissed(localStorage.getItem("resumeproof-onboarding-dismissed") === "1");
+      setWelcomeDismissed(localStorage.getItem("resumeproof-welcome-dismissed") === "1");
     } catch {
       setOnboardingDismissed(false);
+      setWelcomeDismissed(false);
     }
   }, []);
 
@@ -148,6 +307,19 @@ export default function CandidateApp() {
       setNotice("");
     }
   }, [step]);
+
+  // Any fresh load from the server (initial load, save, restore, switch) is
+  // authoritative — sync instantly, no debounce. Only unsaved local edits
+  // typed into the vault textarea get debounced below.
+  useEffect(() => {
+    if (ws) setLiveResumeText(ws.profile.rawResumeText);
+  }, [ws]);
+
+  useEffect(() => {
+    if (!ws || resumeText === ws.profile.rawResumeText) return;
+    const t = setTimeout(() => setLiveResumeText(resumeText), 500);
+    return () => clearTimeout(t);
+  }, [resumeText, ws]);
 
   useEffect(() => {
     if (step === "tailor" && !draft.trim() && (ws?.profile.rawResumeText || resumeText)) {
@@ -163,22 +335,30 @@ export default function CandidateApp() {
       tailor: suggestions.some((s) => s.status !== "pending"),
       verify: findings.length > 0,
       kit: Boolean(kit),
+      templates: selectedTemplate !== "ats-classic-black",
       tracker: apps.length > 0,
       interview: Boolean(prep),
       change: Boolean(change)
     }),
-    [ws, job, fit, suggestions, findings, kit, apps, prep, change]
+    [ws, job, fit, suggestions, findings, kit, apps, prep, change, selectedTemplate]
   );
+
+  function flashAutosave(ok: boolean) {
+    setAutosaveState(ok ? "saved" : "error");
+    setTimeout(() => setAutosaveState((s) => (s === "idle" ? s : "idle")), 3000);
+  }
 
   async function importVault() {
     setBusy(true);
-    await fetch("/api/vault", {
+    setAutosaveState("saving");
+    const res = await fetch("/api/vault", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ resumeText, targetRole, goals })
     });
     await refresh();
     setBusy(false);
+    flashAutosave(res.ok);
     setNotice("Career Vault saved. Nothing was invented — only parsed from your text.");
     setStep("job");
   }
@@ -218,6 +398,15 @@ export default function CandidateApp() {
     }
   }
 
+  function dismissWelcome() {
+    setWelcomeDismissed(true);
+    try {
+      localStorage.setItem("resumeproof-welcome-dismissed", "1");
+    } catch {
+      /* ignore */
+    }
+  }
+
   async function setEvidence(id: string, verificationStatus: "approved" | "archived" | "unconfirmed") {
     const data = await fetch("/api/vault", {
       method: "POST",
@@ -238,6 +427,7 @@ export default function CandidateApp() {
   }
 
   async function deleteMyData() {
+    setDeleteConfirmArmed(false);
     await fetch("/api/privacy", { method: "DELETE" });
     setKit(null);
     setChange(null);
@@ -275,12 +465,15 @@ export default function CandidateApp() {
   }
 
   async function saveResumeDraft(text: string) {
-    const data = await fetch("/api/resume-draft", {
+    setAutosaveState("saving");
+    const res = await fetch("/api/resume-draft", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ draft: text, suggestions, action: "save" })
-    }).then((r) => r.json());
+    });
+    const data = await res.json();
     setDraft(data.draft || text);
+    flashAutosave(res.ok);
     setNotice("Tailored resume draft saved as a version snapshot.");
   }
 
@@ -297,14 +490,269 @@ export default function CandidateApp() {
     setNotice(data.findings?.length ? "Re-scanned your edited draft." : "Draft looks clean against the vault.");
   }
 
+  function resolveIntegrityClaim(claimText: string, action: "confirmed" | "removed") {
+    setIntegrityResolutions((prev) => ({ ...prev, [claimText]: action }));
+    if (action === "removed") {
+      const base = draft || resumePreview;
+      const next = base
+        .split("\n")
+        .filter((l) => l.trim() !== claimText)
+        .join("\n");
+      setDraft(next);
+    }
+  }
+
+  function startEditIntegrityClaim(claimText: string) {
+    setEditingIntegrityClaim(claimText);
+    setIntegrityEditValue(claimText);
+  }
+
+  function saveIntegrityEdit(originalText: string) {
+    const base = draft || resumePreview;
+    const next = base
+      .split("\n")
+      .map((l) => (l.trim() === originalText ? integrityEditValue : l))
+      .join("\n");
+    setDraft(next);
+    setIntegrityResolutions((prev) => ({ ...prev, [integrityEditValue.trim()]: "edited" }));
+    setEditingIntegrityClaim(null);
+  }
+
+  function resolveGenericPhrase(finding: { phrase: string; line: string }, action: "kept" | "removed") {
+    const key = `${finding.phrase}::${finding.line}`;
+    setGenericPhraseResolutions((prev) => ({ ...prev, [key]: action }));
+    if (action === "removed") {
+      const base = draft || resumePreview;
+      const next = base
+        .split("\n")
+        .map((l) => (l.trim() === finding.line ? stripGenericPhrase(l, finding.phrase) : l))
+        .join("\n");
+      setDraft(next);
+    }
+  }
+
+  function updateAchievementDraft(bullet: string, field: keyof AchievementAnswer, value: string) {
+    setAchievementDrafts((prev) => ({ ...prev, [bullet]: { ...prev[bullet], [field]: value } }));
+  }
+
+  function skipAchievement(bullet: string) {
+    setSkippedAchievements((prev) => ({ ...prev, [bullet]: true }));
+  }
+
+  async function applyAchievement(bullet: string) {
+    const draft = achievementDrafts[bullet] || {};
+    if (!isQuantifiedAnswer(draft)) return;
+    const base = ws?.profile.rawResumeText || resumeText;
+    if (!base) return;
+    const quantified = buildQuantifiedBullet(bullet, draft as AchievementAnswer);
+    const updatedText = applyQuantifiedBulletToResume(base, bullet, quantified);
+    setResumeText(updatedText);
+    setBusy(true);
+    setAutosaveState("saving");
+    const res = await fetch("/api/vault", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resumeText: updatedText, targetRole, goals })
+    });
+    await refresh();
+    setBusy(false);
+    flashAutosave(res.ok);
+    setAchievementApplied((prev) => ({ ...prev, [bullet]: true }));
+    setNotice("Quantified bullet added to your draft — using the numbers you provided.");
+  }
+
+  async function confirmMissingKeyword(skill: string, mode: "add" | "mention" | "decline") {
+    if (mode === "decline") {
+      setKeywordResolutions((prev) => ({ ...prev, [skill]: "declined" }));
+      return;
+    }
+    const base = ws?.profile.rawResumeText || resumeText;
+    if (!base) return;
+    const entry = mode === "add" ? skill : `${skill} (some exposure)`;
+    const lines = base.split("\n");
+    const skillsIdx = lines.findIndex((l) => /^(SKILLS|TECHNICAL SKILLS|KEY SKILLS):?$/i.test(l.trim()));
+    let next: string[];
+    if (skillsIdx === -1) {
+      next = [...lines, "", "SKILLS", entry];
+    } else {
+      let insertAt = skillsIdx + 1;
+      while (insertAt < lines.length && lines[insertAt].trim() && !isHeaderLine(lines[insertAt])) insertAt++;
+      next = [...lines.slice(0, insertAt), entry, ...lines.slice(insertAt)];
+    }
+    const updatedText = next.join("\n");
+    setResumeText(updatedText);
+    setBusy(true);
+    setAutosaveState("saving");
+    const res = await fetch("/api/vault", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resumeText: updatedText, targetRole, goals })
+    });
+    await refresh();
+    setBusy(false);
+    flashAutosave(res.ok);
+    setKeywordResolutions((prev) => ({ ...prev, [skill]: mode === "add" ? "added" : "mentioned" }));
+    setNotice(`"${skill}" added to your Career Vault based on your confirmation — re-run Fit Score to see the updated match.`);
+  }
+
+  async function applyCategorizedSkills() {
+    const base = ws?.profile.rawResumeText || resumeText;
+    if (!base || !ws) return;
+    const updatedText = applyCategorizedSkillsToResume(base, ws.profile.extractedSkills);
+    setResumeText(updatedText);
+    setBusy(true);
+    setAutosaveState("saving");
+    const res = await fetch("/api/vault", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resumeText: updatedText, targetRole, goals })
+    });
+    await refresh();
+    setBusy(false);
+    flashAutosave(res.ok);
+    setNotice("SKILLS section reorganized into categories — same skills, no additions or removals.");
+  }
+
+  async function restoreVersion(versionId: string) {
+    setBusy(true);
+    setAutosaveState("saving");
+    const res = await fetch("/api/versions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ versionId })
+    });
+    await refresh();
+    setBusy(false);
+    flashAutosave(res.ok);
+    setNotice(res.ok ? "Restored — your previous resume was saved as its own version first." : "Could not restore that version.");
+  }
+
+  async function saveNamedResume(name: string) {
+    setBusy(true);
+    const res = await fetch("/api/versions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "pin", name })
+    });
+    await refresh();
+    setBusy(false);
+    const data = await res.json().catch(() => ({}));
+    setNotice(res.ok ? `Saved as "${name}" — switch back to it anytime.` : data.error || "Could not save that resume.");
+  }
+
+  async function switchNamedResume(versionId: string) {
+    setBusy(true);
+    setAutosaveState("saving");
+    const res = await fetch("/api/versions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ versionId })
+    });
+    await refresh();
+    setBusy(false);
+    flashAutosave(res.ok);
+    setNotice(res.ok ? "Switched resumes — your previous one is saved and unchanged." : "Could not switch to that resume.");
+  }
+
+  async function renameNamedResume(versionId: string, name: string) {
+    const res = await fetch("/api/versions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "rename", versionId, name })
+    });
+    await refresh();
+    setNotice(res.ok ? "Renamed." : "Could not rename that resume.");
+  }
+
+  async function deleteNamedResume(versionId: string) {
+    setBusy(true);
+    const res = await fetch("/api/versions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", versionId })
+    });
+    await refresh();
+    setBusy(false);
+    setNotice(res.ok ? "Deleted." : "Could not delete that resume.");
+  }
+
+  async function loadShareStatus() {
+    const data = await fetch("/api/share").then((r) => r.json()).catch(() => ({ active: false }));
+    setShareStatus(data);
+  }
+
+  async function createShareLink() {
+    setBusy(true);
+    const res = await fetch("/api/share", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "create" })
+    });
+    const data = await res.json().catch(() => ({ active: false }));
+    setShareStatus(data);
+    setBusy(false);
+    setNotice(res.ok ? "Link ready — copy it and send it to whoever you want reviewing this." : "Could not create a share link.");
+  }
+
+  async function revokeShareLink() {
+    setBusy(true);
+    const res = await fetch("/api/share", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "revoke" })
+    });
+    setShareStatus({ active: false });
+    setBusy(false);
+    setNotice(res.ok ? "Sharing stopped — that link no longer works." : "Could not stop sharing.");
+  }
+
   async function onUpload(file: File) {
     const form = new FormData();
     form.append("file", file);
-    const data = await fetch("/api/parse", { method: "POST", body: form }).then((r) => r.json());
+    const res = await fetch("/api/parse", { method: "POST", body: form });
+    const data = await res.json().catch(() => ({ error: "Could not read that file — try a different one, or paste the resume text directly." }));
     if (data.text) {
       setResumeText(data.text);
-      setNotice("File parsed. Review the text, then save the vault.");
+      const stats = resumeImportStats(data.text);
+      // "File parsed" used to fire unconditionally, even when extraction
+      // yielded almost nothing readable (e.g. a scanned/image-only PDF —
+      // pdf-parse has no OCR, so it silently returns whatever stray text
+      // metadata happened to be embedded). The char-count save gate below
+      // already caught this before anything bad could be saved, but the
+      // notice itself was actively misleading in the meantime.
+      if (stats.chars < 80) {
+        setNotice(
+          `Only ${stats.chars} character${stats.chars === 1 ? "" : "s"} of readable text came out of that file — it may be a scanned or image-based PDF, which we can't read text from yet. Try pasting the resume text directly instead.`
+        );
+      } else if (!stats.hasName && !stats.hasEmail) {
+        setNotice("File parsed, but we couldn't confidently find a name or email in it — check the extracted text below before saving.");
+      } else {
+        setNotice("File parsed. Review the text, then save the vault.");
+      }
     } else setNotice(data.error || "Could not read that file.");
+  }
+
+  async function uploadPhoto(file: File) {
+    setBusy(true);
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch("/api/photo", { method: "POST", body: form });
+    const data = await res.json().catch(() => ({ error: "Could not upload that photo." }));
+    if (res.ok) {
+      await refresh();
+      setNotice("Photo added — it'll show on templates that support one.");
+    } else {
+      setNotice(data.error || "Could not upload that photo.");
+    }
+    setBusy(false);
+  }
+
+  async function removePhoto() {
+    setBusy(true);
+    await fetch("/api/photo", { method: "DELETE" });
+    await refresh();
+    setBusy(false);
+    setNotice("Photo removed.");
   }
 
   async function analyzeJob() {
@@ -520,13 +968,13 @@ export default function CandidateApp() {
     setNotice("Apply pack downloaded — resume DOCX, 3-line cover, LinkedIn note, referral checklist.");
   }
 
-  async function downloadDocx(kind: "resume" | "cover") {
+  async function downloadDocx(kind: "resume" | "cover", templateId?: string) {
     const text = kind === "resume" ? draft || resumePreview || kit?.tailoredResume : kit?.shortCover || kit?.coverLetter;
     if (!text) return;
     const res = await fetch("/api/export-docx", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind, text })
+      body: JSON.stringify({ kind, text, templateId })
     });
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
@@ -536,12 +984,47 @@ export default function CandidateApp() {
     a.click();
   }
 
+  async function generateAiText(kind: "cover_letter" | "summary") {
+    setAiBusy(true);
+    setAiError("");
+    const res = await fetch("/api/ai-generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind, prompt: aiPrompt || undefined })
+    });
+    const data = await res.json();
+    setAiBusy(false);
+    if (!res.ok) {
+      setAiError(data.error || "AI generation failed.");
+      return;
+    }
+    if (kind === "cover_letter") setAiCoverLetter(data.text);
+    else setAiSummary(data.text);
+  }
+
+  function emailToRecruiter() {
+    if (!recruiterEmail.trim()) {
+      setNotice("Add the recruiter's email address first.");
+      return;
+    }
+    const subject = recruiterEmailSubject || `${ws?.profile.name || "Application"} — ${job?.title || "Application"}`;
+    const coverText = aiCoverLetter || kit?.shortCover || kit?.coverLetter || "";
+    const body = [
+      coverText,
+      "",
+      "— Resume attached separately. Download it from the Application kit step (DOCX or ZIP apply pack) and attach it here before sending. —"
+    ].join("\n");
+    const mailto = `mailto:${encodeURIComponent(recruiterEmail.trim())}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+    setNotice("Opening your email app — attach the downloaded resume before sending.");
+  }
+
   async function runRewrite() {
     setBusy(true);
     const data = await fetch("/api/rewrite", { method: "POST" }).then((r) => r.json());
     setBusy(false);
     setRewrites(data.rewrites || []);
-    setNotice(data.notice || "Evidence-bound rewrites ready — review before accepting.");
+    setNotice(data.notice || "Rewrites based on your verified experience are ready — review before accepting.");
   }
 
   async function runInterview() {
@@ -584,6 +1067,12 @@ export default function CandidateApp() {
       "",
       "## LinkedIn note",
       kit.linkedinNote,
+      "",
+      "## LinkedIn headline",
+      kit.linkedinHeadline,
+      "",
+      "## LinkedIn About section",
+      kit.linkedinAbout,
       "",
       "## WhatsApp note",
       kit.whatsappNote,
@@ -629,13 +1118,61 @@ export default function CandidateApp() {
     return days >= 3;
   });
   const vaultHealth = ws ? vaultCompleteness(ws.vault) : null;
+  // Live preview of unsaved edits — reparses the debounced textarea content
+  // the same way an actual Save would, so health/top-fixes reflect what the
+  // candidate is typing right now rather than only the last saved version.
+  const draftProfile = useMemo(() => {
+    if (!ws) return null;
+    if (liveResumeText === ws.profile.rawResumeText) return ws.profile;
+    return parseResume(ws.profile.id, liveResumeText);
+  }, [ws, liveResumeText]);
+  const isLivePreview = Boolean(ws && draftProfile && draftProfile !== ws.profile);
+  const resumeHealth = useMemo(() => (ws && draftProfile ? computeResumeHealth(draftProfile, ws.vault, fit) : null), [ws, draftProfile, fit]);
+  const topFixes = useMemo(() => (ws && draftProfile ? computeTopFixes(draftProfile, ws.vault, fit) : []), [ws, draftProfile, fit]);
+  const recruiterView = useMemo(
+    () => (ws ? computeRecruiterView(ws.profile, ws.vault, job || undefined) : null),
+    [ws, job]
+  );
+  // Deliberately built from the saved profile (ws.profile), not the live
+  // draftProfile above — this is meant to show what's actually out there
+  // today, not a preview of unsaved edits.
+  const candidateBrief = useMemo(() => (ws ? buildCandidateBrief(ws.profile, job, fit) : ""), [ws, job, fit]);
+  const skillGroups = useMemo(() => (ws ? categorizeSkills(ws.profile.extractedSkills) : []), [ws]);
+  const rankedProjects = useMemo(() => (ws && job ? rankProjectsByRelevance(ws.profile, job) : []), [ws, job]);
+  const bulletFormulaResults = useMemo(() => (ws ? checkBulletFormulas(ws.profile) : []), [ws]);
+  const achievementCandidates = useMemo(
+    () => unquantifiedBullets(bulletFormulaResults).filter((b) => !skippedAchievements[b]),
+    [bulletFormulaResults, skippedAchievements]
+  );
   const showOnboardingBanner =
     !onboardingDismissed && (step === "vault" || step === "job" || step === "fit") && progress < 55;
   const current = STEPS.find((s) => s.id === step)!;
 
+  const openFindings = findings.filter((f) => f.resolution === "open").length;
+  const pendingSuggestions = suggestions.filter((s) => s.status === "pending" && !s.blocked).length;
+  const readinessSteps: ReadinessStep[] = [
+    { label: "Career profile", done: done.vault },
+    { label: "Target job", done: done.job },
+    { label: "Fit analysis", done: done.fit },
+    { label: "Resume tailoring", done: done.tailor },
+    { label: "Verification", done: done.tailor && openFindings === 0 },
+    { label: "Application kit", done: done.kit }
+  ];
+  const nextBestAction = computeNextBestAction({
+    hasProfile: Boolean(ws?.profile.rawResumeText?.trim()),
+    hasJob: Boolean(job),
+    hasFit: Boolean(fit),
+    topGap: fit?.coreGaps?.[0] || null,
+    pendingSuggestions,
+    openFindings,
+    hasKit: Boolean(kit),
+    followUp: followUpDue.length ? { company: followUpDue[0].company, jobTitle: followUpDue[0].jobTitle } : null
+  });
+
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      {mobileNavOpen && <div className="sidebar-backdrop" onClick={() => setMobileNavOpen(false)} />}
+      <aside className={`sidebar ${mobileNavOpen ? "sidebar-open" : ""}`}>
         <Link href="/" className="brand" style={{ textDecoration: "none", color: "inherit" }}>
           <div className="logo">👤</div>
           <div>
@@ -643,28 +1180,54 @@ export default function CandidateApp() {
             <span>Job Application Copilot</span>
           </div>
         </Link>
-        {STEPS.map((s) => (
-          <button key={s.id} className={`nav-btn ${step === s.id ? "active" : ""}`} onClick={() => setStep(s.id)}>
-            <span className={`step-dot ${done[s.id] ? "ok" : ""}`}>{s.n}</span> {s.title}
-          </button>
-        ))}
+        {NAV_GROUPS.map((group) => {
+          const collapsed = collapsedGroups.has(group.id);
+          return (
+            <div className="nav-group" key={group.id}>
+              <button type="button" className="nav-group-header" onClick={() => toggleGroup(group.id)} aria-expanded={!collapsed}>
+                <span>{group.label}</span>
+                <span className="nav-group-chevron">{collapsed ? "▸" : "▾"}</span>
+              </button>
+              {!collapsed &&
+                group.steps.map((id) => {
+                  const s = STEPS.find((st) => st.id === id)!;
+                  return (
+                    <button key={s.id} className={`nav-btn ${step === s.id ? "active" : ""}`} onClick={() => goToStep(s.id)}>
+                      <span className={`step-dot ${done[s.id] ? "ok" : ""}`}>{s.n}</span> {s.title}
+                    </button>
+                  );
+                })}
+            </div>
+          );
+        })}
         <Link href="/agency" className="sidebar-foot" style={{ textDecoration: "none" }}>
           Switch to agency desk →
         </Link>
       </aside>
 
-      <main className="main">
+      <main className="main" data-step={step}>
         <header className="topbar">
-          <div>
-            <div className="label">Step {current.n} of {STEPS.length}</div>
-            <h2>{current.title}</h2>
-            <p className="muted">{current.help}</p>
-            <div className="progress" style={{ marginTop: 10, maxWidth: 280 }}>
-              <span style={{ width: `${progress}%` }} />
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <button
+              type="button"
+              className="hamburger-btn"
+              onClick={() => setMobileNavOpen((v) => !v)}
+              aria-label="Toggle navigation"
+              aria-expanded={mobileNavOpen}
+            >
+              ☰
+            </button>
+            <div>
+              <div className="label">Step {current.n} of {STEPS.length}</div>
+              <h2>{current.title}</h2>
+              <p className="muted">{current.help}</p>
+              <div style={{ marginTop: 10, maxWidth: 320 }}>
+                <ReadinessScore steps={readinessSteps} />
+              </div>
             </div>
-            <p className="muted">Journey {progress}% complete</p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <AutosaveStatus state={autosaveState} />
             <AuthBar />
             <button className="btn-ghost" onClick={loadDemo}>
               Load sample resume
@@ -677,6 +1240,9 @@ export default function CandidateApp() {
             </button>
           </div>
         </header>
+
+        <NextBestAction action={nextBestAction} onGo={setStep} />
+        {busy && <LoadingProgress label={BUSY_LABELS[step] || "Working…"} />}
 
         {notice && (
           <div className="banner">
@@ -701,9 +1267,68 @@ export default function CandidateApp() {
             <h3>1. Import your resume</h3>
             <p className="muted">Your vault is the source of truth — we only store what you paste or upload. Nothing is invented.</p>
 
+            {!welcomeDismissed && (
+              <div className="import-panel" style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <strong>Let&apos;s build a CV that helps you get noticed.</strong>
+                  <button type="button" className="banner-dismiss" onClick={dismissWelcome} aria-label="Dismiss welcome">
+                    ×
+                  </button>
+                </div>
+                <p className="muted" style={{ marginTop: 4 }}>What are you trying to achieve?</p>
+                <div className="goal-chips">
+                  {GOAL_OPTIONS.map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      className={`goal-chip ${goalChoice === g ? "active" : ""}`}
+                      onClick={() => {
+                        setGoalChoice(g);
+                        if (g !== "I'm not sure") setGoals(g);
+                      }}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+                {goalChoice === "I'm not sure" && (
+                  <p className="muted" style={{ marginTop: 6 }}>
+                    No problem — most people here are aiming for &ldquo;Get a new job.&rdquo; Pick that for now; you can change it any time,
+                    and nothing below depends on getting this exactly right.
+                  </p>
+                )}
+                <p className="muted" style={{ marginTop: 10 }}>Do you already have a resume?</p>
+                <div className="entry-path-grid">
+                  <button
+                    type="button"
+                    className={`entry-path ${importMode !== "guided" ? "active" : ""}`}
+                    onClick={() => {
+                      setImportMode("paste");
+                      dismissWelcome();
+                    }}
+                  >
+                    <strong>Yes — I have one</strong>
+                    <span>Paste text, upload a file, or paste your LinkedIn profile.</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`entry-path ${importMode === "guided" ? "active" : ""}`}
+                    onClick={() => {
+                      setImportMode("guided");
+                      dismissWelcome();
+                    }}
+                  >
+                    <strong>No — build it step by step</strong>
+                    <span>Answer a few short questions; we&apos;ll write the resume text for you.</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="import-tabs" role="tablist" aria-label="Import method">
               {(
                 [
+                  ["guided", "Build step-by-step"],
                   ["paste", "Paste text"],
                   ["file", "Upload file"],
                   ["linkedin", "LinkedIn paste"],
@@ -722,6 +1347,20 @@ export default function CandidateApp() {
                 </button>
               ))}
             </div>
+
+            {importMode === "guided" && (
+              <div className="import-panel">
+                <GuidedProfileWizard
+                  onComplete={(text, meta) => {
+                    setResumeText(text);
+                    if (meta.targetRole) setTargetRole(meta.targetRole);
+                    if (meta.goals) setGoals(meta.goals);
+                    setImportMode("paste");
+                    setNotice("Resume text built from your answers — review it below, then save.");
+                  }}
+                />
+              </div>
+            )}
 
             {importMode === "sample" && (
               <div className="import-panel">
@@ -766,77 +1405,134 @@ export default function CandidateApp() {
               </div>
             )}
 
-            <div className="form-grid" style={{ marginTop: 12 }}>
-              <div>
-                <label className="form-label">Target role (optional)</label>
-                <input className="form-control" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="e.g. AI/ML Intern" />
-              </div>
-              <div className="span-3">
-                <label className="form-label">Career goals</label>
-                <input className="form-control" value={goals} onChange={(e) => setGoals(e.target.value)} placeholder="e.g. First internship in applied ML" />
-              </div>
-              <div className="span-3">
-                <div className="form-label-row">
-                  <label className="form-label">Resume text</label>
-                  {resumeStats.chars > 0 && (
-                    <span className="resume-stats">
-                      {resumeStats.lines} lines · {resumeStats.chars.toLocaleString()} chars
-                      {resumeStats.sections.length > 0 && ` · ${resumeStats.sections.length} section hints`}
-                    </span>
-                  )}
-                </div>
-                <textarea
-                  className="form-control resume-editor"
-                  rows={16}
-                  value={resumeText}
-                  onChange={(e) => setResumeText(e.target.value)}
-                  placeholder={"NAME: Your Name\nEMAIL: you@example.com\nPHONE: +1 555 0100\n\nSUMMARY\n...\n\nWORK EXPERIENCE\nCompany | Role | Dates\n- Bullet with evidence\n\nSKILLS\nPython, SQL, ..."}
-                />
-                {resumeStats.chars > 0 && !vaultReadyToSave && (
-                  <p className="hint warn">Add more resume content (at least ~80 characters) before saving.</p>
-                )}
-                {resumeStats.chars > 0 && (
-                  <div className="checklist-inline">
-                    <span className={resumeStats.hasName ? "ok" : "miss"}>Name</span>
-                    <span className={resumeStats.hasEmail ? "ok" : "miss"}>Email</span>
-                    <span className={resumeStats.hasPhone ? "ok" : "miss"}>Phone</span>
-                    <span className={resumeStats.sections.length >= 2 ? "ok" : "miss"}>Sections</span>
+            {importMode !== "guided" && (
+              <>
+                <div className="form-grid" style={{ marginTop: 12 }}>
+                  <div>
+                    <label className="form-label">Target role (optional)</label>
+                    <input className="form-control" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="e.g. AI/ML Intern" />
                   </div>
-                )}
-              </div>
-            </div>
-            <div className="vault-actions">
-              <button className="btn-primary" disabled={busy || !vaultReadyToSave} onClick={importVault}>
-                Save Career Vault
-              </button>
-              {!vaultReadyToSave && <p className="muted">Paste or upload your resume to continue.</p>}
-            </div>
+                  <div className="span-3">
+                    <label className="form-label">Career goals</label>
+                    <input className="form-control" value={goals} onChange={(e) => setGoals(e.target.value)} placeholder="e.g. First internship in applied ML" />
+                  </div>
+                  <div className="span-3">
+                    <div className="form-label-row">
+                      <label className="form-label">Resume text</label>
+                      {resumeStats.chars > 0 && (
+                        <span className="resume-stats">
+                          {resumeStats.lines} lines · {resumeStats.chars.toLocaleString()} chars
+                          {resumeStats.sections.length > 0 && ` · ${resumeStats.sections.length} section hints`}
+                        </span>
+                      )}
+                    </div>
+                    <textarea
+                      className="form-control resume-editor"
+                      rows={16}
+                      value={resumeText}
+                      onChange={(e) => setResumeText(e.target.value)}
+                      placeholder={"NAME: Your Name\nEMAIL: you@example.com\nPHONE: +1 555 0100\n\nSUMMARY\n...\n\nWORK EXPERIENCE\nCompany | Role | Dates\n- Bullet with evidence\n\nSKILLS\nPython, SQL, ..."}
+                    />
+                    {resumeStats.chars > 0 && !vaultReadyToSave && (
+                      <p className="hint warn">Add more resume content (at least ~80 characters) before saving.</p>
+                    )}
+                    {resumeStats.chars > 0 && (
+                      <div className="checklist-inline">
+                        <span className={resumeStats.hasName ? "ok" : "miss"}>Name</span>
+                        <span className={resumeStats.hasEmail ? "ok" : "miss"}>Email</span>
+                        <span className={resumeStats.hasPhone ? "ok" : "miss"}>Phone</span>
+                        <span className={resumeStats.sections.length >= 2 ? "ok" : "miss"}>Sections</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="vault-actions">
+                  <button className="btn-primary" disabled={busy || !vaultReadyToSave} onClick={importVault}>
+                    Save Career Vault
+                  </button>
+                  {!vaultReadyToSave && <p className="muted">Paste or upload your resume to continue.</p>}
+                </div>
+              </>
+            )}
             {ws && vaultHealth && (
               <div style={{ marginTop: 16 }}>
-                <h3>
-                  Vault completeness {vaultHealth.percent}% ({vaultHealth.approvedCount} approved / {vaultHealth.total} items)
-                </h3>
-                <div className="progress" style={{ maxWidth: 360, margin: "8px 0 12px" }}>
-                  <span style={{ width: `${vaultHealth.percent}%` }} />
-                </div>
-                <p className="muted">
-                  Families present: {vaultHealth.present.join(", ") || "none"}. Missing: {vaultHealth.missing.join(", ") || "none"}.
-                  Archive outdated items. Generation uses approved evidence only — we never invent replacements.
-                </p>
+                {isLivePreview && (
+                  <p className="muted" style={{ marginBottom: 8 }}>
+                    ✨ Previewing your unsaved edits — this updates as you type. Save Career Vault to keep them.
+                  </p>
+                )}
+                <TopFixesPanel fixes={topFixes} />
+                <HealthCard
+                  percent={vaultHealth.percent}
+                  approvedCount={vaultHealth.approvedCount}
+                  total={vaultHealth.total}
+                  present={vaultHealth.present}
+                  missing={vaultHealth.missing}
+                />
+                {resumeHealth && <ResumeHealthDashboard health={resumeHealth} />}
+                <SkillsOptimizationPanel groups={skillGroups} busy={busy} onApply={applyCategorizedSkills} />
+                <NamedResumesPanel
+                  versions={ws.versions || []}
+                  busy={busy}
+                  onSave={saveNamedResume}
+                  onSwitch={switchNamedResume}
+                  onRename={renameNamedResume}
+                  onDelete={deleteNamedResume}
+                />
+                <VersionHistoryPanel
+                  versions={ws.versions || []}
+                  currentText={ws.profile.rawResumeText}
+                  busy={busy}
+                  onRestore={restoreVersion}
+                />
+                <SharePanel
+                  active={shareStatus.active}
+                  url={shareStatus.url}
+                  expiresAt={shareStatus.expiresAt}
+                  busy={busy}
+                  onCreate={createShareLink}
+                  onRevoke={revokeShareLink}
+                />
+                <PhotoUploadPanel
+                  photoDataUrl={ws.profile.photoDataUrl}
+                  busy={busy}
+                  onUpload={uploadPhoto}
+                  onRemove={removePhoto}
+                />
                 {ws.vault.evidence.slice(0, 16).map((e) => (
-                  <div key={e.id} className="chain-item" style={{ marginBottom: 8 }}>
-                    <span className={`badge ${e.verificationStatus === "approved" ? "ok" : "mid"}`}>{e.type}</span> {e.content.slice(0, 140)}
-                    <div className="muted">
-                      {e.source} · {e.verificationStatus}
+                  <div key={e.id} className="chain-item vault-item">
+                    <div className="vault-item-main">
+                      <span className={`badge ${e.verificationStatus === "approved" ? "ok" : "mid"}`}>{e.type}</span>{" "}
+                      <span className="vault-item-text">{e.content.slice(0, 140)}</span>
+                      <div className="muted">
+                        {e.source} · {e.verificationStatus}
+                      </div>
                     </div>
                     <button className="chip" onClick={() => setEvidence(e.id, e.verificationStatus === "archived" ? "approved" : "archived")}>
                       {e.verificationStatus === "archived" ? "Restore" : "Archive"}
                     </button>
                   </div>
                 ))}
-                <button className="btn-ghost" onClick={deleteMyData} style={{ marginTop: 8 }}>
-                  Delete my vault
-                </button>
+                {deleteConfirmArmed ? (
+                  <div className="banner" style={{ marginTop: 8, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+                    <span>
+                      This permanently deletes your entire vault — resume, versions, evidence, and named resumes. This
+                      cannot be undone.
+                    </span>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button className="btn-ghost" onClick={() => setDeleteConfirmArmed(false)}>
+                        Cancel
+                      </button>
+                      <button className="btn-primary" onClick={deleteMyData}>
+                        Yes, delete everything
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button className="btn-ghost" onClick={() => setDeleteConfirmArmed(true)} style={{ marginTop: 8 }}>
+                    Delete my vault
+                  </button>
+                )}
               </div>
             )}
           </section>
@@ -974,17 +1670,20 @@ export default function CandidateApp() {
               </div>
             )}
             {fit.applyReadiness && (
-              <div className={`banner ${fit.applyReadiness.level === "apply_now" ? "" : ""}`}>
+              <div
+                className={`banner banner-${
+                  fit.applyReadiness.level === "apply_now" ? "green" : fit.applyReadiness.level === "fix_basics" ? "red" : "yellow"
+                }`}
+              >
                 <div>
                   <strong>
-                    Apply readiness:{" "}
                     {fit.applyReadiness.level === "apply_now"
-                      ? "Ready to tailor & apply"
+                      ? "🟢 Strong Fit — Apply"
                       : fit.applyReadiness.level === "tailor_first"
-                        ? "Tailor first"
+                        ? "🟡 Possible Fit — Tailor First"
                         : fit.applyReadiness.level === "stretch_role"
-                          ? "Possible stretch role"
-                          : "Fix basics first"}
+                          ? "🟡 Stretch Fit — Needs Improvement"
+                          : "🔴 Not Aligned Yet — Fix Basics First"}
                   </strong>
                   <p className="muted" style={{ marginTop: 6 }}>
                     {fit.applyReadiness.headline}
@@ -997,6 +1696,14 @@ export default function CandidateApp() {
                 </div>
               </div>
             )}
+            <p className="muted" style={{ marginBottom: 12 }}>
+              In plain terms: <strong>{fit.score}/100</strong> is how closely your proven skills match this job. The{" "}
+              <strong>
+                {fit.coreMatches?.length || 0}/{fit.jdInsight?.coreSkillCount || fit.explicitRequirements?.length || "—"}
+              </strong>{" "}
+              is how many of the job&apos;s must-have skills you can actually back up. The band turns both into one honest sentence
+              below.
+            </p>
             <div className="metrics">
               <div className="metric">
                 <span>FIT ESTIMATE</span>
@@ -1029,6 +1736,35 @@ export default function CandidateApp() {
               </div>
             )}
             {fit.optimizer && <OptimizerReportPanel report={fit.optimizer} />}
+            {fit.optimizer && (
+              <details className="opt-section" style={{ marginTop: 12 }}>
+                <summary>Missing / weak keywords — confirm before adding</summary>
+                <MissingKeywordPanel
+                  gaps={fit.optimizer.skillGapPlan.filter((g) => g.level !== "strong")}
+                  resolutions={keywordResolutions}
+                  busy={busy}
+                  onConfirm={confirmMissingKeyword}
+                />
+              </details>
+            )}
+            {recruiterView && (
+              <details className="opt-section" style={{ marginTop: 12 }}>
+                <summary>Recruiter View — the 10-second test</summary>
+                <RecruiterViewPanel view={recruiterView} />
+              </details>
+            )}
+            {ws && (
+              <details className="opt-section" style={{ marginTop: 12 }}>
+                <summary>Your client brief preview — what agencies and recruiters see</summary>
+                <CandidateBriefPanel brief={candidateBrief} />
+              </details>
+            )}
+            {rankedProjects.length > 0 && (
+              <details className="opt-section" style={{ marginTop: 12 }}>
+                <summary>Project Intelligence — which projects to lead with</summary>
+                <ProjectIntelligencePanel ranked={rankedProjects} />
+              </details>
+            )}
             <div className="chips" style={{ marginTop: 16 }}>
               <button className="btn-primary" type="button" disabled={busy} onClick={buildOptimizedCv}>
                 Build optimized CV (tailor → verify → kit)
@@ -1054,24 +1790,35 @@ export default function CandidateApp() {
                 {a.detail}
               </p>
             ))}
-            <h3>What actually moves this score</h3>
-            {(fit.scoreMovers || []).map((m) => (
-              <p key={m.title}>
-                <strong>{m.title}.</strong> {m.detail}
-              </p>
-            ))}
-            <div className="grid-2" style={{ marginTop: 12 }}>
-              {Object.entries(fit.subScores).map(([k, v]) => (
-                <div key={k}>
-                  <div className="muted">{k}</div>
-                  <div className="progress">
-                    <span style={{ width: `${v}%` }} />
-                  </div>
-                  <strong>{v}</strong>
-                </div>
+            <details className="opt-section" style={{ marginTop: 12 }}>
+              <summary>See how this score was calculated</summary>
+              <h3>What actually moves this score</h3>
+              {(fit.scoreMovers || []).map((m) => (
+                <p key={m.title}>
+                  <strong>{m.title}.</strong> {m.detail}
+                </p>
               ))}
-            </div>
-            <p style={{ marginTop: 12 }}>{fit.explanation}</p>
+              <div className="grid-2" style={{ marginTop: 12 }}>
+                {Object.entries(fit.subScores).map(([k, v]) => {
+                  const info = SUBSCORE_INFO[k] || { label: k, hint: "" };
+                  return (
+                    <div key={k}>
+                      <div className="muted">{info.label}</div>
+                      <div className="progress">
+                        <span style={{ width: `${v}%` }} />
+                      </div>
+                      <strong>{v}</strong>
+                      {info.hint && (
+                        <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                          {info.hint}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <p style={{ marginTop: 12 }}>{fit.explanation}</p>
+            </details>
             <h3>Core skills you prove</h3>
             {(fit.coreMatches || fit.matches || []).slice(0, 16).map((m) => (
               <span className="tag" key={m}>
@@ -1095,8 +1842,10 @@ export default function CandidateApp() {
                 <pre className="pre">{job.responsibilities.slice(0, 8).join("\n")}</pre>
               </details>
             )}
-            <h3>Parser preview</h3>
-            <pre className="pre">{fit.parserPreview}</pre>
+            <details style={{ marginTop: 12 }}>
+              <summary className="muted" style={{ cursor: "pointer" }}>Technical parser preview (advanced)</summary>
+              <pre className="pre">{fit.parserPreview}</pre>
+            </details>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
               <button className="btn-primary" onClick={runTailor}>
                 {fit.applyReadiness?.level === "apply_now" ? "Tailor resume & apply" : "Create tailoring suggestions"}
@@ -1123,7 +1872,8 @@ export default function CandidateApp() {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                   <span>
-                    {s.blocked ? "⛔ Blocked" : `Confidence ${s.confidence}%`} · evidence {s.evidenceIds.join(", ") || "none"}
+                    {s.blocked ? "🔴 Cannot add — no supporting evidence" : `${confidenceLabel(s.confidence)} confidence`}
+                    {!s.blocked && s.evidenceIds.length > 0 && ` · based on ${s.evidenceIds.length} vault item${s.evidenceIds.length > 1 ? "s" : ""}`}
                   </span>
                   <span className={`badge ${s.blocked ? "no" : s.status === "accepted" ? "ok" : s.status === "rejected" ? "mid" : "mid"}`}>
                     {s.blocked ? "blocked" : s.status}
@@ -1179,7 +1929,7 @@ export default function CandidateApp() {
               </article>
             ))}
             <h3>Tailored resume preview</h3>
-            <p className="muted">Accept suggestions above, then edit the full draft. Try evidence-bound rewrites (no LLM, no new facts).</p>
+            <p className="muted">Accept suggestions above, then edit the full draft. Try rewrites based on your verified experience (no LLM, no new facts).</p>
             <button className="chip" type="button" disabled={busy} onClick={runRewrite}>
               Suggest bullet rewrites
             </button>
@@ -1207,11 +1957,28 @@ export default function CandidateApp() {
                 </div>
               </article>
             ))}
+            {bulletFormulaResults.length > 0 && <h3>Bullet formula check — Action + Technology + Scope + Result</h3>}
+            <BulletFormulaPanel results={bulletFormulaResults} />
+
+            {achievementCandidates.length > 0 && <h3>Achievement Builder — quantify it yourself</h3>}
+            <AchievementBuilderPanel
+              bullets={achievementCandidates}
+              drafts={achievementDrafts}
+              applied={achievementApplied}
+              onChange={updateAchievementDraft}
+              onApply={applyAchievement}
+              onSkip={skipAchievement}
+            />
+
             <h3>Edit tailored draft</h3>
-            <p className="muted">Accept suggestions above, then edit the full draft. Try evidence-bound rewrites (no LLM, no new facts).</p>
-            <ResumeDraftPreview text={draft || resumePreview} />
-            <textarea className="form-control resume-draft-editor" rows={12} value={draft || resumePreview} onChange={(e) => setDraft(e.target.value)} />
+            <p className="muted">
+              Edit any line, add a line to a section, or remove one — every change stays in this draft, nothing is invented.
+            </p>
+            <ResumeSectionEditor text={draft || resumePreview} onChange={updateDraftWithHistory} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              <button className="chip" type="button" disabled={draftHistory.length === 0} onClick={undoDraft}>
+                ↩ Undo last change {draftHistory.length > 0 && `(${draftHistory.length})`}
+              </button>
               <button className="chip" type="button" onClick={() => setDraft(resumePreview)}>
                 Reset from accepted suggestions
               </button>
@@ -1257,11 +2024,115 @@ export default function CandidateApp() {
                 </div>
               </article>
             ))}
+
+            <h3>Resume Integrity Check</h3>
+            <p className="muted">
+              Before you export, quickly confirm these claims are still accurate — the kind of specific numbers and named
+              tools a recruiter is most likely to ask about in an interview. Nothing is changed until you choose.
+            </p>
+            {integrityClaims.length === 0 ? (
+              <p className="muted">No specific counts, metrics, or named integrations found to double-check.</p>
+            ) : (
+              <>
+                <p className="muted">
+                  {Object.keys(integrityResolutions).filter((k) => integrityClaims.some((c) => c.text === k)).length} of{" "}
+                  {integrityClaims.length} reviewed
+                </p>
+                {integrityClaims.map((c) => {
+                  const resolution = integrityResolutions[c.text];
+                  return (
+                    <article className={`chain-item ${resolution === "removed" ? "" : resolution ? "green" : "yellow"}`} key={c.text}>
+                      <span className="badge mid">{INTEGRITY_KIND_LABELS[c.kind]}</span> {c.text}
+                      {resolution && (
+                        <p className="muted" style={{ marginTop: 6 }}>
+                          {resolution === "confirmed" && "✅ Confirmed accurate"}
+                          {resolution === "removed" && "❌ Removed from the draft"}
+                          {resolution === "edited" && "✏️ Edited"}
+                        </p>
+                      )}
+                      {editingIntegrityClaim === c.text ? (
+                        <div style={{ marginTop: 8 }}>
+                          <textarea
+                            className="form-control"
+                            rows={2}
+                            value={integrityEditValue}
+                            onChange={(e) => setIntegrityEditValue(e.target.value)}
+                          />
+                          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                            <button className="chip" type="button" onClick={() => saveIntegrityEdit(c.text)}>
+                              Save
+                            </button>
+                            <button className="chip" type="button" onClick={() => setEditingIntegrityClaim(null)}>
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        !resolution && (
+                          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                            <button className="chip" type="button" onClick={() => resolveIntegrityClaim(c.text, "confirmed")}>
+                              ✅ Confirm
+                            </button>
+                            <button className="chip" type="button" onClick={() => startEditIntegrityClaim(c.text)}>
+                              ✏️ Edit
+                            </button>
+                            <button className="chip" type="button" onClick={() => resolveIntegrityClaim(c.text, "removed")}>
+                              ❌ Remove
+                            </button>
+                          </div>
+                        )
+                      )}
+                    </article>
+                  );
+                })}
+              </>
+            )}
+
+            <h3>Generic Language Check</h3>
+            <p className="muted">
+              Resume clichés don&apos;t prove anything a recruiter can act on. These lines use generic phrasing — consider
+              replacing them with a specific, evidenced result instead.
+            </p>
+            {genericPhrases.length === 0 ? (
+              <p className="muted">No generic filler phrases found.</p>
+            ) : (
+              genericPhrases.map((f) => {
+                const key = `${f.phrase}::${f.line}`;
+                const resolution = genericPhraseResolutions[key];
+                return (
+                  <article className={`chain-item ${resolution === "removed" ? "green" : resolution ? "" : "yellow"}`} key={key}>
+                    <span className="badge mid">&ldquo;{f.phrase}&rdquo;</span> {f.line}
+                    <p className="muted" style={{ marginTop: 6 }}>
+                      {f.note}
+                    </p>
+                    {resolution && (
+                      <p className="muted" style={{ marginTop: 6 }}>
+                        {resolution === "kept" && "Kept as-is"}
+                        {resolution === "removed" && "✅ Phrase removed from the draft"}
+                      </p>
+                    )}
+                    {!resolution && (
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <button className="chip" type="button" onClick={() => resolveGenericPhrase(f, "removed")}>
+                          Remove phrase
+                        </button>
+                        <button className="chip" type="button" onClick={() => resolveGenericPhrase(f, "kept")}>
+                          Keep as-is
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                );
+              })
+            )}
+
             <h3>Edit export resume</h3>
-            <p className="muted">Fix lines here, re-scan, then export or build the application kit.</p>
-            <ResumeDraftPreview text={draft || resumePreview} />
-            <textarea className="form-control resume-draft-editor" rows={14} value={draft || resumePreview} onChange={(e) => setDraft(e.target.value)} />
+            <p className="muted">Edit, add, or remove a line here, then re-scan before you export or build the kit.</p>
+            <ResumeSectionEditor text={draft || resumePreview} onChange={updateDraftWithHistory} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              <button className="chip" type="button" disabled={draftHistory.length === 0} onClick={undoDraft}>
+                ↩ Undo last change {draftHistory.length > 0 && `(${draftHistory.length})`}
+              </button>
               <button className="chip" type="button" disabled={busy} onClick={() => rescanDraft(draft || resumePreview)}>
                 Re-scan draft
               </button>
@@ -1295,7 +2166,7 @@ export default function CandidateApp() {
             <h3>6. Application kit</h3>
             {!kit && (
               <>
-                <p className="muted">Build your evidence-bound kit: tailored resume, cover letter, recruiter email, and exports.</p>
+                <p className="muted">Build your application kit: tailored resume, cover letter, recruiter email, and exports — all based on your verified experience.</p>
                 <button className="btn-primary" disabled={busy} onClick={buildOptimizedCv}>
                   Build optimized CV & kit
                 </button>
@@ -1306,7 +2177,7 @@ export default function CandidateApp() {
             )}
             {kit && (
               <>
-                <p className="muted">Copy beats download in India/WhatsApp-first hiring. Every block is evidence-bound.</p>
+                <p className="muted">Copy beats download in India/WhatsApp-first hiring. Every block is based on your verified experience.</p>
                 <button className="btn-primary" onClick={copyWhatsAppBundle}>
                   Copy WhatsApp apply bundle
                 </button>
@@ -1325,61 +2196,272 @@ export default function CandidateApp() {
                 <button className="btn-ghost" onClick={() => window.print()} style={{ marginLeft: 8 }}>
                   Print / PDF
                 </button>
-                <h3>
-                  3-line cover <CopyButton text={kit.shortCover} />
-                </h3>
-                <pre className="pre">{kit.shortCover}</pre>
-                <h3>
-                  WhatsApp note <CopyButton text={kit.whatsappNote} />
-                </h3>
-                <pre className="pre">{kit.whatsappNote}</pre>
-                <h3>
-                  LinkedIn note <CopyButton text={kit.linkedinNote} />
-                </h3>
-                <pre className="pre">{kit.linkedinNote}</pre>
-                <h3>
-                  Recruiter email <CopyButton text={kit.recruiterEmail} />
-                </h3>
-                <pre className="pre">{kit.recruiterEmail}</pre>
-                <h3>
-                  Cover letter <CopyButton text={kit.coverLetter} />
-                </h3>
-                <pre className="pre">{kit.coverLetter}</pre>
-                <h3>
-                  Thank-you note (24h) <CopyButton text={kit.thankYouNote} />
-                </h3>
-                <pre className="pre">{kit.thankYouNote}</pre>
-                <h3>
-                  Referral ask <CopyButton text={kit.referralNote} />
-                </h3>
-                <pre className="pre">{kit.referralNote}</pre>
-                <h3>Referrer checklist</h3>
-                {kit.referrerChecklist?.map((c) => (
-                  <p key={c}>☐ {c}</p>
-                ))}
-                <div className="form-grid" style={{ marginTop: 12 }}>
+
+                <h3>Email to recruiter</h3>
+                <p className="muted">
+                  Opens your own email app with the recipient, subject, and cover letter filled in. We can&apos;t attach files
+                  from the browser — download the resume above (DOCX or Apply pack) and attach it before you hit send.
+                </p>
+                <div className="form-grid">
                   <div>
-                    <label className="form-label">Referred by (optional)</label>
-                    <input className="form-control" value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder="Employee name" />
+                    <label className="form-label">Recruiter&apos;s email</label>
+                    <input
+                      className="form-control"
+                      type="email"
+                      value={recruiterEmail}
+                      onChange={(e) => setRecruiterEmail(e.target.value)}
+                      placeholder="recruiter@company.com"
+                    />
                   </div>
                   <div>
-                    <label className="form-label">Referral / job link</label>
-                    <input className="form-control" value={referralUrl} onChange={(e) => setReferralUrl(e.target.value)} placeholder="https://..." />
+                    <label className="form-label">Subject (optional)</label>
+                    <input
+                      className="form-control"
+                      value={recruiterEmailSubject}
+                      onChange={(e) => setRecruiterEmailSubject(e.target.value)}
+                      placeholder={`${ws?.profile.name || "Your name"} — ${job?.title || "Job title"}`}
+                    />
                   </div>
                 </div>
-                <h3>Checklist</h3>
-                {kit.checklist.map((c) => (
-                  <p key={c}>☐ {c}</p>
-                ))}
-                <h3>
-                  Tailored resume <CopyButton text={kit.tailoredResume} label="Copy resume" />
-                </h3>
-                <pre className="pre">{kit.tailoredResume}</pre>
-                <button className="btn-primary" onClick={() => saveApp()}>
+                <button className="btn-primary" type="button" onClick={emailToRecruiter} style={{ marginTop: 8 }}>
+                  Open email to send
+                </button>
+
+                <div className="kit-cards">
+                <ApplicationKitCard icon="📧" title="Recruiter email" description="A ready-to-send email to a hiring contact or recruiter." defaultOpen>
+                  <CopyButton text={kit.recruiterEmail} />
+                  <pre className="pre">{kit.recruiterEmail}</pre>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="✉️" title="Cover letter" description="The full cover letter for this application." defaultOpen>
+                  <CopyButton text={kit.coverLetter} />
+                  <pre className="pre">{kit.coverLetter}</pre>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="✂️" title="3-line cover" description="A short version for forms with a character limit.">
+                  <CopyButton text={kit.shortCover} />
+                  <pre className="pre">{kit.shortCover}</pre>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="💬" title="WhatsApp note" description="A casual note for WhatsApp-first hiring.">
+                  <CopyButton text={kit.whatsappNote} />
+                  <pre className="pre">{kit.whatsappNote}</pre>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="🔗" title="LinkedIn note" description="A short connection or InMail message.">
+                  <CopyButton text={kit.linkedinNote} />
+                  <pre className="pre">{kit.linkedinNote}</pre>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="📝" title="LinkedIn headline" description="Paste into your LinkedIn profile headline field.">
+                  <CopyButton text={kit.linkedinHeadline} />
+                  <pre className="pre">{kit.linkedinHeadline}</pre>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="👤" title="LinkedIn About section" description="A LinkedIn-appropriate version of your summary — same facts, no app jargon.">
+                  <CopyButton text={kit.linkedinAbout} />
+                  <pre className="pre">{kit.linkedinAbout}</pre>
+                </ApplicationKitCard>
+
+                <ApplicationKitCard icon="✨" title="Generate with AI (optional)" description="AI-written draft — read carefully before sending.">
+                  <div className="banner">
+                    <strong>AI-generated draft — not evidence-checked</strong>
+                    <p className="muted" style={{ marginTop: 6 }}>
+                      Unlike everything else in ResumeProof, this text is written by AI from a prompt, not assembled only from
+                      your Career Vault. It can phrase things persuasively — read it carefully and remove anything you can&apos;t
+                      back up in an interview before you send it.
+                    </p>
+                  </div>
+                  <label className="form-label" style={{ marginTop: 8 }}>
+                    Tell the AI what to emphasize (optional)
+                  </label>
+                  <input
+                    className="form-control"
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="e.g. emphasize my leadership and the 200+ endpoint automation project"
+                  />
+                  <div style={{ marginTop: 8 }}>
+                    <button className="btn-primary" type="button" disabled={aiBusy} onClick={() => generateAiText("cover_letter")}>
+                      {aiBusy ? "Generating…" : "Generate AI cover letter"}
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      type="button"
+                      disabled={aiBusy}
+                      onClick={() => generateAiText("summary")}
+                      style={{ marginLeft: 8 }}
+                    >
+                      {aiBusy ? "Generating…" : "Generate AI summary line"}
+                    </button>
+                  </div>
+                  {aiError && (
+                    <p className="muted" style={{ color: "#f87171", marginTop: 8 }}>
+                      {aiError}
+                    </p>
+                  )}
+                  {aiCoverLetter && (
+                    <>
+                      <h4 style={{ marginTop: 12 }}>
+                        AI cover letter draft <CopyButton text={aiCoverLetter} />
+                      </h4>
+                      <textarea
+                        className="form-control"
+                        rows={10}
+                        value={aiCoverLetter}
+                        onChange={(e) => setAiCoverLetter(e.target.value)}
+                      />
+                    </>
+                  )}
+                  {aiSummary && (
+                    <>
+                      <h4 style={{ marginTop: 12 }}>
+                        AI summary draft <CopyButton text={aiSummary} />
+                      </h4>
+                      <textarea className="form-control" rows={3} value={aiSummary} onChange={(e) => setAiSummary(e.target.value)} />
+                    </>
+                  )}
+                </ApplicationKitCard>
+
+                <ApplicationKitCard icon="🙏" title="Thank-you note (24h)" description="Send within a day of applying or interviewing.">
+                  <CopyButton text={kit.thankYouNote} />
+                  <pre className="pre">{kit.thankYouNote}</pre>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="🤝" title="Referral ask + checklist" description="A message to ask a contact for a referral.">
+                  <CopyButton text={kit.referralNote} />
+                  <pre className="pre">{kit.referralNote}</pre>
+                  <h4 style={{ marginTop: 10 }}>Referrer checklist</h4>
+                  {kit.referrerChecklist?.map((c) => (
+                    <p key={c}>☐ {c}</p>
+                  ))}
+                  <div className="form-grid" style={{ marginTop: 12 }}>
+                    <div>
+                      <label className="form-label">Referred by (optional)</label>
+                      <input className="form-control" value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder="Employee name" />
+                    </div>
+                    <div>
+                      <label className="form-label">Referral / job link</label>
+                      <input className="form-control" value={referralUrl} onChange={(e) => setReferralUrl(e.target.value)} placeholder="https://..." />
+                    </div>
+                  </div>
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="☑️" title="Checklist" description="Steps to finish before you consider this application sent.">
+                  {kit.checklist.map((c) => (
+                    <p key={c}>☐ {c}</p>
+                  ))}
+                </ApplicationKitCard>
+                <ApplicationKitCard icon="📄" title="Tailored resume" description="The full resume text for this application." defaultOpen>
+                  <CopyButton text={kit.tailoredResume} label="Copy resume" />
+                  <pre className="pre">{kit.tailoredResume}</pre>
+                </ApplicationKitCard>
+                </div>
+                <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => saveApp()}>
                   Save to application tracker
                 </button>
               </>
             )}
+          </section>
+        )}
+
+        {step === "templates" && (
+          <section className="card">
+            <h3>7. Templates</h3>
+            <p className="muted">
+              {RESUME_TEMPLATES.length} templates — same content based on your verified experience, different look. ATS-recommended templates stay
+              single-column with no color blocks or icons; that&apos;s deliberate, not a missing feature, since some ATS parsers
+              choke on decoration. Filter by style or color to find one fast.
+            </p>
+            <div className="template-filters">
+              <div className="template-filter-group">
+                <span className="template-filter-label">STYLE</span>
+                <div className="category-chips">
+                  {(["All", ...new Set(TEMPLATE_SKELETONS.map((s) => s.category))] as Array<TemplateCategory | "All">).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`category-chip ${templateCategory === c ? "active" : ""}`}
+                      onClick={() => setTemplateCategory(c)}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="template-filter-group">
+                <span className="template-filter-label">COLOR</span>
+                <div className="color-swatches">
+                  <button
+                    type="button"
+                    className={`color-swatch-btn all ${templateColorFilter === "All" ? "active" : ""}`}
+                    onClick={() => setTemplateColorFilter("All")}
+                    title="All colors"
+                    aria-label="All colors"
+                  />
+                  {TEMPLATE_COLORS.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`color-swatch-btn ${templateColorFilter === c.id ? "active" : ""}`}
+                      style={{ background: c.hex }}
+                      onClick={() => setTemplateColorFilter(c.id)}
+                      title={c.name}
+                      aria-label={c.name}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            {(() => {
+              const filtered = RESUME_TEMPLATES.filter(
+                (t) =>
+                  (templateCategory === "All" || t.category === templateCategory) &&
+                  (templateColorFilter === "All" || t.colorId === templateColorFilter)
+              );
+              return (
+                <>
+                  <p className="template-count">{filtered.length} matching templates</p>
+                  {filtered.length === 0 && (
+                    <EmptyState
+                      icon="🔍"
+                      title="No templates match this combination"
+                      detail="ATS-recommended styles stay plain on purpose and don't come in color. Try a different style, or clear the color filter."
+                      ctaLabel="Clear filters"
+                      onCta={() => {
+                        setTemplateCategory("All");
+                        setTemplateColorFilter("All");
+                      }}
+                    />
+                  )}
+                  <div className="template-gallery">
+                    {filtered.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        title={t.bestFor}
+                        data-template-id={t.id}
+                        className={`template-card ${selectedTemplate === t.id ? "active" : ""}`}
+                        onClick={() => setSelectedTemplate(t.id)}
+                      >
+                        <div
+                          className="template-swatch"
+                          style={{ background: `linear-gradient(180deg, ${t.accent} 0 38%, #fff 38%)` }}
+                        />
+                        <strong>{t.name}</strong>
+                        <span>{t.description}</span>
+                        {t.atsRecommended && <span className="ats-badge">ATS Recommended</span>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+            <div className="template-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+              <button className="btn-primary" type="button" onClick={() => window.print()}>
+                Print / Download PDF in this style
+              </button>
+              <button className="btn-ghost" type="button" onClick={() => downloadDocx("resume", selectedTemplate)}>
+                Export DOCX in this style
+              </button>
+            </div>
+            <ResumeTemplatePreview
+              text={draft || resumePreview || resumeText}
+              templateId={selectedTemplate}
+              photoDataUrl={ws?.profile.photoDataUrl}
+            />
           </section>
         )}
 
@@ -1414,6 +2496,19 @@ export default function CandidateApp() {
             <button className="btn-primary" onClick={() => saveApp()}>
               Log current job
             </button>
+            {apps.length === 0 && (
+              <EmptyState
+                icon="📋"
+                title="No applications logged yet"
+                detail={
+                  job
+                    ? "Log a job here after you tailor and export it, so you can track its status through to an offer."
+                    : "Add a target job first, then use the button above to log it here and track its status through to an offer."
+                }
+                ctaLabel={job ? undefined : "Add a target job first"}
+                onCta={job ? undefined : () => setStep("job")}
+              />
+            )}
             <div className="kanban">
               {["Saved", "Applied", "Interview", "Offer", "Rejected"].map((col) => (
                 <div className="kanban-col" key={col}>
@@ -1475,6 +2570,15 @@ export default function CandidateApp() {
             <button className="btn-primary" onClick={runInterview}>
               Generate questions & STAR stories
             </button>
+            {!prep && (
+              <EmptyState
+                icon="🎤"
+                title="No prep generated yet"
+                detail="Generate job-specific questions and STAR stories pulled from your Career Vault evidence."
+                ctaLabel={job ? "Generate questions & STAR stories" : "Add a target job first"}
+                onCta={job ? runInterview : () => setStep("job")}
+              />
+            )}
             {prep?.stories?.map((s, i) => (
               <article className="card" key={i}>
                 <strong>STAR from vault {s.evidenceId}</strong>
@@ -1484,14 +2588,30 @@ export default function CandidateApp() {
                 <p className="muted">R: {s.result}</p>
               </article>
             ))}
-            {prep?.questions?.map((q, i) => (
-              <article className="card" key={i}>
-                <p>
-                  <strong>{q.category}:</strong> {q.question}
-                </p>
-                <CopyButton text={q.question} label="Copy question" />
-              </article>
-            ))}
+            {prep?.questionsByBucket
+              ? BUCKET_ORDER.map((bucket) => {
+                  const list = prep.questionsByBucket?.[bucket as InterviewBucket];
+                  if (!list || list.length === 0) return null;
+                  return (
+                    <div key={bucket} style={{ marginTop: 12 }}>
+                      <h4>{bucket} questions</h4>
+                      {list.map((q, i) => (
+                        <article className="card" key={i}>
+                          <p>{q.question}</p>
+                          <CopyButton text={q.question} label="Copy question" />
+                        </article>
+                      ))}
+                    </div>
+                  );
+                })
+              : prep?.questions?.map((q, i) => (
+                  <article className="card" key={i}>
+                    <p>
+                      <strong>{q.category}:</strong> {q.question}
+                    </p>
+                    <CopyButton text={q.question} label="Copy question" />
+                  </article>
+                ))}
             {prep && (
               <div className="practice">
                 <label className="form-label">Practice answer (stays on this device)</label>
@@ -1516,14 +2636,32 @@ export default function CandidateApp() {
           <section className="card">
             <h3>9. Career Change Mode</h3>
             <p className="muted">Pick a family, then we map vault proof vs honest gaps — not a fake “career switch resume”.</p>
+            <p className="muted" style={{ fontSize: 13 }}>
+              Works for any field, not just these examples — type any target role below (nurse, teacher, electrician, HR,
+              sales, whatever you&apos;re aiming for).
+            </p>
             <div className="chips">
-              {["software engineer", "machine learning engineer", "data analyst", "product manager", "marketing"].map((role) => (
+              {[
+                "software engineer",
+                "data analyst",
+                "registered nurse",
+                "teacher",
+                "sales",
+                "hr recruiter",
+                "electrician",
+                "marketing"
+              ].map((role) => (
                 <button key={role} className="chip" onClick={() => setTargetRole(role)}>
                   {role}
                 </button>
               ))}
             </div>
-            <input className="form-control" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="Target role e.g. product manager" />
+            <input
+              className="form-control"
+              value={targetRole}
+              onChange={(e) => setTargetRole(e.target.value)}
+              placeholder="Target role — any field, e.g. paralegal, warehouse supervisor, graphic designer"
+            />
             <button className="btn-primary" onClick={runChange} style={{ marginTop: 12 }}>
               Map transferable skills
             </button>
@@ -1566,6 +2704,18 @@ export default function CandidateApp() {
           </section>
         )}
       </main>
+
+      {nextBestAction && (
+        <div className="mobile-sticky-cta">
+          <div>
+            <strong>{nextBestAction.title}</strong>
+            <p className="muted">{nextBestAction.detail}</p>
+          </div>
+          <button className="btn-primary" onClick={() => setStep(nextBestAction.step)}>
+            {nextBestAction.ctaLabel}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

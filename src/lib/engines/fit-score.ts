@@ -144,9 +144,10 @@ export function computeFitReport(
     });
   }
   if (keywordCoverage >= 50) {
+    const provenExample = coreMatches.slice(0, 2).join(" and ") || "your matched skills";
     scoreMovers.push({
       title: "You can apply with tailoring",
-      detail: "Reorder and emphasize existing Playwright/API/CI evidence — do not invent years or tools."
+      detail: `Reorder and emphasize your existing ${provenExample} evidence — do not invent years or tools.`
     });
   }
 
@@ -154,7 +155,7 @@ export function computeFitReport(
     score,
     label,
     disclaimer:
-      "ResumeProof Fit Score is this product's estimate from your evidence and core skills in this job. Duty-line bullets are not scored individually. It is not a universal ATS score.",
+      "An evidence-based estimate of how well your verified experience matches this job. Duty-line bullets are not scored individually. It is not an ATS score.",
     subScores,
     matches,
     transferable,

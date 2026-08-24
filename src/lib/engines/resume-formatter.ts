@@ -133,6 +133,19 @@ function parseResumeDraft(text: string): ParsedDraft {
     }
   }
 
+  // A plain "Name / Email / Phone" header block (no "EMAIL:"/"PHONE:" labels)
+  // only ever recovers NAME above unless we also scan the preamble for these —
+  // without it, re-formatting the draft (every Tailor-step render, every
+  // export) silently dropped the candidate's contact info.
+  if (!headers.EMAIL && preamble.length) {
+    const emailMatch = preamble.map((l) => l.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)).find((m): m is RegExpMatchArray => Boolean(m));
+    if (emailMatch) headers.EMAIL = emailMatch[0];
+  }
+  if (!headers.PHONE && preamble.length) {
+    const phoneMatch = preamble.map((l) => l.match(/(\+?\d[\d\s().-]{8,}\d)/)).find((m): m is RegExpMatchArray => Boolean(m));
+    if (phoneMatch) headers.PHONE = phoneMatch[1].trim();
+  }
+
   return { headers, sections };
 }
 
@@ -148,6 +161,12 @@ function normalizeBullets(body: string): string {
     if (/^[-•*]\s+/.test(t)) {
       out.push(t.replace(/^[-•*]\s+/, "- "));
     } else if (/^[A-Za-z].+:\s*.+/.test(t) && t.length < 80 && !t.startsWith("-")) {
+      out.push(t);
+    } else if (/\S\s*\|\s*\S/.test(t) && t.length < 100) {
+      // "Company | Role | Dates" style sub-header — a role/company line, not
+      // a bullet point. Without this, it fell through to the bullet branch
+      // below and got a "- " prefix, which visually mislabeled it as a duty
+      // bullet in every downstream export and template.
       out.push(t);
     } else if (t.length > 0) {
       out.push(t.startsWith("- ") ? t : `- ${t}`);

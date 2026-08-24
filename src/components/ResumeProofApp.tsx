@@ -482,7 +482,7 @@ export default function ResumeProofApp() {
                     {q.blocksWrite ? "⛔" : "🟡"} {q.question}
                   </p>
                 ))}
-                <h3>Evidence-bound draft</h3>
+                <h3>Draft based on verified experience</h3>
                 <pre className="pre">{optimizer.optimizedResume}</pre>
               </div>
             )}
@@ -525,7 +525,7 @@ export default function ResumeProofApp() {
 
         {tab === "cover" && (
           <section className="card">
-            <h2>Evidence-bound cover letter</h2>
+            <h2>Cover letter based on verified experience</h2>
             <p className="muted">Only resume-backed requirements are written. Gaps are listed as blocked claims, never invented.</p>
             <CandidatePicker candidates={candidates} value={targetCandidateId} onChange={setTargetCandidateId} />
             <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => runModule("cover")}>

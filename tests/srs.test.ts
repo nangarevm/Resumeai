@@ -47,7 +47,7 @@ describe("SRS v2 candidate engines", () => {
     const profile = parseResume("1", RESUME);
     const jd = parseJD("j", JD);
     const fit = computeFitReport(profile, jd, buildCareerVault(profile));
-    expect(fit.disclaimer).toMatch(/not a universal ATS score/i);
+    expect(fit.disclaimer).toMatch(/not an ATS score/i);
     expect(fit.subScores.keywordCoverage).toBeGreaterThan(0);
     expect(fit.parserPreview).toMatch(/Anuja/);
     expect(fit.nextActions.length).toBeGreaterThan(0);
@@ -111,6 +111,16 @@ SKILLS
     expect(kit.referralNote).toMatch(/will not claim/i);
     expect(kit.shortCover).toMatch(/Applying for/);
     expect(kit.referrerChecklist.length).toBeGreaterThan(2);
+  });
+
+  it("application kit includes a LinkedIn headline and About section with no app-internal jargon", () => {
+    const profile = parseResume("1", RESUME);
+    const jd = parseJD("j", JD);
+    const kit = buildApplicationKit(profile, jd, buildCareerVault(profile), []);
+    expect(kit.linkedinHeadline).toContain(jd.title);
+    expect(kit.linkedinAbout.length).toBeGreaterThan(20);
+    expect(kit.linkedinAbout.toLowerCase()).not.toContain("career vault");
+    expect(kit.linkedinHeadline.toLowerCase()).not.toContain("career vault");
   });
 
   it("job parser infers intern seniority from the title", () => {

@@ -14,10 +14,31 @@ import type {
   OptimizerResult
 } from "@/lib/models";
 import { EVALUATION_MODES } from "@/lib/models";
+import type { AuditEvent } from "@/lib/audit-log";
+import { tierLimitsFor } from "@/lib/agency/tier-limits";
 import CopyButton from "@/components/CopyButton";
+import CompactSearch from "@/components/CompactSearch";
+import ComparisonTable from "@/components/ComparisonTable";
+
+const AUDIT_ACTION_LABEL: Record<AuditEvent["action"], string> = { view: "Viewed", export: "Exported", delete: "Deleted" };
+const AUDIT_TARGET_LABEL: Record<string, string> = {
+  "shortlist-csv": "shortlist CSV"
+};
+
+function describeAuditTarget(target: string, detail?: string): string {
+  if (AUDIT_TARGET_LABEL[target]) return AUDIT_TARGET_LABEL[target];
+  const [kind] = target.split(":");
+  if (kind === "candidate") return "a candidate";
+  if (kind === "candidate-brief") return detail ? `${detail}'s client brief` : "a client brief";
+  if (kind === "job") return "a job posting";
+  if (kind === "seat") return "a client seat";
+  return target;
+}
 
 type Tab = "overview" | "hiring" | "discovery" | "pool" | "clients" | "brand";
 type ModalTool = "evidence" | "ats" | "optimizer" | "github" | "cover";
+type PoolCandidate = CandidateProfile & { isCustom: boolean };
+type PoolJob = JobDescription & { isCustom: boolean };
 
 export default function AgencyApp() {
   const [tab, setTab] = useState<Tab>("overview");
@@ -34,10 +55,13 @@ export default function AgencyApp() {
   const [compareB, setCompareB] = useState("");
   const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [discovery, setDiscovery] = useState<Array<{ id: string; name: string; email: string; skills: string[]; snippet: string }>>([]);
   const [discoveryQuery, setDiscoveryQuery] = useState("");
-  const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
+  const [candidates, setCandidates] = useState<PoolCandidate[]>([]);
+  const [postedJobs, setPostedJobs] = useState<PoolJob[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditEvent[]>([]);
   const [candForm, setCandForm] = useState({
     name: "",
     email: "",
@@ -48,6 +72,10 @@ export default function AgencyApp() {
     rawResumeText: ""
   });
   const [bulkStatus, setBulkStatus] = useState("");
+  const [bulkDuplicates, setBulkDuplicates] = useState<Array<{ name: string; email: string }>>([]);
+  const PAGE_SIZE = 20;
+  const [poolVisibleCount, setPoolVisibleCount] = useState(PAGE_SIZE);
+  const [discoveryVisibleCount, setDiscoveryVisibleCount] = useState(PAGE_SIZE);
 
   const [ats, setAts] = useState<AtsReport | null>(null);
   const [optimizer, setOptimizer] = useState<OptimizerResult | null>(null);
@@ -62,6 +90,15 @@ export default function AgencyApp() {
   const loadCandidates = useCallback(async () => {
     const list = await fetch("/api/candidates").then((r) => r.json());
     setCandidates(list);
+  }, []);
+
+  const loadPostedJobs = useCallback(async () => {
+    const list: PoolJob[] = await fetch("/api/jobs?all=true").then((r) => r.json());
+    setPostedJobs(list.filter((j) => j.isCustom));
+  }, []);
+
+  const loadAuditLog = useCallback(async () => {
+    setAuditLog(await fetch("/api/audit-log").then((r) => r.json()));
   }, []);
 
   const runAnalysis = useCallback(async (next = mode) => {
@@ -79,6 +116,8 @@ export default function AgencyApp() {
   useEffect(() => {
     loadAgency();
     loadCandidates();
+    loadPostedJobs();
+    loadAuditLog();
     runAnalysis("BALANCED");
     fetch("/api/search?q=").then((r) => r.json()).then(setDiscovery);
   }, []);
@@ -93,13 +132,29 @@ export default function AgencyApp() {
     }
   }, [selected]);
 
+  // Reset back to the first page whenever the underlying list actually
+  // changes (a new search, a candidate added/removed) — otherwise a stale
+  // "show more" offset from a previous, longer list could hide rows from a
+  // shorter new one.
+  useEffect(() => {
+    setPoolVisibleCount(PAGE_SIZE);
+  }, [candidates]);
+
+  useEffect(() => {
+    setDiscoveryVisibleCount(PAGE_SIZE);
+  }, [discovery]);
+
   async function saveBrand(e: React.FormEvent) {
     e.preventDefault();
     if (!agency) return;
+    // Only the fields this form actually edits — sending the whole `agency`
+    // object round-tripped a stale customCandidates/customJobs snapshot from
+    // whenever this tab last fetched, silently reverting newer pool changes
+    // made since (e.g. a candidate added in another tab) on every save.
     const next = await fetch("/api/agency", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(agency)
+      body: JSON.stringify({ name: agency.name, logoText: agency.logoText, brandColor: agency.brandColor, tier: agency.tier })
     }).then((r) => r.json());
     setAgency(next);
     setNotice("Branding saved.");
@@ -109,13 +164,38 @@ export default function AgencyApp() {
     e.preventDefault();
     await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(jobForm) });
     await runAnalysis(mode);
+    await loadPostedJobs();
     setTab("hiring");
+  }
+
+  async function switchActiveJob(jobId: string) {
+    setBusy(true);
+    await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ templateId: jobId }) });
+    await runAnalysis(mode);
+    setBusy(false);
+    setNotice("Switched active job.");
+  }
+
+  async function removeJob(jobId: string) {
+    setBusy(true);
+    await fetch(`/api/jobs?id=${jobId}`, { method: "DELETE" });
+    await loadPostedJobs();
+    await runAnalysis(mode);
+    await loadAuditLog();
+    setBusy(false);
+    setNotice("Job removed.");
   }
 
   async function submitCandidate(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    await fetch("/api/candidates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(candForm) });
+    const res = await fetch("/api/candidates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(candForm) });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setBusy(false);
+      setNotice(data.error || "Could not add this candidate.");
+      return;
+    }
     setCandForm({ name: "", email: "", phone: "", dreamCompanies: "", preferredRoles: "", preferredDomains: "", rawResumeText: "" });
     await loadCandidates();
     await runAnalysis(mode);
@@ -124,10 +204,49 @@ export default function AgencyApp() {
     setNotice("Candidate added to pool and re-ranked.");
   }
 
+  async function removeCandidate(candidateId: string) {
+    setBusy(true);
+    await fetch(`/api/candidates?id=${candidateId}`, { method: "DELETE" });
+    await loadCandidates();
+    await runAnalysis(mode);
+    await loadAgency();
+    await loadAuditLog();
+    setBusy(false);
+    setNotice("Candidate removed from pool.");
+  }
+
+  async function addToClientSeats(candidateId: string) {
+    setBusy(true);
+    const res = await fetch("/api/agency", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: candidateId })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setBusy(false);
+      setNotice(data.error || "Could not add this seat.");
+      return;
+    }
+    setAgency(data);
+    setBusy(false);
+    setNotice("Added to client seats.");
+  }
+
+  async function removeSeat(clientId: string) {
+    setBusy(true);
+    const next = await fetch(`/api/agency?clientId=${clientId}`, { method: "DELETE" }).then((r) => r.json());
+    setAgency(next);
+    await loadAuditLog();
+    setBusy(false);
+    setNotice("Removed from client seats.");
+  }
+
   async function onBulkUpload(files: FileList | null) {
     if (!files?.length) return;
     setBusy(true);
     setBulkStatus("");
+    setBulkDuplicates([]);
     const resumes: string[] = [];
     for (const file of Array.from(files).slice(0, 20)) {
       const form = new FormData();
@@ -145,7 +264,13 @@ export default function AgencyApp() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ resumes })
     }).then((r) => r.json());
-    setBulkStatus(`Added ${result.count} candidates${result.errors?.length ? ` · ${result.errors.length} skipped` : ""}`);
+    const dupCount = result.duplicates?.length || 0;
+    setBulkStatus(
+      `Added ${result.count} candidates` +
+        (dupCount ? ` · ${dupCount} skipped as duplicate${dupCount === 1 ? "" : "s"} (already in the pool)` : "") +
+        (result.errors?.length ? ` · ${result.errors.length} not added (parse failed or plan limit reached)` : "")
+    );
+    setBulkDuplicates(result.duplicates || []);
     await loadCandidates();
     await runAnalysis(mode);
     await loadAgency();
@@ -176,15 +301,17 @@ export default function AgencyApp() {
     setToolBusy(false);
   }
 
-  async function copyClientBrief() {
-    const data = await fetch("/api/client-brief").then((r) => r.json());
+  async function copyClientBrief(candidateId: string) {
+    const data = await fetch(`/api/client-brief?candidateId=${encodeURIComponent(candidateId)}`).then((r) => r.json());
     await navigator.clipboard.writeText(data.brief);
-    setNotice("Client brief copied — share with coach or referrer (read-only summary).");
+    await loadAuditLog();
+    setNotice(`Client brief for ${data.candidateName} copied — share with coach or referrer (read-only summary).`);
   }
 
   const shortlisted = results.filter((r) => r.isShortlisted).length;
   const color = agency?.brandColor || "#58a6ff";
   const meters = agency?.usageMeters;
+  const tierLimits = tierLimitsFor(agency?.tier ?? "Small Agency");
   const visible = results.filter((r) => {
     const q = search.toLowerCase();
     return (
@@ -229,7 +356,10 @@ export default function AgencyApp() {
     a.href = url;
     a.download = "resumeproof-shortlist.csv";
     a.click();
-    fetch("/api/agency", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ incrementUsage: "shortlistsExported" }) }).then(() => loadAgency());
+    fetch("/api/agency", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ incrementUsage: "shortlistsExported" }) }).then(() => {
+      loadAgency();
+      loadAuditLog();
+    });
     setNotice("Shortlist CSV downloaded for hiring manager.");
   }
 
@@ -254,7 +384,8 @@ export default function AgencyApp() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      {mobileNavOpen && <div className="sidebar-backdrop" onClick={() => setMobileNavOpen(false)} />}
+      <aside className={`sidebar ${mobileNavOpen ? "sidebar-open" : ""}`}>
         <Link href="/" className="brand" style={{ textDecoration: "none", color: "inherit" }}>
           <div className="logo" style={{ background: color }}>
             {agency?.logoText || "RP"}
@@ -265,7 +396,14 @@ export default function AgencyApp() {
           </div>
         </Link>
         {navItems.map((item) => (
-          <button key={item.id} className={`nav-btn ${tab === item.id ? "active" : ""}`} onClick={() => setTab(item.id)}>
+          <button
+            key={item.id}
+            className={`nav-btn ${tab === item.id ? "active" : ""}`}
+            onClick={() => {
+              setTab(item.id);
+              setMobileNavOpen(false);
+            }}
+          >
             {item.icon} {item.label}
           </button>
         ))}
@@ -276,10 +414,21 @@ export default function AgencyApp() {
 
       <main className="main">
         <header className="topbar">
-          <div>
-            <div className="label">{agency?.tier} desk</div>
-            <h2>{agency?.name}</h2>
-            <p className="muted">Rank people from evidence snippets. Do not treat scores as a hiring decision.</p>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <button
+              type="button"
+              className="hamburger-btn"
+              onClick={() => setMobileNavOpen((v) => !v)}
+              aria-label="Toggle navigation"
+              aria-expanded={mobileNavOpen}
+            >
+              ☰
+            </button>
+            <div>
+              <div className="label">{agency?.tier} desk</div>
+              <h2>{agency?.name}</h2>
+              <p className="muted">Rank people from evidence snippets. Do not treat scores as a hiring decision.</p>
+            </div>
           </div>
           <div className="mode-pills">
             {(["STRICT", "BALANCED", "BEST_MATCH"] as EvaluationModeName[]).map((m) => (
@@ -325,7 +474,7 @@ export default function AgencyApp() {
                 <strong>{results.length}</strong>
               </div>
             </div>
-            {meters && (
+            {meters && agency && (
               <div className="metrics">
                 <div className="metric">
                   <span>ANALYZES ({meters.monthKey})</span>
@@ -333,11 +482,19 @@ export default function AgencyApp() {
                 </div>
                 <div className="metric">
                   <span>CANDIDATES ADDED</span>
-                  <strong>{meters.candidatesAdded}</strong>
+                  <strong>
+                    {meters.candidatesAdded} / {tierLimits.maxCandidatesPerMonth}
+                  </strong>
                 </div>
                 <div className="metric">
                   <span>SHORTLISTS EXPORTED</span>
                   <strong>{meters.shortlistsExported}</strong>
+                </div>
+                <div className="metric">
+                  <span>CLIENT SEATS ({agency.tier})</span>
+                  <strong>
+                    {agency.seats.length} / {tierLimits.maxSeats}
+                  </strong>
                 </div>
               </div>
             )}
@@ -350,9 +507,41 @@ export default function AgencyApp() {
               <button className="btn-primary" onClick={() => setTab("hiring")}>
                 Open hiring desk
               </button>
-              <button className="btn-ghost" onClick={copyClientBrief} style={{ marginLeft: 8 }}>
-                Copy client brief
-              </button>
+              <p className="muted" style={{ marginTop: 8, fontSize: 12.5 }}>
+                Click a candidate on Hiring desk to copy a client brief for them specifically.
+              </p>
+            </section>
+            <section className="card">
+              <h3>Recent activity</h3>
+              <p className="muted">
+                An audit trail of views, exports, and deletions on this desk — visible only to this account.
+              </p>
+              {auditLog.length === 0 ? (
+                <p className="muted">No activity recorded yet.</p>
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>When</th>
+                        <th>Action</th>
+                        <th>What</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {auditLog.map((event) => (
+                        <tr key={event.id}>
+                          <td>{new Date(event.timestamp).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</td>
+                          <td>
+                            <span className={`badge ${event.action === "delete" ? "no" : "ok"}`}>{AUDIT_ACTION_LABEL[event.action]}</span>
+                          </td>
+                          <td>{describeAuditTarget(event.target, event.detail)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </section>
           </>
         )}
@@ -386,8 +575,13 @@ export default function AgencyApp() {
                 ))}
               </div>
             </section>
+            {discovery.length > 0 && (
+              <p className="muted" style={{ margin: "4px 0" }}>
+                Showing {Math.min(discoveryVisibleCount, discovery.length)} of {discovery.length}
+              </p>
+            )}
             <div className="grid-2">
-              {discovery.map((c) => (
+              {discovery.slice(0, discoveryVisibleCount).map((c) => (
                 <article className="card" key={c.id}>
                   <h4>{c.name}</h4>
                   <p className="muted">{c.email}</p>
@@ -404,6 +598,11 @@ export default function AgencyApp() {
                 </article>
               ))}
             </div>
+            {discovery.length > discoveryVisibleCount && (
+              <button className="btn-ghost" type="button" onClick={() => setDiscoveryVisibleCount((n) => n + PAGE_SIZE)}>
+                Show more ({discovery.length - discoveryVisibleCount} more)
+              </button>
+            )}
           </>
         )}
 
@@ -417,6 +616,15 @@ export default function AgencyApp() {
               <input type="file" accept=".txt,.md,.pdf,.docx" multiple hidden onChange={(e) => onBulkUpload(e.target.files)} />
             </label>
             {bulkStatus && <p className="muted">{bulkStatus}</p>}
+            {bulkDuplicates.length > 0 && (
+              <div className="chips" style={{ marginBottom: 8 }}>
+                {bulkDuplicates.map((d, i) => (
+                  <span className="chip" key={`${d.email}-${i}`} title={d.email}>
+                    Skipped: {d.name}
+                  </span>
+                ))}
+              </div>
+            )}
             <form className="form-grid" onSubmit={submitCandidate}>
               <div>
                 <label className="form-label">Full name</label>
@@ -440,25 +648,64 @@ export default function AgencyApp() {
                 </button>
               </div>
             </form>
-            <h3 style={{ marginTop: 20 }}>Pool ({candidates.length})</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Skills</th>
-                </tr>
-              </thead>
-              <tbody>
-                {candidates.slice(0, 20).map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td>
-                    <td>{c.email}</td>
-                    <td>{(c.extractedSkills || []).slice(0, 5).join(", ")}</td>
+            <h3 style={{ marginTop: 20 }}>
+              Pool ({candidates.length}){" "}
+              {candidates.length > 0 && (
+                <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>
+                  — showing {Math.min(poolVisibleCount, candidates.length)} of {candidates.length}
+                </span>
+              )}
+            </h3>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Skills</th>
+                    <th>Client seat</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {candidates.slice(0, poolVisibleCount).map((c) => {
+                    const isSeat = (agency?.seats || []).some((s) => s.clientId === c.id);
+                    return (
+                      <tr key={c.id}>
+                        <td>{c.name}</td>
+                        <td>{c.email}</td>
+                        <td>{(c.extractedSkills || []).slice(0, 5).join(", ")}</td>
+                        <td>
+                          {isSeat ? (
+                            <span className="badge ok">Client</span>
+                          ) : (
+                            <button className="chip" type="button" disabled={busy} onClick={() => addToClientSeats(c.id)}>
+                              Add to client seats
+                            </button>
+                          )}
+                        </td>
+                        <td>
+                          {c.isCustom ? (
+                            <button className="chip" type="button" disabled={busy} onClick={() => removeCandidate(c.id)}>
+                              Remove
+                            </button>
+                          ) : (
+                            <span className="muted" style={{ fontSize: 12 }}>
+                              Demo data
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {candidates.length > poolVisibleCount && (
+              <button className="btn-ghost" type="button" onClick={() => setPoolVisibleCount((n) => n + PAGE_SIZE)}>
+                Show more ({candidates.length - poolVisibleCount} more)
+              </button>
+            )}
           </section>
         )}
 
@@ -500,39 +747,47 @@ export default function AgencyApp() {
           <section className="card">
             <h3>Client roster & seats</h3>
             <p className="muted">Recruiter notes stay on the seat. Billing meters are tracked on Overview.</p>
-            <input className="search" placeholder="Search clients or notes…" value={search} onChange={(e) => setSearch(e.target.value)} />
-            <table>
-              <thead>
-                <tr>
-                  <th>Client</th>
-                  <th>Status</th>
-                  <th>Progress</th>
-                  <th>Recruiter notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleSeats.map((s) => (
-                  <tr key={s.clientId}>
-                    <td>{s.clientName}</td>
-                    <td>
-                      <span className="badge ok">{s.status}</span>
-                    </td>
-                    <td>{s.progress}</td>
-                    <td>
-                      <textarea
-                        className="form-control"
-                        rows={2}
-                        value={notesDraft[s.clientId] ?? s.notes ?? ""}
-                        onChange={(e) => setNotesDraft((prev) => ({ ...prev, [s.clientId]: e.target.value }))}
-                      />
-                      <button className="chip" type="button" onClick={() => saveSeatNotes(s.clientId)}>
-                        Save notes
-                      </button>
-                    </td>
+            <CompactSearch value={search} onChange={setSearch} placeholder="Search clients or notes…" resultCount={visibleSeats.length} />
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Client</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Recruiter notes</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {visibleSeats.map((s) => (
+                    <tr key={s.clientId}>
+                      <td>{s.clientName}</td>
+                      <td>
+                        <span className="badge ok">{s.status}</span>
+                      </td>
+                      <td>{s.progress}</td>
+                      <td>
+                        <textarea
+                          className="form-control"
+                          rows={2}
+                          value={notesDraft[s.clientId] ?? s.notes ?? ""}
+                          onChange={(e) => setNotesDraft((prev) => ({ ...prev, [s.clientId]: e.target.value }))}
+                        />
+                        <button className="chip" type="button" onClick={() => saveSeatNotes(s.clientId)}>
+                          Save notes
+                        </button>
+                      </td>
+                      <td>
+                        <button className="chip" type="button" disabled={busy} onClick={() => removeSeat(s.clientId)}>
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
         )}
 
@@ -568,10 +823,47 @@ export default function AgencyApp() {
                 </div>
               </form>
             </section>
+            {postedJobs.length > 0 && (
+              <section className="card">
+                <h3>Your posted jobs ({postedJobs.length})</h3>
+                <p className="muted">Jobs you've posted yourself — switch which one the pool is ranked against, or remove one.</p>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Company</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {postedJobs.map((j) => (
+                        <tr key={j.id}>
+                          <td>{j.title}</td>
+                          <td>{j.companyName}</td>
+                          <td style={{ display: "flex", gap: 8 }}>
+                            {job?.id === j.id ? (
+                              <span className="badge ok">Active</span>
+                            ) : (
+                              <button className="chip" type="button" disabled={busy} onClick={() => switchActiveJob(j.id)}>
+                                Set active
+                              </button>
+                            )}
+                            <button className="chip" type="button" disabled={busy} onClick={() => removeJob(j.id)}>
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
             <section className="card">
               <h3>Ranked candidates {busy ? "…" : ""}</h3>
               <p className="muted">Click a row for evidence + ATS, optimizer, GitHub proof, and cover letter tools.</p>
-              <input className="search" placeholder="Search name, strengths, or gaps…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <CompactSearch value={search} onChange={setSearch} placeholder="Search name, strengths, or gaps…" resultCount={visible.length} />
               <div className="chips">
                 <button className="btn-ghost" type="button" onClick={copyShortlist}>
                   Copy shortlist
@@ -598,42 +890,35 @@ export default function AgencyApp() {
               </div>
               {aRow && bRow && (
                 <div className="compare">
-                  {[aRow, bRow].map((r) => (
-                    <article key={r.candidateId} className="card">
-                      <h4>{r.candidateName}</h4>
-                      <p>
-                        {Math.round(r.qualificationScore)}% · {r.isShortlisted ? "Shortlisted" : "Rejected"} · {r.preferenceAlignment}
-                      </p>
-                      <p className="muted">Strong: {r.strongAreas.slice(0, 5).join(", ") || "—"}</p>
-                      <p className="muted">Missing: {r.missingRequirements.slice(0, 5).join(", ") || "—"}</p>
-                    </article>
-                  ))}
+                  <ComparisonTable a={aRow} b={bRow} />
                 </div>
               )}
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Name</th>
-                    <th>Status</th>
-                    <th>Score</th>
-                    <th>Alignment</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map((r, i) => (
-                    <tr key={r.candidateId} className="clickable" onClick={() => setSelected(r)}>
-                      <td>{i + 1}</td>
-                      <td>{r.candidateName}</td>
-                      <td>
-                        <span className={`badge ${r.isShortlisted ? "ok" : "no"}`}>{r.isShortlisted ? "Shortlisted" : "Rejected"}</span>
-                      </td>
-                      <td>{Math.round(r.qualificationScore)}%</td>
-                      <td>{r.preferenceAlignment}</td>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Name</th>
+                      <th>Status</th>
+                      <th>Score</th>
+                      <th>Alignment</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {visible.map((r, i) => (
+                      <tr key={r.candidateId} className="clickable" onClick={() => setSelected(r)}>
+                        <td>{i + 1}</td>
+                        <td>{r.candidateName}</td>
+                        <td>
+                          <span className={`badge ${r.isShortlisted ? "ok" : "no"}`}>{r.isShortlisted ? "Shortlisted" : "Rejected"}</span>
+                        </td>
+                        <td>{Math.round(r.qualificationScore)}%</td>
+                        <td>{r.preferenceAlignment}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </>
         )}
@@ -648,6 +933,18 @@ export default function AgencyApp() {
                 <p className="muted">
                   {Math.round(selected.qualificationScore)}% · {selected.isShortlisted ? "Shortlisted" : "Rejected"} · {selected.preferenceAlignment}
                 </p>
+                <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                  <button className="chip" type="button" onClick={() => copyClientBrief(selected.candidateId)}>
+                    Copy client brief
+                  </button>
+                  {(agency?.seats || []).some((s) => s.clientId === selected.candidateId) ? (
+                    <span className="badge ok">Already a client</span>
+                  ) : (
+                    <button className="chip" type="button" disabled={busy} onClick={() => addToClientSeats(selected.candidateId)}>
+                      Add to client seats
+                    </button>
+                  )}
+                </div>
               </div>
               <button className="close" onClick={() => setSelected(null)}>
                 ×
@@ -679,24 +976,26 @@ export default function AgencyApp() {
             {modalTool === "evidence" && (
               <>
                 <pre className="pre">{selected.explanationText}</pre>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Requirement</th>
-                      <th>Strength</th>
-                      <th>Snippet</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selected.evidenceList.map((ev) => (
-                      <tr key={ev.requirementName}>
-                        <td>{ev.requirementName}</td>
-                        <td>{ev.strength}</td>
-                        <td>{ev.snippet}</td>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Requirement</th>
+                        <th>Strength</th>
+                        <th>Snippet</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {selected.evidenceList.map((ev) => (
+                        <tr key={ev.requirementName}>
+                          <td>{ev.requirementName}</td>
+                          <td>{ev.strength}</td>
+                          <td>{ev.snippet}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
                 <h3>Interview questions</h3>
                 {selected.interviewQuestions.slice(0, 6).map((q, i) => (
                   <p key={i}>
@@ -739,7 +1038,7 @@ export default function AgencyApp() {
                     <p className="muted">{layer.summary}</p>
                   </div>
                 ))}
-                <h4>Evidence-bound draft</h4>
+                <h4>Draft based on verified experience</h4>
                 <pre className="pre">{optimizer.optimizedResume.slice(0, 2000)}</pre>
               </div>
             )}

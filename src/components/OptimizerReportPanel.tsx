@@ -1,12 +1,31 @@
 "use client";
 
+import { useState } from "react";
 import type { CareerOptimizerReport } from "@/lib/srs-models";
 
+function matchStatus(score: number): { icon: string; label: string } {
+  if (score >= 80) return { icon: "✅", label: "Strong Match" };
+  if (score >= 50) return { icon: "⚠️", label: "Partial Match" };
+  return { icon: "❌", label: "Missing" };
+}
+
+function evidenceStatus(strength: string): { icon: string; label: string } {
+  if (strength === "STRONG") return { icon: "✅", label: "Strong" };
+  if (strength === "PARTIAL" || strength === "UNCLEAR") return { icon: "⚠️", label: "Partial" };
+  return { icon: "❌", label: "Not found" };
+}
+
 export default function OptimizerReportPanel({ report }: { report: CareerOptimizerReport }) {
+  const [selectedReq, setSelectedReq] = useState<string | null>(null);
   return (
     <div className="optimizer-report" style={{ marginTop: 20 }}>
       <h3>AI Career & CV Optimizer</h3>
-      <p className="muted">Evidence-bound analysis — market signals are curated guides, not invented skills.</p>
+      <p className="muted">Based on your verified experience — market signals are curated guides, not invented skills.</p>
+      <p className="muted" style={{ fontSize: 13 }}>
+        <strong>JD Match</strong> below is your Fit Score from above, repeated here for reference. <strong>Career Opportunity</strong>{" "}
+        is a wider view — it also weighs market demand for this role and skills you could transfer in, so it can read higher or
+        lower than the Fit Score alone.
+      </p>
 
       <div className="metrics" style={{ marginTop: 12 }}>
         <div className="metric">
@@ -24,29 +43,40 @@ export default function OptimizerReportPanel({ report }: { report: CareerOptimiz
       </div>
 
       <details open className="opt-section">
-        <summary>JD Match breakdown (spec-aligned)</summary>
+        <summary>How your resume matches this job</summary>
+        <p className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+          Each dimension below is scored from your Career Vault evidence and this job's requirements — ✅ 80%+, ⚠️ 50–79%, ❌ under 50%.
+        </p>
         <div className="grid-2" style={{ marginTop: 8 }}>
           {(
             [
               ["Skills", report.jdMatch.skillsMatch],
               ["Experience", report.jdMatch.experienceMatch],
-              ["Technology", report.jdMatch.technologyMatch],
               ["Responsibilities", report.jdMatch.responsibilityMatch],
-              ["ATS keywords", report.jdMatch.atsKeywordMatch],
+              ["Domain", report.jdMatch.domainMatch],
               ["Education/Cert", report.jdMatch.educationCertMatch],
+              ["Keywords (ATS)", report.jdMatch.atsKeywordMatch],
+              ["Seniority", report.jdMatch.seniorityMatch],
+              ["Achievements", report.jdMatch.achievementMatch],
+              ["Technology", report.jdMatch.technologyMatch],
               ["Leadership", report.jdMatch.leadershipMatch ?? 0],
               ["Communication", report.jdMatch.communicationMatch ?? 0],
               ["AI relevance", report.jdMatch.aiRelevanceMatch ?? 0]
             ] as const
-          ).map(([label, val]) => (
-            <div key={label}>
-              <span className="muted">{label}</span>
-              <div className="progress">
-                <span style={{ width: `${val}%` }} />
+          ).map(([label, val]) => {
+            const status = matchStatus(val);
+            return (
+              <div key={label}>
+                <span className="muted">
+                  {status.icon} {label} — {status.label}
+                </span>
+                <div className="progress">
+                  <span style={{ width: `${val}%` }} />
+                </div>
+                <strong>{val}%</strong>
               </div>
-              <strong>{val}%</strong>
-            </div>
-          ))}
+            );
+          })}
         </div>
         {report.jdMatch.responsibilityTotalCount ? (
           <p className="muted" style={{ marginTop: 8 }}>
@@ -56,12 +86,65 @@ export default function OptimizerReportPanel({ report }: { report: CareerOptimiz
         ) : null}
         {report.jdMatch.dimensionNotes && (
           <div style={{ marginTop: 8 }}>
+            <p className="muted"><strong>Domain:</strong> {report.jdMatch.dimensionNotes.domain}</p>
+            <p className="muted"><strong>Seniority:</strong> {report.jdMatch.dimensionNotes.seniority}</p>
+            <p className="muted"><strong>Achievements:</strong> {report.jdMatch.dimensionNotes.achievement}</p>
             <p className="muted"><strong>Leadership:</strong> {report.jdMatch.dimensionNotes.leadership}</p>
             <p className="muted"><strong>Communication:</strong> {report.jdMatch.dimensionNotes.communication}</p>
             <p className="muted"><strong>AI relevance:</strong> {report.jdMatch.dimensionNotes.aiRelevance}</p>
           </div>
         )}
       </details>
+
+      {report.requirementEvidence?.length ? (
+        <details className="opt-section">
+          <summary>Resume vs JD comparison</summary>
+          <p className="muted" style={{ marginTop: 8 }}>Click a requirement to see exactly where it shows up in your resume.</p>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Requirement</th>
+                  <th>Candidate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.requirementEvidence.map((e) => {
+                  const status = evidenceStatus(e.strength);
+                  return (
+                    <tr
+                      key={e.requirementName}
+                      className="clickable"
+                      onClick={() => setSelectedReq(selectedReq === e.requirementName ? null : e.requirementName)}
+                    >
+                      <td>{e.requirementName}</td>
+                      <td>
+                        {status.icon} {status.label}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {selectedReq &&
+            (() => {
+              const e = report.requirementEvidence!.find((x) => x.requirementName === selectedReq);
+              if (!e) return null;
+              const status = evidenceStatus(e.strength);
+              return (
+                <div className="chain-item" style={{ marginTop: 8 }}>
+                  <strong>
+                    {status.icon} {e.requirementName} — {status.label}
+                  </strong>
+                  <p className="muted">Found in: {e.sourceSection}</p>
+                  <p className="muted">&ldquo;{e.snippet}&rdquo;</p>
+                  <p className="muted">{e.contextNote}</p>
+                </div>
+              );
+            })()}
+        </details>
+      ) : null}
 
       {report.responsibilityHighlights?.length ? (
         <details className="opt-section">

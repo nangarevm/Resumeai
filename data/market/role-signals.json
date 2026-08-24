@@ -1,7 +1,7 @@
 {
   "sdet": {
     "label": "SDET / QA Automation",
-    "titleHints": ["sdet", "qa", "quality", "test engineer", "automation"],
+    "titleHints": ["sdet", "qa engineer", "qa analyst", "quality assurance engineer", "software quality", "test engineer", "test automation"],
     "fastGrowing": ["Playwright", "API contract testing", "CI/CD pipelines", "GitHub Actions"],
     "emerging": ["AI-assisted test generation", "observability in QA", "shift-left security testing"],
     "increasingDemand": ["Playwright", "TypeScript", "API automation", "microservices testing", "Docker"],
@@ -139,6 +139,174 @@
       { "role": "Electrical Engineer", "overlapSkills": ["grid", "systems design"] }
     ],
     "unlockSkills": ["PVsyst/solar design certification", "grid integration basics", "project management (PMP)"]
+  },
+  "healthcare": {
+    "label": "Healthcare / Clinical",
+    "titleHints": ["nurse", "nursing", "rn ", "cna", "medical assistant", "physician", "clinical", "patient care", "healthcare"],
+    "fastGrowing": ["Electronic health records (Epic/Cerner)", "Telehealth workflows", "Care coordination", "Patient triage"],
+    "emerging": ["AI-assisted clinical documentation", "remote patient monitoring", "predictive risk scoring"],
+    "increasingDemand": ["EHR/EMR systems", "patient care", "clinical documentation", "medical terminology", "care coordination"],
+    "declining": ["paper-chart-only record keeping"],
+    "aiOpportunities": ["AI scribe tools for documentation", "AI-assisted triage support (human-reviewed)"],
+    "adjacentRoles": [
+      { "role": "Medical Assistant", "overlapSkills": ["patient care", "vital signs", "EHR"] },
+      { "role": "Healthcare Administrator", "overlapSkills": ["care coordination", "compliance", "EHR"] }
+    ],
+    "unlockSkills": ["EHR system certification (Epic/Cerner)", "BLS/ACLS renewal", "care coordination training"]
+  },
+  "education": {
+    "label": "Education / Teaching",
+    "titleHints": ["teacher", "instructor", "educator", "professor", "curriculum", "classroom", "tutor", "trainer"],
+    "fastGrowing": ["Blended/hybrid learning", "Learning management systems (Canvas/Google Classroom)", "Differentiated instruction"],
+    "emerging": ["AI-assisted lesson planning", "personalized learning tools", "AI tutoring support"],
+    "increasingDemand": ["curriculum development", "classroom management", "student assessment", "lesson planning", "LMS platforms"],
+    "declining": ["lecture-only, non-interactive teaching without digital tools"],
+    "aiOpportunities": ["AI tools for differentiated worksheets and feedback (teacher-reviewed)"],
+    "adjacentRoles": [
+      { "role": "Instructional Designer", "overlapSkills": ["curriculum", "assessment design"] },
+      { "role": "Corporate Trainer", "overlapSkills": ["lesson planning", "facilitation"] }
+    ],
+    "unlockSkills": ["LMS certification (Canvas/Google Classroom)", "instructional design basics", "data-driven assessment"]
+  },
+  "legal": {
+    "label": "Legal / Paralegal",
+    "titleHints": ["paralegal", "legal assistant", "attorney", "lawyer", "legal counsel", "compliance officer", "contracts"],
+    "fastGrowing": ["Contract lifecycle management tools", "E-discovery software", "Compliance automation"],
+    "emerging": ["AI-assisted contract review", "AI legal research tools (attorney-reviewed)"],
+    "increasingDemand": ["contract review", "legal research", "compliance", "legal drafting", "case management software"],
+    "declining": ["manual document review without e-discovery tooling"],
+    "aiOpportunities": ["AI-assisted first-pass contract review (always attorney-reviewed)"],
+    "adjacentRoles": [
+      { "role": "Compliance Analyst", "overlapSkills": ["compliance", "regulatory research"] },
+      { "role": "Contracts Administrator", "overlapSkills": ["contract review", "drafting"] }
+    ],
+    "unlockSkills": ["case management software (Clio/MyCase)", "e-discovery tool familiarity", "paralegal certification"]
+  },
+  "hospitality": {
+    "label": "Hospitality / Food Service",
+    "titleHints": ["hotel", "restaurant", "server", "barista", "chef", "hospitality", "front desk", "guest service", "housekeeping"],
+    "fastGrowing": ["Guest experience technology", "Online reservation/POS systems", "Food safety certification"],
+    "emerging": ["AI-driven scheduling and demand forecasting"],
+    "increasingDemand": ["guest service", "POS systems", "food safety (ServSafe)", "front desk operations", "reservation systems"],
+    "declining": ["paper-based reservations and ordering"],
+    "aiOpportunities": ["AI scheduling tools to reduce understaffing/overstaffing"],
+    "adjacentRoles": [
+      { "role": "Hotel Operations", "overlapSkills": ["guest service", "front desk"] },
+      { "role": "Event Coordinator", "overlapSkills": ["guest service", "scheduling"] }
+    ],
+    "unlockSkills": ["ServSafe food safety certification", "POS system certification", "guest service training"]
+  },
+  "sales": {
+    "label": "Sales / Business Development",
+    "titleHints": ["sales representative", "account executive", "business development", "retail associate", "sales associate", "account manager"],
+    "fastGrowing": ["CRM-driven pipeline management", "Social selling", "Account-based marketing alignment"],
+    "emerging": ["AI-assisted lead scoring", "AI sales call coaching/summarization"],
+    "increasingDemand": ["CRM (Salesforce/HubSpot)", "lead generation", "account management", "quota attainment", "negotiation"],
+    "declining": ["cold-call-only prospecting without CRM data"],
+    "aiOpportunities": ["AI call summaries and follow-up drafts (rep-reviewed)"],
+    "adjacentRoles": [
+      { "role": "Account Manager", "overlapSkills": ["CRM", "client relationships"] },
+      { "role": "Customer Success", "overlapSkills": ["account management", "communication"] }
+    ],
+    "unlockSkills": ["CRM certification (Salesforce/HubSpot)", "one documented quota-attainment result", "negotiation training"]
+  },
+  "skilled_trades": {
+    "label": "Skilled Trades / Construction",
+    "titleHints": ["electrician", "plumber", "hvac", "welder", "carpenter", "construction", "technician", "mechanic", "machinist"],
+    "fastGrowing": ["Smart building systems", "Energy-efficient retrofits", "Digital blueprint/BIM tools"],
+    "emerging": ["IoT-enabled equipment diagnostics", "solar/EV installation crossover skills"],
+    "increasingDemand": ["OSHA safety certification", "blueprint reading", "licensed trade certification", "equipment diagnostics"],
+    "declining": ["uncertified, undocumented trade experience"],
+    "aiOpportunities": ["AI-assisted diagnostic tools for equipment troubleshooting"],
+    "adjacentRoles": [
+      { "role": "Construction Site Supervisor", "overlapSkills": ["safety compliance", "blueprint reading"] },
+      { "role": "Maintenance Technician", "overlapSkills": ["equipment diagnostics", "trade certification"] }
+    ],
+    "unlockSkills": ["OSHA 10/30 certification", "trade license/apprenticeship completion", "BIM/blueprint software basics"]
+  },
+  "logistics": {
+    "label": "Logistics / Supply Chain",
+    "titleHints": ["logistics", "supply chain", "warehouse", "inventory", "shipping", "procurement", "fleet"],
+    "fastGrowing": ["Warehouse management systems (WMS)", "Route optimization software", "Real-time inventory tracking"],
+    "emerging": ["AI-driven demand forecasting", "automated warehouse robotics oversight"],
+    "increasingDemand": ["WMS/ERP systems", "inventory management", "supply chain coordination", "forklift certification"],
+    "declining": ["manual, spreadsheet-only inventory tracking"],
+    "aiOpportunities": ["AI demand forecasting to reduce stockouts/overstock"],
+    "adjacentRoles": [
+      { "role": "Procurement Specialist", "overlapSkills": ["vendor management", "ERP"] },
+      { "role": "Fleet/Operations Coordinator", "overlapSkills": ["logistics", "scheduling"] }
+    ],
+    "unlockSkills": ["WMS/ERP system certification", "forklift certification", "supply chain fundamentals (APICS/CSCP)"]
+  },
+  "manufacturing": {
+    "label": "Manufacturing / Production",
+    "titleHints": ["manufacturing", "production operator", "assembly", "quality control", "machine operator", "plant operations"],
+    "fastGrowing": ["Lean manufacturing / Six Sigma", "Automated production monitoring", "Predictive maintenance"],
+    "emerging": ["AI-assisted defect detection", "smart-factory sensor monitoring"],
+    "increasingDemand": ["quality control", "lean manufacturing", "production line operations", "equipment maintenance"],
+    "declining": ["manual quality checks without process documentation"],
+    "aiOpportunities": ["AI-assisted visual defect detection on production lines"],
+    "adjacentRoles": [
+      { "role": "Quality Control Inspector", "overlapSkills": ["quality control", "documentation"] },
+      { "role": "Production Supervisor", "overlapSkills": ["production line operations", "scheduling"] }
+    ],
+    "unlockSkills": ["Six Sigma / Lean certification", "equipment-specific operating certification", "quality documentation training"]
+  },
+  "creative_design": {
+    "label": "Creative / Design",
+    "titleHints": ["graphic designer", "video editor", "photographer", "illustrator", "creative director", "content creator", "brand designer"],
+    "fastGrowing": ["Motion graphics", "Short-form video content", "AI-assisted design workflows"],
+    "emerging": ["AI image/video generation as a drafting tool (human-finished)", "3D and AR content"],
+    "increasingDemand": ["Adobe Creative Suite", "video editing", "branding", "content creation", "portfolio-based hiring"],
+    "declining": ["static print-only design without digital/video skills"],
+    "aiOpportunities": ["AI-assisted first drafts for mockups/storyboards (designer-finished)"],
+    "adjacentRoles": [
+      { "role": "Content Creator", "overlapSkills": ["video editing", "branding"] },
+      { "role": "UX/UI Designer", "overlapSkills": ["design tools", "portfolio work"] }
+    ],
+    "unlockSkills": ["a public portfolio (Behance/personal site)", "video editing tool certification", "brand guidelines project"]
+  },
+  "administrative": {
+    "label": "Administrative / Office Support",
+    "titleHints": ["administrative assistant", "office manager", "executive assistant", "receptionist", "office coordinator", "data entry"],
+    "fastGrowing": ["Digital scheduling and workflow tools", "Cross-functional coordination software"],
+    "emerging": ["AI-assisted scheduling and inbox triage"],
+    "increasingDemand": ["Microsoft Office/Google Workspace", "calendar management", "office administration", "data entry accuracy"],
+    "declining": ["paper filing systems without digital records"],
+    "aiOpportunities": ["AI meeting notes and follow-up drafting (reviewed before sending)"],
+    "adjacentRoles": [
+      { "role": "Office Manager", "overlapSkills": ["scheduling", "vendor coordination"] },
+      { "role": "Executive Assistant", "overlapSkills": ["calendar management", "communication"] }
+    ],
+    "unlockSkills": ["Microsoft Office / Google Workspace certification", "project coordination tool familiarity (Asana/Trello)"]
+  },
+  "customer_service": {
+    "label": "Customer Service / Support",
+    "titleHints": ["customer service", "customer support", "call center", "help desk", "support specialist", "customer care"],
+    "fastGrowing": ["Omnichannel support tooling", "Self-service knowledge bases", "Customer satisfaction analytics"],
+    "emerging": ["AI chatbot triage with human escalation", "AI-assisted response drafting"],
+    "increasingDemand": ["ticketing systems (Zendesk/Freshdesk)", "customer satisfaction (CSAT)", "conflict resolution", "multi-channel support"],
+    "declining": ["phone-only support without ticketing/CRM tooling"],
+    "aiOpportunities": ["AI-drafted responses for agents to review and personalize"],
+    "adjacentRoles": [
+      { "role": "Customer Success Associate", "overlapSkills": ["customer relationships", "CRM"] },
+      { "role": "Help Desk / IT Support", "overlapSkills": ["ticketing systems", "troubleshooting"] }
+    ],
+    "unlockSkills": ["ticketing system certification (Zendesk/Freshdesk)", "one documented CSAT/resolution-time result"]
+  },
+  "human_resources": {
+    "label": "Human Resources / People Ops",
+    "titleHints": ["human resources", "hr generalist", "recruiter", "talent acquisition", "people operations", "hr coordinator"],
+    "fastGrowing": ["HRIS platforms (Workday/BambooHR)", "Data-driven talent analytics", "Employer branding"],
+    "emerging": ["AI-assisted resume screening (human-reviewed)", "AI-driven employee engagement surveys"],
+    "increasingDemand": ["HRIS systems", "talent acquisition", "employee relations", "onboarding programs", "compliance"],
+    "declining": ["paper-based HR record keeping"],
+    "aiOpportunities": ["AI-assisted first-pass resume screening, always human-reviewed for fairness"],
+    "adjacentRoles": [
+      { "role": "Talent Acquisition Specialist", "overlapSkills": ["recruiting", "candidate screening"] },
+      { "role": "People Operations Coordinator", "overlapSkills": ["onboarding", "HRIS"] }
+    ],
+    "unlockSkills": ["HRIS certification (Workday/BambooHR)", "SHRM-CP or similar HR certification", "one documented hiring-outcome result"]
   },
   "general": {
     "label": "General / Cross-domain (role not confidently matched — generic guidance only)",

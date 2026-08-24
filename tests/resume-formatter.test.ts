@@ -43,4 +43,24 @@ describe("resume formatter", () => {
     expect(out).toContain("- Python");
     expect(out).toContain("- Playwright");
   });
+
+  it("keeps a 'Company | Role | Dates' sub-header as plain text, not a bullet", () => {
+    const out = formatResumeDraft(
+      "WORK EXPERIENCE\nSt. Mary Hospital | Registered Nurse | 2021-Present\n- Provided direct patient care"
+    );
+    expect(out).toContain("St. Mary Hospital | Registered Nurse | 2021-Present");
+    expect(out).not.toContain("- St. Mary Hospital");
+    expect(out).toContain("- Provided direct patient care");
+  });
+
+  it("recovers email and phone from a plain, unlabeled Name/Email/Phone header block", () => {
+    // No "CONTACT" section, no "EMAIL:"/"PHONE:" labels — just the header
+    // block as many people actually paste it.
+    const out = formatResumeDraft(
+      "Alex Chen\nalex.chen@example.com | 555-123-4567\n\nSUMMARY\nRecent CS graduate.\n\nSKILLS\nPython"
+    );
+    expect(out).toMatch(/^NAME: Alex Chen/m);
+    expect(out).toMatch(/^EMAIL: alex\.chen@example\.com/m);
+    expect(out).toMatch(/^PHONE: 555-123-4567/m);
+  });
 });

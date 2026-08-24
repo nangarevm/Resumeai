@@ -45,7 +45,61 @@ const GROUPS: string[][] = [
   ["terraform", "infrastructure as code", "iac", "pulumi"],
   ["graphql", "apollo", "grpc"],
   ["golang", "go lang"],
-  ["rust", "rustlang"]
+  ["rust", "rustlang"],
+  // Non-tech fields — added so evidence matching works for any job market, not
+  // just software/finance/marketing.
+  //
+  // IMPORTANT: a group means "these are alternate names for the SAME thing"
+  // (e.g. "python"/"py"/"django" all mean Python) — NOT "things that get
+  // mentioned in the same job posting." An earlier version of this file grouped
+  // e.g. "patient care", "EHR", "vital signs", and "phlebotomy" together because
+  // they're all nursing-adjacent, which meant a resume that only proved EHR
+  // experience got silently credited for vital signs and phlebotomy too, and
+  // vice versa — a real over-crediting bug caught in end-to-end testing. Every
+  // group below is a genuine same-concept cluster (e.g. actual alternate names
+  // for one EHR platform, or one certification). Distinct skills — "patient
+  // care" vs "phlebotomy", "plumbing" vs "welding" — are deliberately NOT
+  // grouped together; see STANDALONE_TERMS below for how they still get matched.
+  ["ehr", "emr", "electronic health records", "epic", "cerner", "clinical documentation"],
+  ["learning management system", "lms"],
+  ["westlaw", "lexisnexis", "legal research"],
+  ["pos system", "point of sale"],
+  ["food safety", "servsafe"],
+  ["crm", "salesforce", "hubspot crm"],
+  ["wms", "warehouse management system"],
+  ["lean manufacturing", "six sigma"],
+  ["production line", "assembly line"],
+  ["adobe creative suite", "photoshop", "illustrator", "indesign"],
+  ["premiere pro", "video editing"],
+  ["zendesk", "freshdesk", "ticketing system"],
+  ["customer satisfaction", "csat"],
+  ["hris", "workday", "bamboohr"],
+  ["recruiting", "talent acquisition"]
+];
+
+/**
+ * Distinct skills that don't have alternate names, but still need to be
+ * extractable when a JD phrases the requirement descriptively — e.g. "Patient
+ * care experience" should still produce "patient care" as a matchable keyword
+ * against a resume's bare "Patient care" skills-list entry. Each behaves like
+ * its own single-member group: matched independently, never merged with any
+ * other term, so there's no cross-contamination risk the way GROUPS entries
+ * have (a resume proving "welding" can never get credited for "plumbing").
+ */
+const STANDALONE_TERMS: string[] = [
+  "patient care", "vital signs", "phlebotomy", "medical terminology",
+  "bls certification", "acls certification", "cpr certification",
+  "curriculum development", "lesson planning", "classroom management", "instructional design", "student assessment", "differentiated instruction", "iep",
+  "contract review", "litigation support", "paralegal", "legal drafting", "e-discovery", "case management software",
+  "guest service", "housekeeping", "front desk", "hotel operations", "reservation system",
+  "cold calling", "lead generation", "account management", "quota attainment", "b2b sales", "retail sales", "merchandising", "upselling",
+  "electrical wiring", "plumbing", "hvac", "welding", "osha", "blueprint reading", "carpentry", "construction management", "machinist",
+  "supply chain", "inventory management", "warehouse operations", "logistics coordination", "forklift certification", "shipping and receiving", "route optimization",
+  "quality control", "cnc machining", "manufacturing operations", "predictive maintenance",
+  "graphic design", "branding", "content creation", "figma",
+  "microsoft office", "google workspace", "office administration", "executive assistant", "calendar management", "travel coordination",
+  "customer support", "call center", "help desk", "conflict resolution",
+  "onboarding", "employee relations", "payroll", "benefits administration", "shrm"
 ];
 
 function tokenize(value: string): string[] {
@@ -53,6 +107,14 @@ function tokenize(value: string): string[] {
     .toLowerCase()
     .split(/[^a-z0-9+#]+/)
     .filter(Boolean);
+}
+
+function standaloneTermPresent(text: string, term: string): boolean {
+  if (term.length <= 3) {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`, "i").test(text);
+  }
+  return text.includes(term);
 }
 
 export function expandSynonyms(term: string, extra: string[] = []): string[] {
@@ -63,16 +125,24 @@ export function expandSynonyms(term: string, extra: string[] = []): string[] {
   if (compact) out.add(compact);
 
   const significantTokens = tokenize(lower).filter((t) => /[a-z]/i.test(t));
-  const isShortTerm = significantTokens.length <= 2;
 
   for (const group of GROUPS) {
     const longHit = group.some((alias) => alias.length >= 4 && lower.includes(alias));
     const exactHit = group.includes(lower);
-    const shortReqHit = isShortTerm && group.some((alias) => significantTokens.includes(alias));
-    if (longHit || exactHit || shortReqHit) {
+    // Token-exact match (not substring) — safe regardless of how long the
+    // surrounding phrase is, since tokenize() already gives real word boundaries.
+    // This is what lets a short acronym like "EHR" or "RN" match even buried
+    // inside a long requirement like "EHR/EMR system proficiency (Epic preferred)".
+    const tokenHit = group.some((alias) => significantTokens.includes(alias));
+    if (longHit || exactHit || tokenHit) {
       group.forEach((alias) => out.add(alias));
     }
   }
+
+  for (const standalone of STANDALONE_TERMS) {
+    if (standaloneTermPresent(lower, standalone)) out.add(standalone);
+  }
+
   return [...out].filter((alias) => alias.length > 1);
 }
 

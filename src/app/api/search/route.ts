@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
-import { getStore } from "@/lib/store";
+import { getAgencyCandidatePool } from "@/lib/workspace-store";
+import { bindWorkspaceUser } from "@/lib/auth/bind-workspace";
 import { searchCandidates } from "@/lib/engines/discovery-engine";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  await bindWorkspaceUser();
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") || "";
-  const results = searchCandidates(getStore().candidates, q).map((c) => ({
+  const pool = await getAgencyCandidatePool();
+  const results = searchCandidates(pool, q).map((c) => ({
     id: c.id,
     name: c.name,
     email: c.email,

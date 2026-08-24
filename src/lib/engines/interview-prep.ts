@@ -6,6 +6,7 @@ import { populateSkillGaps } from "./skill-gap-engine";
 import { verifyClaims } from "./claim-verification";
 import type { CareerVault } from "../srs-models";
 import { approvedEvidence } from "./career-vault";
+import { categorizeInterviewQuestions } from "./interview-categorizer";
 
 export function buildInterviewPrep(profile: CandidateProfile, jd: JobDescription, vault: CareerVault) {
   const evidence = extractEvidence(profile, jd);
@@ -13,6 +14,7 @@ export function buildInterviewPrep(profile: CandidateProfile, jd: JobDescription
   result.claims = verifyClaims(profile);
   populateSkillGaps(result);
   const questions = generateQuestions(result, jd);
+  const questionsByBucket = categorizeInterviewQuestions(questions, jd);
 
   const stories = approvedEvidence(vault)
     .filter((e) => e.type === "project" || e.type === "work" || e.type === "achievement")
@@ -27,5 +29,5 @@ export function buildInterviewPrep(profile: CandidateProfile, jd: JobDescription
 
   const thankYouNote = `Hi, thank you for discussing ${jd.title} at ${jd.companyName}. I can walk through ${stories[0]?.situation || "a project already on my resume"} using STAR — I will not add metrics that are not in my Career Vault.`;
 
-  return { questions, stories, missingPrep: result.missingRequirements, thankYouNote };
+  return { questions, questionsByBucket, stories, missingPrep: result.missingRequirements, thankYouNote };
 }

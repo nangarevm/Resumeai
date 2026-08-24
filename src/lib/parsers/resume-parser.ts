@@ -14,7 +14,14 @@ const SECTION_ALIASES: Array<[RegExp, string]> = [
 export function parseResume(id: string, rawText: string): CandidateProfile {
   const text = normalize(rawText);
   const name = extractHeaderField(text, "NAME:", extractNameFallback(text, `Candidate ${id}`));
-  const email = extractHeaderField(text, "EMAIL:", extractEmail(text) ?? `candidate${id}@example.com`);
+  // No fabricated placeholder here — a resume with no real EMAIL: line or
+  // detectable address gets an empty string, not an invented address. A
+  // synthetic candidate${id}@example.com previously caused every no-email
+  // resume in a batch to collide on the identical fake address and falsely
+  // dedupe against each other; callers already treat a falsy email as "no
+  // email on file" (bulk-candidates' seenEmails set, share-redaction's
+  // `if (profile.email)` guard).
+  const email = extractHeaderField(text, "EMAIL:", extractEmail(text) ?? "");
   const phone = extractHeaderField(text, "PHONE:", extractPhone(text) ?? "Not specified");
   const sections = extractSections(text);
   const preferences = extractCareerPreferences(text);
@@ -121,12 +128,38 @@ function extractCareerPreferences(text: string): CareerPreferences {
   return prefs;
 }
 
+/** Split on comma/bullet, but not inside parentheses — "Adobe Creative Suite
+ *  (Photoshop, Illustrator)" is one skill with a parenthetical example list,
+ *  not two skills split mid-parenthesis. */
+function splitOutsideParens(line: string): string[] {
+  const tokens: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const ch of line) {
+    if (ch === "(") depth++;
+    else if (ch === ")") depth = Math.max(0, depth - 1);
+    if ((ch === "," || ch === "•") && depth === 0) {
+      tokens.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  tokens.push(current);
+  return tokens;
+}
+
 function extractSkillList(skillsText: string): string[] {
   if (!skillsText) return [];
   const skills: string[] = [];
   for (let line of skillsText.split("\n")) {
     if (line.includes(":")) line = line.slice(line.indexOf(":") + 1);
-    for (const token of line.split(/[,•\-]/)) {
+    // Strip a leading bullet marker (each line is already its own item from the
+    // \n split above) before splitting on comma/bullet — splitting on every
+    // bare "-" instead shattered hyphenated skill terms like "e-discovery" or
+    // "co-pilot" into meaningless fragments ("e", "discovery").
+    line = line.replace(/^\s*[-•]\s*/, "");
+    for (const token of splitOutsideParens(line)) {
       const cleaned = token.trim();
       if (cleaned && cleaned.length < 30) skills.push(cleaned);
     }
@@ -139,9 +172,12 @@ function extractProjectList(projectsText: string): string[] {
   const projects: string[] = [];
   for (const line of projectsText.split("\n")) {
     const trimmed = line.trim();
-    if (trimmed.startsWith("-") || trimmed.startsWith("•") || /^project\b/i.test(trimmed)) {
-      projects.push(trimmed.replace(/^[-•]\s*/, ""));
-    }
+    // Every non-blank line inside the PROJECTS section is a project entry —
+    // not just bulleted ones. A very common real-world format is one plain
+    // "Title - description" line per project with no leading bullet marker,
+    // and requiring "-"/"•" here used to silently drop every project in
+    // that format from extractedProjects (and therefore from vault evidence).
+    if (trimmed) projects.push(trimmed.replace(/^[-•]\s*/, ""));
   }
   return projects;
 }
