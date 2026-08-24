@@ -14,7 +14,7 @@ import type {
   VerificationFinding
 } from "@/lib/srs-models";
 import type { JobDescription } from "@/lib/models";
-import { vaultCompleteness } from "@/lib/engines/career-vault";
+import { vaultCompleteness, buildCareerVault } from "@/lib/engines/career-vault";
 import { bandFromScore } from "@/lib/engines/outcome-tracker";
 import { applyAcceptedSuggestions, applySummaryToResume } from "@/lib/engines/tailoring";
 import { buildWhatsAppBundle } from "@/lib/export/whatsapp-bundle";
@@ -24,7 +24,7 @@ import AuthBar from "@/components/AuthBar";
 import ResumeSectionEditor from "@/components/ResumeSectionEditor";
 import GuidedProfileWizard from "@/components/GuidedProfileWizard";
 import ResumeTemplatePreview from "@/components/ResumeTemplatePreview";
-import { RESUME_TEMPLATES, TEMPLATE_COLORS, TEMPLATE_SKELETONS, type TemplateCategory } from "@/lib/resume-render";
+import { RESUME_TEMPLATES, TEMPLATE_SKELETONS, templateColorOptionsForCategory, isTemplateColorValidForCategory, type TemplateCategory } from "@/lib/resume-render";
 import NextBestAction from "@/components/NextBestAction";
 import ReadinessScore, { type ReadinessStep } from "@/components/ReadinessScore";
 import AutosaveStatus, { type AutosaveState } from "@/components/AutosaveStatus";
@@ -249,6 +249,10 @@ export default function CandidateApp() {
   }
 
   const currentJobInputKey = useMemo(() => jobInputKey(jobUrl, jdText), [jobUrl, jdText]);
+  const templateColorOptions = useMemo(
+    () => templateColorOptionsForCategory(templateCategory as TemplateCategory | "All"),
+    [templateCategory]
+  );
   const jobIntelStale = Boolean(job && analyzedInputKey && analyzedInputKey !== currentJobInputKey);
   const resumeStats = useMemo(() => resumeImportStats(resumeText), [resumeText]);
   const vaultReadyToSave = resumeStats.chars >= 80;
@@ -265,6 +269,13 @@ export default function CandidateApp() {
     const flags = [ws?.vault.evidence.length, job, fit, suggestions.some((s) => s.status !== "pending"), findings.length, kit, apps.length, prep, change];
     return Math.round((flags.filter(Boolean).length / flags.length) * 100);
   }, [ws, job, fit, suggestions, findings, kit, apps, prep, change]);
+
+  function onTemplateCategoryChange(category: TemplateCategory | "All") {
+    setTemplateCategory(category);
+    if (!isTemplateColorValidForCategory(category, templateColorFilter)) {
+      setTemplateColorFilter("All");
+    }
+  }
 
   async function refresh() {
     const data = await fetch("/api/workspace").then((r) => r.json());
@@ -428,12 +439,25 @@ export default function CandidateApp() {
 
   async function deleteMyData() {
     setDeleteConfirmArmed(false);
-    await fetch("/api/privacy", { method: "DELETE" });
+    setBusy(true);
+    const res = await fetch("/api/privacy", { method: "DELETE" });
+    if (!res.ok) {
+      setBusy(false);
+      setNotice("Could not delete your vault. Try again.");
+      return;
+    }
     setKit(null);
     setChange(null);
     setPrep(null);
+    setResumeText("");
+    setLiveResumeText("");
+    setTargetRole("");
+    setGoals("");
+    setDraft("");
+    setShareStatus({ active: false });
     await refresh();
-    setNotice("Workspace reset. Your previous vault was deleted on this device.");
+    setBusy(false);
+    setNotice("Workspace reset. Your vault was deleted.");
   }
 
   async function importLinkedIn() {
@@ -1117,18 +1141,32 @@ export default function CandidateApp() {
     const days = Math.round((Date.now() - new Date(a.appliedAt || a.savedAt).getTime()) / 86400000);
     return days >= 3;
   });
-  const vaultHealth = ws ? vaultCompleteness(ws.vault) : null;
-  // Live preview of unsaved edits — reparses the debounced textarea content
-  // the same way an actual Save would, so health/top-fixes reflect what the
-  // candidate is typing right now rather than only the last saved version.
   const draftProfile = useMemo(() => {
     if (!ws) return null;
     if (liveResumeText === ws.profile.rawResumeText) return ws.profile;
     return parseResume(ws.profile.id, liveResumeText);
   }, [ws, liveResumeText]);
-  const isLivePreview = Boolean(ws && draftProfile && draftProfile !== ws.profile);
-  const resumeHealth = useMemo(() => (ws && draftProfile ? computeResumeHealth(draftProfile, ws.vault, fit) : null), [ws, draftProfile, fit]);
-  const topFixes = useMemo(() => (ws && draftProfile ? computeTopFixes(draftProfile, ws.vault, fit) : []), [ws, draftProfile, fit]);
+  const vaultStale = Boolean(
+    ws &&
+      (liveResumeText !== ws.profile.rawResumeText ||
+        targetRole !== ws.vault.targetRole ||
+        goals !== ws.vault.goals)
+  );
+  const previewVault = useMemo(() => {
+    if (!ws || !draftProfile) return null;
+    if (!vaultStale) return ws.vault;
+    return buildCareerVault(draftProfile, targetRole, goals);
+  }, [ws, draftProfile, vaultStale, targetRole, goals]);
+  const vaultHealth = previewVault ? vaultCompleteness(previewVault) : null;
+  const isLivePreview = vaultStale;
+  const resumeHealth = useMemo(
+    () => (draftProfile && previewVault ? computeResumeHealth(draftProfile, previewVault, fit) : null),
+    [draftProfile, previewVault, fit]
+  );
+  const topFixes = useMemo(
+    () => (draftProfile && previewVault ? computeTopFixes(draftProfile, previewVault, fit) : []),
+    [draftProfile, previewVault, fit]
+  );
   const recruiterView = useMemo(
     () => (ws ? computeRecruiterView(ws.profile, ws.vault, job || undefined) : null),
     [ws, job]
@@ -1137,9 +1175,9 @@ export default function CandidateApp() {
   // draftProfile above — this is meant to show what's actually out there
   // today, not a preview of unsaved edits.
   const candidateBrief = useMemo(() => (ws ? buildCandidateBrief(ws.profile, job, fit) : ""), [ws, job, fit]);
-  const skillGroups = useMemo(() => (ws ? categorizeSkills(ws.profile.extractedSkills) : []), [ws]);
-  const rankedProjects = useMemo(() => (ws && job ? rankProjectsByRelevance(ws.profile, job) : []), [ws, job]);
-  const bulletFormulaResults = useMemo(() => (ws ? checkBulletFormulas(ws.profile) : []), [ws]);
+  const skillGroups = useMemo(() => (draftProfile ? categorizeSkills(draftProfile.extractedSkills) : []), [draftProfile]);
+  const rankedProjects = useMemo(() => (ws && job && draftProfile ? rankProjectsByRelevance(draftProfile, job) : []), [ws, job, draftProfile]);
+  const bulletFormulaResults = useMemo(() => (draftProfile ? checkBulletFormulas(draftProfile) : []), [draftProfile]);
   const achievementCandidates = useMemo(
     () => unquantifiedBullets(bulletFormulaResults).filter((b) => !skippedAchievements[b]),
     [bulletFormulaResults, skippedAchievements]
@@ -1499,7 +1537,7 @@ export default function CandidateApp() {
                   onUpload={uploadPhoto}
                   onRemove={removePhoto}
                 />
-                {ws.vault.evidence.slice(0, 16).map((e) => (
+                {previewVault.evidence.slice(0, 16).map((e) => (
                   <div key={e.id} className="chain-item vault-item">
                     <div className="vault-item-main">
                       <span className={`badge ${e.verificationStatus === "approved" ? "ok" : "mid"}`}>{e.type}</span>{" "}
@@ -2374,7 +2412,7 @@ export default function CandidateApp() {
                       key={c}
                       type="button"
                       className={`category-chip ${templateCategory === c ? "active" : ""}`}
-                      onClick={() => setTemplateCategory(c)}
+                      onClick={() => onTemplateCategoryChange(c)}
                     >
                       {c}
                     </button>
@@ -2391,7 +2429,7 @@ export default function CandidateApp() {
                     title="All colors"
                     aria-label="All colors"
                   />
-                  {TEMPLATE_COLORS.map((c) => (
+                  {templateColorOptions.map((c) => (
                     <button
                       key={c.id}
                       type="button"
@@ -2403,6 +2441,11 @@ export default function CandidateApp() {
                     />
                   ))}
                 </div>
+                {templateCategory === "ATS-Safe" && (
+                  <p className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>
+                    ATS-Safe templates use grayscale ink only — pick Classic Black, Charcoal, or Navy Ink.
+                  </p>
+                )}
               </div>
             </div>
             {(() => {
@@ -2418,7 +2461,11 @@ export default function CandidateApp() {
                     <EmptyState
                       icon="🔍"
                       title="No templates match this combination"
-                      detail="ATS-recommended styles stay plain on purpose and don't come in color. Try a different style, or clear the color filter."
+                      detail={
+                        templateCategory === "ATS-Safe" && templateColorFilter !== "All"
+                          ? "ATS-Safe templates only come in grayscale ink (Classic Black, Charcoal, Navy Ink). Clear the color filter or pick an ink shade above."
+                          : "ATS-recommended styles stay plain on purpose and don't come in color. Try a different style, or clear the color filter."
+                      }
                       ctaLabel="Clear filters"
                       onCta={() => {
                         setTemplateCategory("All");

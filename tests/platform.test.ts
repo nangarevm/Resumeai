@@ -14,6 +14,7 @@ import { buildCareerVault } from "@/lib/engines/career-vault";
 import {
   getWorkspaceFilePath,
   resetWorkspaceCache,
+  resetSeekerWorkspace,
   setSeekerProfile
 } from "@/lib/workspace-store";
 import fs from "fs";
@@ -73,6 +74,20 @@ describe("platform deep features", () => {
     const updated = applySummaryToResume(profile.rawResumeText, summary.proposed);
     expect(updated).toContain(summary.proposed);
     expect(updated).toMatch(/SUMMARY/i);
+  });
+
+  it("resetSeekerWorkspace clears to a minimal empty profile, not seed demo data", async () => {
+    await setSeekerProfile(
+      parseResume(
+        "big",
+        "NAME: Big User\nEMAIL: big@test.com\nPREFERRED ROLE: AI/ML Intern\nSKILLS\nPython\nWORK EXPERIENCE\nAcme Corp"
+      )
+    );
+    const reset = await resetSeekerWorkspace();
+    expect(reset.profile.name).toBe("New user");
+    expect(reset.vault.targetRole).toBe("");
+    expect(reset.profile.rawResumeText).not.toContain("Anuja");
+    expect(reset.profile.rawResumeText).not.toContain("AI/ML Intern");
   });
 
   it("per-user workspace path is separate from legacy", async () => {
